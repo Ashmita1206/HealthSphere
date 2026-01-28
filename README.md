@@ -1,232 +1,231 @@
-# 🏥 HealthSphere — AI-Powered Personal Health Management Platform
+# 🏥 HealthSphere
 
-HealthSphere is a full-stack, AI-powered healthcare platform that centralizes personal health data, provides intelligent assistance, enables real-time monitoring, and delivers a secure, modern user experience — inspired by professional healthcare portals like Max Healthcare and ILBS.
+HealthSphere is a production-ready frontend application for personal health management. This repository contains a Vite + React + TypeScript single-page application that integrates with Supabase (Auth, Database, Storage, Edge Functions) to provide user authentication, health dashboards, reminders, medicine tracking, appointments, medical report storage, and an AI-assisted health chat.
+
+This README documents implemented functionality directly reflected in the source code.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features (implemented)
 
-### 🌐 Platform Features
-- Professional healthcare landing page with About, Services, Contact, and Auth flow
-- Secure authentication system (Login / Register)
-- Role-based dashboards (Patient / User)
-- Responsive and accessible UI
-- Dark / Light theme toggle
-- Mobile-friendly navigation drawer (hamburger menu)
-- Secure routing & privacy enforcement
-
-### 🧠 AI Capabilities
-- AI Chatbot for health queries
-- Voice input (mic support) with start/stop control
-- Scrollable chat interface
-- Smart response generation
-- Emergency SOS trigger
-
-### 📍 Location & Permissions
-- Nearest hospital / clinic finder using live geolocation
-- Camera, microphone, and location permission handling
-- Real-time data access where required
-
-### 💊 Health Management
-- Medicine reminders
-- Reports vault (secure document storage)
-- Wellness dashboard with charts & health metrics
-- Donor registration
-- Emergency services integration
-
-### 🔐 Security
-- JWT-based authentication
-- End-to-end encrypted API communication
-- Environment-based secrets management
-- Secure storage for health records
+- Authentication (Supabase): email/password sign-up, sign-in, session handling via `AuthContext`.
+- Profile management: view & update user profile stored in the `profiles` table.
+- Medicines: CRUD for medicines stored in the `medicines` table.
+- Reminders: create/enable/disable/delete reminders in the `reminders` table with realtime updates via Supabase Realtime channels.
+- Appointments: create/delete appointments stored in the `appointments` table.
+- Reports vault: upload/download/delete medical reports using Supabase Storage and the `reports` table for metadata.
+- AI Chat assistant: client chat UI (`src/components/chat/ChatBot.tsx`) and a Supabase Edge Function `health-chat` (Deno) that forwards chat requests to an external AI gateway (requires `LOVABLE_API_KEY`).
+- Chat persistence: authenticated chat messages inserted into `chat_messages` table.
+- Dashboard: overview page that fetches `profiles`, `medicines`, and `appointments`, and renders charts with `recharts`.
+- Media & Speech: browser-based SpeechRecognition (speech-to-text), SpeechSynthesis (TTS), and media permission handling via `useMediaPermissions`.
+- Geolocation: `useGeolocation` hook and a `getNearbyLocations` mock service for nearby hospitals/clinics.
+- UI & Accessibility: Tailwind CSS, Radix primitives/shadcn-style components, theme provider (light/dark), responsive layout and sidebar.
 
 ---
 
 ## 🧱 Tech Stack
 
-### Frontend
-- **Next.js 16 (App Router + Turbopack)**
-- **TypeScript**
-- **Tailwind CSS**
-- **ShadCN UI**
-- **Framer Motion**
-- **Recharts** (charts & graphs)
-
-### Backend
-- **Node.js**
-- **Express.js**
-- **JWT Authentication**
-- **REST APIs**
-
-### AI & Cloud
-- **Google Cloud APIs**
-- **Google Cloud Storage** (medical reports, files)
-- **Speech-to-Text APIs**
-- **Text-to-Speech APIs**
-- **Geolocation APIs**
-- **AI Chat APIs**
+- Frontend: Vite, React 18, TypeScript
+- Styling & UI: Tailwind CSS, Radix UI primitives (shadcn-style components), `lucide-react`, `framer-motion`
+- Data & State: `@tanstack/react-query`, `react-router-dom`, `react-hook-form`, `zod`
+- Backend services: Supabase (Auth, Postgres, Storage, Realtime, Edge Functions)
+- AI gateway: external AI service used by `supabase/functions/health-chat` (configured with `LOVABLE_API_KEY`)
+- Charts: `recharts`
+- Tooling & Tests: Vitest, ESLint, TypeScript
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Layout (top-level)
+
+- `src/` — application source code
+  - `pages/` — route pages (Landing, Dashboard, Reminders, Medicines, Reports, Appointments, Profile, Settings, Emergency, etc.)
+  - `components/` — reusable UI components and the chat widget (`src/components/chat/ChatBot.tsx`)
+  - `contexts/` — `AuthContext`, `ThemeContext`
+  - `hooks/` — `useGeolocation`, `useSpeechRecognition`, `useMediaPermissions`, `use-toast`, etc.
+  - `integrations/` — Supabase client (`src/integrations/supabase/client.ts`)
+  - `services/` — helper services like `locationsService` (mock nearby locations)
+- `public/` — static assets
+- `supabase/` — Supabase Edge Function(s) and migrations
+  - `functions/health-chat/index.ts` — Deno Edge Function for AI chat
+- `package.json` — scripts and dependencies
+
+See `src/App.tsx` for routing and protected-route setup.
+
+---
+
+## ⚙️ Prerequisites
+
+- Node.js 18+ (recommended)
+- npm (or yarn)
+- A Supabase project for Auth, Database, Storage and Edge Functions (required for full functionality)
+
+## 📥 Quick Start — Run Locally
+
+1. Clone the repository
 
 ```bash
-healthsphere/
-│
-├── web/                 # Frontend (Next.js)
-│   ├── src/
-│   │   ├── app/         # App router pages
-│   │   ├── components/  # UI components
-│   │   ├── lib/         # Utilities & API handlers
-│   │   └── styles/      # Global styles
-│   └── public/          # Static assets
-│
-├── server/              # Backend (Node + Express)
-│   ├── routes/          # API routes
-│   ├── controllers/     # Business logic
-│   ├── middleware/      # Auth & security
-│   └── config/          # Environment configs
-│
-├── .env.example
-├── .gitignore
-├── package.json
-└── README.md
-⚙️ Installation & Setup
-🔧 Prerequisites
-Node.js v18+
+git clone <repo-url>
+cd healthsphere-guardian-main
+```
 
-npm or yarn
+2. Install dependencies
 
-Git
-
-Google Cloud account
-
-📥 Clone the Repository
-git clone https://github.com/Ashmita1206/HealthSphere.git
-cd HealthSphere
-📦 Install Dependencies
-Frontend:
-cd web
+```bash
 npm install
-Backend:
-cd ../server
-npm install
-🔐 Environment Setup
-Create .env files in both web/ and server/ folders using .env.example as reference.
+```
 
-Example .env (Server):
-PORT=4000
-JWT_SECRET=your_secure_secret
-GOOGLE_CLOUD_PROJECT_ID=your_project_id
-GOOGLE_APPLICATION_CREDENTIALS=path_to_service_account.json
-GCS_BUCKET_NAME=your_bucket_name
-AI_API_KEY=your_ai_key
-WEB_ORIGIN=http://localhost:3000
-Example .env.local (Frontend):
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_key
-NEXT_PUBLIC_AI_API_KEY=your_ai_key
-▶️ Running the Application
-Start Backend:
-cd server
+3. Configure environment variables (see next section)
+
+4. Start the development server
+
+```bash
 npm run dev
-Start Frontend:
-cd web
-npm run dev
-Then open:
+```
 
-👉 http://localhost:3000
+Open the app at the URL shown by Vite (usually http://localhost:5173).
 
-🔑 External APIs Used
-You must configure the following APIs:
+---
 
-API Service	Provider
-AI Chat API	Google / OpenAI
-Speech-to-Text	Google Cloud
-Text-to-Speech	Google Cloud
-Geolocation	Google Maps API
-File Storage	Google Cloud Storage
-Authentication	JWT
-🧠 How to Get Google Cloud API Keys
-Go to https://console.cloud.google.com
+## 🧪 Testing
 
-Create a new project
+Run unit tests:
 
-Enable APIs:
-
-Cloud Storage
-
-Speech-to-Text
-
-Text-to-Speech
-
-Maps JavaScript API
-
-Create credentials → API Key / Service Account
-
-Download JSON key file and add path to .env
-
-🔐 Security Best Practices
-Never commit .env files
-
-Use HTTPS in production
-
-Rotate API keys regularly
-
-Use secure cookies
-
-Encrypt sensitive data at rest & in transit
-
-🧪 Testing
-# Frontend
+```bash
 npm run test
+```
 
-# Backend
-npm run test
-🚀 Deployment
-Frontend
-Vercel / Netlify / Firebase Hosting
+---
 
-Backend
-Google Cloud Run / AWS / Railway / Render
+## 🔒 Security & Best Practices
 
-🧑‍⚕️ Use Cases
-Personal health management
+- Do not commit `.env` files or secret keys to the repository.
+- Use Supabase Row Level Security (RLS) for production databases and keep service-role keys on server-side only.
+- Use HTTPS in production and rotate keys regularly.
 
-Emergency response
+---
 
-Medical report storage
+## 📦 Build & Deployment
 
-AI-assisted health guidance
+- Build the frontend:
 
-Donor registration systems
+```bash
+npm run build
+```
 
-Healthcare dashboards
+- Deploy the static frontend to Vercel, Netlify, or any static host that supports SPA routing.
+- Deploy Supabase resources (tables, storage bucket, Edge Functions) via the Supabase dashboard or CLI. Configure `LOVABLE_API_KEY` as an environment variable for the `health-chat` function if AI chat is needed.
 
+Notes:
+- The project is a frontend SPA that relies on Supabase for backend services. Provisioning the Supabase project (tables, storage buckets, RLS policies, and Edge Functions) is required for full functionality.
 
-🛠️ Future Enhancements
-Doctor appointment booking
+---
 
-Telemedicine video calls
+## Folder Structure (high level)
 
-Wearable device integration
+- `src/pages/` — route pages (Landing, Dashboard, Reminders, Medicines, Reports, Appointments, Profile, Settings, Emergency, etc.)
+- `src/components/` — UI building blocks and the chat widget
+- `src/contexts/` — global providers (`AuthContext`, `ThemeContext`)
+- `src/hooks/` — custom hooks: `useGeolocation`, `useSpeechRecognition`, `useMediaPermissions`, `use-toast`, etc.
+- `src/integrations/supabase/` — Supabase client and generated types
+- `supabase/functions/` — Edge Functions (AI chat)
 
-Multi-language support
+---
 
-Blockchain medical records
+## Database tables (referenced in source code)
 
-Advanced AI diagnostics
+Create these tables in your Supabase project (names used in client queries):
 
-👩‍💻 Author
-Ashmita Goyal
-🔗 GitHub: https://github.com/Ashmita1206
-Neeraj Mishra 
-🔗 GitHub: https://github.com/Ashmita1206
+- `profiles`
+- `medicines`
+- `appointments`
+- `reminders`
+- `reports`
+- `chat_messages`
 
-📜 License
-This project is licensed under the MIT License.
+The application expects a `reports` storage bucket for report uploads.
 
-⭐ Support
-If you like this project, please ⭐ star the repository and share it!
-For issues or feature requests, open a GitHub issue.
+---
 
+## API / Endpoints (in this repo)
+
+- Supabase Edge Function: `/functions/v1/health-chat` (implemented at `supabase/functions/health-chat/index.ts`). The frontend calls:
+
+  - `${VITE_SUPABASE_URL}/functions/v1/health-chat` with `Authorization: Bearer ${VITE_SUPABASE_PUBLISHABLE_KEY}`
+
+  The function forwards messages to an external AI gateway using the `LOVABLE_API_KEY` environment variable (set on Supabase function/config).
+
+- Supabase Storage: bucket `reports` used by `src/pages/Reports.tsx` to upload files and create signed URLs.
+
+Client-side API interactions use `@supabase/supabase-js` via `src/integrations/supabase/client.ts`.
+
+---
+
+## Environment Variables
+
+Create a `.env` file at the project root based on [.env.example](./.env.example).
+
+Frontend (Vite) variables used in code:
+
+- `VITE_SUPABASE_URL` — your Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase publishable / anon key used by the client
+- `VITE_GOOGLE_MAPS_API_KEY` — (optional) used by `getGoogleMapsEmbedUrl` in `src/services/locationsService.ts`
+
+Supabase Edge Function (server-side) variables:
+
+- `LOVABLE_API_KEY` — API key for the external AI gateway used by `health-chat` function
+
+Important: Do not store service-role secrets in the frontend environment.
+
+For detailed setup instructions, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
+
+---
+
+## Screenshots
+
+Add screenshots of the app here (dashboard, reports upload, reminders, chat). Example placeholders:
+
+![Dashboard screenshot](./screenshots/dashboard.png)
+![Reports upload](./screenshots/reports.png)
+![Chat assistant](./screenshots/chat.png)
+
+See [screenshots/README.md](./screenshots/README.md) for guidance on adding application screenshots.
+
+---
+
+## Future Enhancements / Roadmap
+
+- Replace the mock `locationsService` with a real Places API or Supabase-stored locations.
+- Add server-side validation and tighten RLS policies for production.
+- Add CI/CD to automate frontend builds and Supabase migrations.
+- Add end-to-end tests and visual regression tests for UI flows.
+
+---
+
+## Contributing
+
+1. Fork the repository and create a feature branch.
+2. Run tests and linters locally.
+3. Open a pull request with a clear description and necessary migration notes (if database changes are required).
+
+Please open issues for bugs and feature requests.
+
+---
+
+## License
+
+This project is available under the MIT License.
+
+---
+
+## Contact / Authors
+
+- Ashmita Goyal — https://github.com/Ashmita1206
+- Neeraj Mishra — https://github.com/Neeraj-code-beep
+
+---
+
+## Getting Started Resources
+
+- [.env.example](./.env.example) — Environment variables reference
+- [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) — Complete Supabase database setup guide with SQL schemas and RLS policies
+- [screenshots/README.md](./screenshots/README.md) — Guide for adding and optimizing application screenshots
