@@ -1,14 +1,30 @@
-import React, { useEffect } from "react";
-import { motion } from "framer-motion";
-import { AlertTriangle, Phone, MapPin, Navigation, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import { useGeolocation } from "@/hooks/useGeolocation";
-import { getNearbyLocations, openInMaps, type Location } from "@/services/locationsService";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  Phone,
+  MapPin,
+  Navigation,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import {
+  getNearbyLocations,
+  openInMaps,
+  type Location,
+} from '@/services/locationsService';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function EmergencyPage() {
   const { user } = useAuth();
@@ -25,10 +41,10 @@ export default function EmergencyPage() {
   const [loadingHospitals, setLoadingHospitals] = React.useState(false);
 
   const emergencyNumbers = [
-    { name: "Emergency Services", number: "911" },
-    { name: "Poison Control", number: "1-800-222-1222" },
-    { name: "Ambulance", number: "102" },
-    { name: "Mental Health Crisis", number: "988" },
+    { name: 'Emergency Services', number: '911' },
+    { name: 'Poison Control', number: '1-800-222-1222' },
+    { name: 'Ambulance', number: '102' },
+    { name: 'Mental Health Crisis', number: '988' },
   ];
 
   // Auto-load nearby locations when location is available
@@ -46,14 +62,14 @@ export default function EmergencyPage() {
       const result = await getNearbyLocations(
         currentLocation.latitude,
         currentLocation.longitude,
-        5 // 5km radius
+        5, // 5km radius
       );
 
       if (result.error) {
         toast({
-          title: "Error",
+          title: 'Error',
           description: result.error,
-          variant: "destructive",
+          variant: 'destructive',
         });
       } else {
         setNearbyHospitals(result.locations);
@@ -66,9 +82,9 @@ export default function EmergencyPage() {
   const handleSOS = async () => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to use SOS",
-        variant: "destructive",
+        title: 'Error',
+        description: 'You must be logged in to use SOS',
+        variant: 'destructive',
       });
       return;
     }
@@ -86,29 +102,30 @@ export default function EmergencyPage() {
       }
 
       // Save emergency alert to database
-      const { error } = await supabase.from("emergency_alerts").insert({
+      const { error } = await supabase.from('emergency_alerts').insert({
         user_id: user.id,
-        latitude,
-        longitude,
-        status: "active",
+        latitude: latitude || null,
+        longitude: longitude || null,
+        status: 'active',
       });
 
       if (error) throw error;
 
       // Send notification
       toast({
-        title: "SOS ACTIVATED",
-        description: "Emergency services have been notified. Help is on the way.",
-        variant: "destructive",
+        title: 'SOS ACTIVATED',
+        description:
+          'Emergency services have been notified. Help is on the way.',
+        variant: 'destructive',
       });
 
       // Reset after 5 seconds
       setTimeout(() => setSosTriggered(false), 5000);
     } catch (err: any) {
       toast({
-        title: "Error",
-        description: err.message || "Failed to send SOS",
-        variant: "destructive",
+        title: 'Error',
+        description: err.message || 'Failed to send SOS',
+        variant: 'destructive',
       });
       setSosTriggered(false);
     }
@@ -120,7 +137,10 @@ export default function EmergencyPage() {
 
   return (
     <div className="container py-8">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <h1 className="text-3xl font-bold mb-8">Emergency Services</h1>
 
         {/* Error Alert */}
@@ -149,7 +169,8 @@ export default function EmergencyPage() {
             </motion.button>
             <h2 className="text-2xl font-bold">Emergency SOS</h2>
             <p className="mt-2 text-muted-foreground text-center max-w-md">
-              Press the button above in case of emergency. This will alert emergency services and share your location.
+              Press the button above in case of emergency. This will alert
+              emergency services and share your location.
             </p>
             {sosTriggered && (
               <p className="mt-4 text-sm text-destructive font-semibold animate-pulse">
@@ -193,7 +214,9 @@ export default function EmergencyPage() {
                 <MapPin className="h-5 w-5" />
                 Your Location
               </CardTitle>
-              <CardDescription>Find hospitals and services near you</CardDescription>
+              <CardDescription>
+                Find hospitals and services near you
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
@@ -203,18 +226,23 @@ export default function EmergencyPage() {
                 variant="outline"
               >
                 <Navigation className="mr-2 h-4 w-4" />
-                {locationLoading ? "Getting Location..." : "Get Current Location"}
+                {locationLoading
+                  ? 'Getting Location...'
+                  : 'Get Current Location'}
               </Button>
               {currentLocation && (
                 <div className="p-3 rounded-lg bg-muted text-sm space-y-1">
                   <p className="text-muted-foreground">
-                    <strong>Latitude:</strong> {currentLocation.latitude.toFixed(4)}
+                    <strong>Latitude:</strong>{' '}
+                    {currentLocation.latitude.toFixed(4)}
                   </p>
                   <p className="text-muted-foreground">
-                    <strong>Longitude:</strong> {currentLocation.longitude.toFixed(4)}
+                    <strong>Longitude:</strong>{' '}
+                    {currentLocation.longitude.toFixed(4)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    <strong>Accuracy:</strong> ±{Math.round(currentLocation.accuracy)} meters
+                    <strong>Accuracy:</strong> ±
+                    {Math.round(currentLocation.accuracy)} meters
                   </p>
                 </div>
               )}
@@ -229,7 +257,9 @@ export default function EmergencyPage() {
               <MapPin className="h-5 w-5" />
               Nearby Services
             </CardTitle>
-            <CardDescription>Hospitals, clinics, and emergency centers within 5km</CardDescription>
+            <CardDescription>
+              Hospitals, clinics, and emergency centers within 5km
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {!currentLocation ? (
@@ -257,10 +287,12 @@ export default function EmergencyPage() {
                       <div className="flex items-center gap-2">
                         <h4 className="font-semibold">{location.name}</h4>
                         <span className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs rounded capitalize font-medium">
-                          {location.type.replace("-", " ")}
+                          {location.type.replace('-', ' ')}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{location.address}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {location.address}
+                      </p>
                       {location.distance !== undefined && (
                         <p className="text-xs text-primary mt-2 font-medium">
                           {location.distance.toFixed(1)} km away
@@ -284,7 +316,13 @@ export default function EmergencyPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openInMaps(location.latitude, location.longitude, location.name)}
+                        onClick={() =>
+                          openInMaps(
+                            location.latitude,
+                            location.longitude,
+                            location.name,
+                          )
+                        }
                         title="Get directions"
                       >
                         <Navigation className="h-4 w-4" />

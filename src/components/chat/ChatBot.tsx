@@ -1,23 +1,34 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Bot, User, Mic, Volume2, AlertTriangle, ImagePlus, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useMediaPermissions } from "@/hooks/useMediaPermissions";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  MessageCircle,
+  X,
+  Send,
+  Bot,
+  User,
+  Mic,
+  Volume2,
+  AlertTriangle,
+  ImagePlus,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useMediaPermissions } from '@/hooks/useMediaPermissions';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
-  riskLevel?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   timestamp: Date;
   imageUrl?: string;
 }
@@ -25,16 +36,25 @@ interface Message {
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const userScrolledUpRef = useRef(false);
-  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
   // Use the new hooks
-  const { isListening, transcript, interimTranscript, error: speechError, startListening, stopListening, resetTranscript, hasPermission } = useSpeechRecognition();
+  const {
+    isListening,
+    transcript,
+    interimTranscript,
+    error: speechError,
+    startListening,
+    stopListening,
+    resetTranscript,
+    hasPermission,
+  } = useSpeechRecognition();
   const { micPermission, requestMicPermission } = useMediaPermissions();
-  
+
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -42,49 +62,33 @@ export function ChatBot() {
   // Update input when transcript changes
   useEffect(() => {
     if (transcript) {
-      setInput((prev) => prev + " " + transcript);
+      setInput((prev) => prev + ' ' + transcript);
       resetTranscript();
     }
   }, [transcript, resetTranscript]);
 
-  // Smart scroll handler - only auto-scroll if user is near the bottom
+  // Auto-scroll to bottom when new messages arrive or chat opens
   useEffect(() => {
-    const container = messagesContainerRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
-    if (!container) return;
-
-    // Check if user is near the bottom (within 100px)
-    const isNearBottom = container.scrollHeight - (container.scrollTop + container.clientHeight) < 100;
-    
-    if (isNearBottom && !userScrolledUpRef.current) {
-      // Auto-scroll to bottom
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 0);
-    }
-  }, [messages]);
-
-  // Track manual scroll position
-  useEffect(() => {
-    const container = messagesContainerRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const isNearBottom = container.scrollHeight - (container.scrollTop + container.clientHeight) < 100;
-      userScrolledUpRef.current = !isNearBottom;
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
+    // Use a small timeout to ensure DOM is updated
+    const timeoutId = setTimeout(scrollToBottom, 0);
+    return () => clearTimeout(timeoutId);
+  }, [messages, isOpen]);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([{
-        id: "welcome",
-        role: "assistant",
-        content: "Hello! I'm your HealthSphere AI assistant. I can help you with health questions, medication reminders, appointment info, and general wellness guidance. How can I assist you today?",
-        timestamp: new Date(),
-      }]);
+      setMessages([
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content:
+            "Hello! I'm your HealthSphere AI assistant. I can help you with health questions, medication reminders, appointment info, and general wellness guidance. How can I assist you today?",
+          timestamp: new Date(),
+        },
+      ]);
     }
   }, [isOpen]);
 
@@ -95,23 +99,24 @@ export function ChatBot() {
     }
 
     // Request permission if needed
-    if (micPermission === "prompt") {
+    if (micPermission === 'prompt') {
       const granted = await requestMicPermission();
       if (!granted) {
         toast({
-          title: "Microphone Error",
-          description: "Microphone permission is required for voice input",
-          variant: "destructive",
+          title: 'Microphone Error',
+          description: 'Microphone permission is required for voice input',
+          variant: 'destructive',
         });
         return;
       }
     }
 
-    if (!hasPermission && micPermission === "denied") {
+    if (!hasPermission && micPermission === 'denied') {
       toast({
-        title: "Permission Denied",
-        description: "Please enable microphone permissions in your browser settings",
-        variant: "destructive",
+        title: 'Permission Denied',
+        description:
+          'Please enable microphone permissions in your browser settings',
+        variant: 'destructive',
       });
       return;
     }
@@ -119,30 +124,42 @@ export function ChatBot() {
     startListening();
   };
 
-  const extractRiskLevel = (content: string): { riskLevel?: Message["riskLevel"]; cleanContent: string } => {
+  const extractRiskLevel = (
+    content: string,
+  ): { riskLevel?: Message['riskLevel']; cleanContent: string } => {
     const riskMatch = content.match(/\[RISK:(LOW|MEDIUM|HIGH|CRITICAL)\]/);
     if (riskMatch) {
       return {
-        riskLevel: riskMatch[1] as Message["riskLevel"],
-        cleanContent: content.replace(riskMatch[0], "").trim(),
+        riskLevel: riskMatch[1] as Message['riskLevel'],
+        cleanContent: content.replace(riskMatch[0], '').trim(),
       };
     }
     return { cleanContent: content };
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Error',
+        description: 'Please select an image file',
+        variant: 'destructive',
+      });
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Error", description: "Image size must be less than 5MB", variant: "destructive" });
+      toast({
+        title: 'Error',
+        description: 'Image size must be less than 5MB',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -152,25 +169,32 @@ export function ChatBot() {
       const imageUrl = e.target?.result as string;
       const userMessage: Message = {
         id: Date.now().toString(),
-        role: "user",
-        content: "[Image uploaded]",
+        role: 'user',
+        content: '[Image uploaded]',
         imageUrl,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, userMessage]);
-      toast({ title: "Image Uploaded", description: "Your image has been sent to the assistant" });
+      toast({
+        title: 'Image Uploaded',
+        description: 'Your image has been sent to the assistant',
+      });
     };
     reader.readAsDataURL(file);
   };
 
   const speakText = (text: string) => {
-    if ("speechSynthesis" in window) {
+    if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1;
       utterance.pitch = 1;
       speechSynthesis.speak(utterance);
     } else {
-      toast({ title: "Error", description: "Text-to-speech is not supported", variant: "destructive" });
+      toast({
+        title: 'Error',
+        description: 'Text-to-speech is not supported',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -179,87 +203,88 @@ export function ChatBot() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: "user",
+      role: 'user',
       content: input.trim(),
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    setInput('');
     setIsLoading(true);
 
     try {
       const chatMessages = messages
-        .filter((m) => m.id !== "welcome")
+        .filter((m) => m.id !== 'welcome')
         .map((m) => ({
           role: m.role,
           content: m.content,
         }));
-      chatMessages.push({ role: "user", content: userMessage.content });
+      chatMessages.push({ role: 'user', content: userMessage.content });
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/health-chat`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({ messages: chatMessages }),
-        }
+        },
       );
 
       if (!response.ok) {
-        throw new Error("Failed to get response");
+        throw new Error('Failed to get response');
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("No reader");
+      if (!reader) throw new Error('No reader');
 
       const decoder = new TextDecoder();
-      let assistantContent = "";
+      let assistantContent = '';
       const assistantId = (Date.now() + 1).toString();
 
       setMessages((prev) => [
         ...prev,
         {
           id: assistantId,
-          role: "assistant",
-          content: "",
+          role: 'assistant',
+          content: '',
           timestamp: new Date(),
         },
       ]);
 
-      let buffer = "";
+      let buffer = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        
+
         let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
           let line = buffer.slice(0, newlineIndex);
           buffer = buffer.slice(newlineIndex + 1);
 
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
 
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") continue;
+          if (jsonStr === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
-              const { riskLevel, cleanContent } = extractRiskLevel(assistantContent);
+              const { riskLevel, cleanContent } =
+                extractRiskLevel(assistantContent);
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantId
                     ? { ...m, content: cleanContent, riskLevel }
-                    : m
-                )
+                    : m,
+                ),
               );
             }
           } catch {
@@ -277,19 +302,25 @@ export function ChatBot() {
       // Save to database
       if (user) {
         const { riskLevel } = extractRiskLevel(assistantContent);
-        await supabase.from("chat_messages").insert([
-          { user_id: user.id, role: "user", content: userMessage.content },
-          { user_id: user.id, role: "assistant", content: assistantContent, risk_level: riskLevel },
+        await supabase.from('chat_messages').insert([
+          { user_id: user.id, role: 'user', content: userMessage.content },
+          {
+            user_id: user.id,
+            role: 'assistant',
+            content: assistantContent,
+            risk_level: riskLevel,
+          },
         ]);
       }
     } catch (error) {
-      console.error("Chat error:", error);
+      console.error('Chat error:', error);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
-          role: "assistant",
-          content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+          role: 'assistant',
+          content:
+            "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
           timestamp: new Date(),
         },
       ]);
@@ -300,20 +331,20 @@ export function ChatBot() {
 
   const handleEmergencyClick = () => {
     setIsOpen(false);
-    navigate("/emergency");
+    navigate('/emergency');
   };
 
-  const getRiskBadge = (riskLevel?: Message["riskLevel"]) => {
+  const getRiskBadge = (riskLevel?: Message['riskLevel']) => {
     if (!riskLevel) return null;
     const variants = {
-      LOW: "risk-low",
-      MEDIUM: "risk-medium",
-      HIGH: "risk-high",
-      CRITICAL: "risk-critical",
+      LOW: 'risk-low',
+      MEDIUM: 'risk-medium',
+      HIGH: 'risk-high',
+      CRITICAL: 'risk-critical',
     };
     return (
-      <Badge className={cn("ml-2 text-xs", variants[riskLevel])}>
-        {riskLevel === "CRITICAL" && <AlertTriangle className="mr-1 h-3 w-3" />}
+      <Badge className={cn('ml-2 text-xs', variants[riskLevel])}>
+        {riskLevel === 'CRITICAL' && <AlertTriangle className="mr-1 h-3 w-3" />}
         {riskLevel}
       </Badge>
     );
@@ -351,26 +382,29 @@ export function ChatBot() {
             </div>
 
             {/* Messages */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-hidden flex flex-col">
+            <div
+              ref={scrollAreaRef}
+              className="flex-1 overflow-hidden flex flex-col"
+            >
               <ScrollArea className="h-full flex-1">
                 <div className="p-4 space-y-4">
                   {messages.map((message) => (
                     <div
                       key={message.id}
                       className={cn(
-                        "flex gap-3",
-                        message.role === "user" ? "flex-row-reverse" : ""
+                        'flex gap-3',
+                        message.role === 'user' ? 'flex-row-reverse' : '',
                       )}
                     >
                       <div
                         className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted',
                         )}
                       >
-                        {message.role === "user" ? (
+                        {message.role === 'user' ? (
                           <User className="h-4 w-4" />
                         ) : (
                           <Bot className="h-4 w-4" />
@@ -378,19 +412,26 @@ export function ChatBot() {
                       </div>
                       <div
                         className={cn(
-                          "flex-1 rounded-2xl px-4 py-2.5",
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                          'flex-1 rounded-2xl px-4 py-2.5',
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted',
                         )}
                       >
                         {message.imageUrl && (
-                          <img src={message.imageUrl} alt="uploaded" className="max-w-[200px] rounded-lg mb-2" />
+                          <img
+                            src={message.imageUrl}
+                            alt="uploaded"
+                            className="max-w-[200px] rounded-lg mb-2"
+                          />
                         )}
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        {message.role === "assistant" && (
+                        <p className="text-sm whitespace-pre-wrap">
+                          {message.content}
+                        </p>
+                        {message.role === 'assistant' && (
                           <div className="mt-2 flex items-center gap-2">
-                            {message.riskLevel && getRiskBadge(message.riskLevel)}
+                            {message.riskLevel &&
+                              getRiskBadge(message.riskLevel)}
                             <Button
                               size="icon"
                               variant="ghost"
@@ -412,13 +453,23 @@ export function ChatBot() {
                       </div>
                       <div className="rounded-2xl bg-muted px-4 py-3">
                         <div className="flex gap-1">
-                          <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "0ms" }} />
-                          <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "150ms" }} />
-                          <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "300ms" }} />
+                          <span
+                            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
+                            style={{ animationDelay: '0ms' }}
+                          />
+                          <span
+                            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
+                            style={{ animationDelay: '150ms' }}
+                          />
+                          <span
+                            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
+                            style={{ animationDelay: '300ms' }}
+                          />
                         </div>
                       </div>
                     </div>
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
             </div>
@@ -430,7 +481,7 @@ export function ChatBot() {
                   variant="outline"
                   size="sm"
                   onClick={() => setTtsEnabled(!ttsEnabled)}
-                  className={ttsEnabled ? "bg-primary/10" : ""}
+                  className={ttsEnabled ? 'bg-primary/10' : ''}
                   title="Toggle text-to-speech"
                 >
                   <Volume2 className="h-4 w-4" />
@@ -439,23 +490,43 @@ export function ChatBot() {
                   variant="outline"
                   size="sm"
                   onClick={handleVoiceInput}
-                  disabled={micPermission === "denied"}
-                  className={isListening ? "bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30" : ""}
-                  title={isListening ? "Stop listening" : "Start voice input"}
+                  disabled={micPermission === 'denied'}
+                  className={
+                    isListening
+                      ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30'
+                      : ''
+                  }
+                  title={isListening ? 'Stop listening' : 'Start voice input'}
                 >
                   <Mic className="h-4 w-4" />
-                  <span className="text-xs ml-1">{isListening ? "Stop" : "Voice"}</span>
+                  <span className="text-xs ml-1">
+                    {isListening ? 'Stop' : 'Voice'}
+                  </span>
                 </Button>
                 {speechError && (
-                  <span className="text-xs text-destructive px-2 animate-pulse">{speechError}</span>
+                  <span className="text-xs text-destructive px-2 animate-pulse">
+                    {speechError}
+                  </span>
                 )}
                 {isListening && interimTranscript && (
-                  <span className="text-xs text-muted-foreground px-2">{interimTranscript}</span>
+                  <span className="text-xs text-muted-foreground px-2">
+                    {interimTranscript}
+                  </span>
                 )}
-                <Button variant="outline" size="sm" asChild title="Upload image">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  title="Upload image"
+                >
                   <label className="cursor-pointer">
                     <ImagePlus className="h-4 w-4" />
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
                   </label>
                 </Button>
                 <Button
@@ -484,7 +555,11 @@ export function ChatBot() {
                   className="flex-1 text-sm"
                   disabled={isLoading}
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isLoading || !input.trim()}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
@@ -501,7 +576,11 @@ export function ChatBot() {
         whileTap={{ scale: 0.95 }}
         aria-label="Open chat"
       >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {isOpen ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <MessageCircle className="h-6 w-6" />
+        )}
       </motion.button>
     </>
   );

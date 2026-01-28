@@ -1,4 +1,26 @@
--- Create profiles table for user data
+-- =========================
+-- DROP EXISTING TABLES & FUNCTIONS (for clean slate)
+-- =========================
+DROP TABLE IF EXISTS public.chat_messages CASCADE;
+DROP TABLE IF EXISTS public.user_preferences CASCADE;
+DROP TABLE IF EXISTS public.emergency_alerts CASCADE;
+DROP TABLE IF EXISTS public.emergency_contacts CASCADE;
+DROP TABLE IF EXISTS public.reminders CASCADE;
+DROP TABLE IF EXISTS public.donation_requests CASCADE;
+DROP TABLE IF EXISTS public.donors CASCADE;
+DROP TABLE IF EXISTS public.reports CASCADE;
+DROP TABLE IF EXISTS public.appointments CASCADE;
+DROP TABLE IF EXISTS public.medicines CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+DROP FUNCTION IF EXISTS public.update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+
+-- =========================
+-- CREATE TABLES
+-- =========================
+
+-- Profiles table
 CREATE TABLE public.profiles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -16,7 +38,7 @@ CREATE TABLE public.profiles (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create medicines table
+-- Medicines table
 CREATE TABLE public.medicines (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -33,7 +55,7 @@ CREATE TABLE public.medicines (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create appointments table
+-- Appointments table
 CREATE TABLE public.appointments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -47,7 +69,7 @@ CREATE TABLE public.appointments (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create reports table for health records
+-- Reports table
 CREATE TABLE public.reports (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -58,10 +80,11 @@ CREATE TABLE public.reports (
   file_size INTEGER,
   notes TEXT,
   report_date DATE DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create donors table for blood/organ donation
+-- Donors table
 CREATE TABLE public.donors (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -69,13 +92,15 @@ CREATE TABLE public.donors (
   blood_type TEXT,
   organ_type TEXT,
   is_available BOOLEAN DEFAULT true,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'temporarily_unavailable')),
   last_donation_date DATE,
   city TEXT,
+  notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create donation requests table
+-- Donation Requests table
 CREATE TABLE public.donation_requests (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -87,10 +112,11 @@ CREATE TABLE public.donation_requests (
   city TEXT,
   notes TEXT,
   status TEXT DEFAULT 'active',
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create reminders table
+-- Reminders table
 CREATE TABLE public.reminders (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -101,11 +127,13 @@ CREATE TABLE public.reminders (
   reminder_date DATE,
   is_recurring BOOLEAN DEFAULT false,
   recurrence_pattern TEXT,
+  frequency TEXT DEFAULT 'daily',
   is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create emergency contacts table
+-- Emergency Contacts table
 CREATE TABLE public.emergency_contacts (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -114,10 +142,37 @@ CREATE TABLE public.emergency_contacts (
   phone TEXT NOT NULL,
   email TEXT,
   is_primary BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create chat messages table for AI assistant
+-- Emergency Alerts table
+CREATE TABLE public.emergency_alerts (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'responded', 'resolved')),
+  response_notes TEXT,
+  responder_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- User Preferences table
+CREATE TABLE public.user_preferences (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  emergency_alert_email BOOLEAN DEFAULT true,
+  emergency_alert_sms BOOLEAN DEFAULT true,
+  share_location_on_sos BOOLEAN DEFAULT true,
+  trusted_contacts TEXT[] DEFAULT '{}',
+  auto_contact_emergency BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Chat Messages table
 CREATE TABLE public.chat_messages (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -127,7 +182,9 @@ CREATE TABLE public.chat_messages (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Enable RLS on all tables
+-- =========================
+-- ENABLE RLS
+-- =========================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medicines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
@@ -136,59 +193,88 @@ ALTER TABLE public.donors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.donation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 
--- Profiles policies
+-- =========================
+-- POLICIES
+-- =========================
+
+-- Profiles
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
 
--- Medicines policies
+-- Medicines
 CREATE POLICY "Users can view own medicines" ON public.medicines FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own medicines" ON public.medicines FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own medicines" ON public.medicines FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own medicines" ON public.medicines FOR DELETE USING (auth.uid() = user_id);
 
--- Appointments policies
+-- Appointments
 CREATE POLICY "Users can view own appointments" ON public.appointments FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own appointments" ON public.appointments FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own appointments" ON public.appointments FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own appointments" ON public.appointments FOR DELETE USING (auth.uid() = user_id);
 
--- Reports policies
+-- Reports
 CREATE POLICY "Users can view own reports" ON public.reports FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own reports" ON public.reports FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own reports" ON public.reports FOR DELETE USING (auth.uid() = user_id);
 
--- Donors policies (public read for matching, private write)
+-- Donors
 CREATE POLICY "Anyone can view available donors" ON public.donors FOR SELECT USING (is_available = true);
 CREATE POLICY "Users can manage own donor profile" ON public.donors FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own donor profile" ON public.donors FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own donor profile" ON public.donors FOR DELETE USING (auth.uid() = user_id);
 
--- Donation requests policies
+-- Donation Requests
 CREATE POLICY "Authenticated users can view requests" ON public.donation_requests FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users can create own requests" ON public.donation_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own requests" ON public.donation_requests FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own requests" ON public.donation_requests FOR DELETE USING (auth.uid() = user_id);
 
--- Reminders policies
+-- Reminders
 CREATE POLICY "Users can view own reminders" ON public.reminders FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own reminders" ON public.reminders FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own reminders" ON public.reminders FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own reminders" ON public.reminders FOR DELETE USING (auth.uid() = user_id);
 
--- Emergency contacts policies
+-- Emergency Contacts
 CREATE POLICY "Users can view own emergency contacts" ON public.emergency_contacts FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own emergency contacts" ON public.emergency_contacts FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own emergency contacts" ON public.emergency_contacts FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own emergency contacts" ON public.emergency_contacts FOR DELETE USING (auth.uid() = user_id);
 
--- Chat messages policies
+-- Emergency Alerts
+CREATE POLICY "Users can view own emergency alerts" ON public.emergency_alerts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can create emergency alerts" ON public.emergency_alerts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own emergency alerts" ON public.emergency_alerts FOR UPDATE USING (auth.uid() = user_id);
+
+-- User Preferences
+CREATE POLICY "Users can view own preferences" ON public.user_preferences FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own preferences" ON public.user_preferences FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can create own preferences" ON public.user_preferences FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Chat Messages
 CREATE POLICY "Users can view own chat messages" ON public.chat_messages FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own chat messages" ON public.chat_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Create function to auto-create profile on signup
+-- =========================
+-- FUNCTIONS
+-- =========================
+
+-- Auto-update `updated_at` column
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Auto-create profile on new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -198,22 +284,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Create trigger for auto-creating profile
+-- =========================
+-- TRIGGERS
+-- =========================
+
+-- Profile creation
 CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Create function to update timestamps
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SET search_path = public;
-
--- Create triggers for automatic timestamp updates
+-- Automatic timestamp updates
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER update_medicines_updated_at BEFORE UPDATE ON public.medicines FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON public.appointments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_reports_updated_at BEFORE UPDATE ON public.reports FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER update_donors_updated_at BEFORE UPDATE ON public.donors FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_donation_requests_updated_at BEFORE UPDATE ON public.donation_requests FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_reminders_updated_at BEFORE UPDATE ON public.reminders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_emergency_contacts_updated_at BEFORE UPDATE ON public.emergency_contacts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_emergency_alerts_updated_at BEFORE UPDATE ON public.emergency_alerts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON public.user_preferences FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
