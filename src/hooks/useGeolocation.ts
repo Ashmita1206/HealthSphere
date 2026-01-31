@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface GeolocationCoordinates {
   latitude: number;
@@ -22,7 +22,7 @@ export function useGeolocation(): UseGeolocationReturn {
   const [loading, setLoading] = useState(false);
   const watchIdRef = useRef<number | null>(null);
 
-  const isSupported = "geolocation" in navigator;
+  const isSupported = 'geolocation' in navigator;
 
   const handleSuccess = useCallback((position: GeolocationPosition) => {
     const { latitude, longitude, accuracy } = position.coords;
@@ -32,27 +32,28 @@ export function useGeolocation(): UseGeolocationReturn {
   }, []);
 
   const handleError = useCallback((err: GeolocationPositionError) => {
-    let errorMessage = "Unable to get location";
-    
+    let errorMessage = 'Unable to get location';
+
     switch (err.code) {
       case err.PERMISSION_DENIED:
-        errorMessage = "Location permission denied. Please enable location services.";
+        errorMessage =
+          'Location permission denied. Please enable location services.';
         break;
       case err.POSITION_UNAVAILABLE:
-        errorMessage = "Location information unavailable.";
+        errorMessage = 'Location information unavailable.';
         break;
       case err.TIMEOUT:
-        errorMessage = "Location request timed out.";
+        errorMessage = 'Location request timed out.';
         break;
     }
-    
+
     setError(errorMessage);
     setLoading(false);
   }, []);
 
   const requestLocation = useCallback(async () => {
     if (!isSupported) {
-      setError("Geolocation is not supported by your browser");
+      setError('Geolocation is not supported by your browser');
       return;
     }
 
@@ -68,7 +69,7 @@ export function useGeolocation(): UseGeolocationReturn {
 
   const watchLocation = useCallback(() => {
     if (!isSupported) {
-      setError("Geolocation is not supported by your browser");
+      setError('Geolocation is not supported by your browser');
       return;
     }
 
@@ -79,7 +80,7 @@ export function useGeolocation(): UseGeolocationReturn {
       {
         enableHighAccuracy: true,
         maximumAge: 0,
-      }
+      },
     );
   }, [isSupported, handleSuccess, handleError]);
 

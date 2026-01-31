@@ -137,16 +137,20 @@ export default function EmergencyPage() {
     setSosTriggered(true);
 
     try {
-      const location = await requestLocation();
-      if (!location) throw new Error('Location not available');
+      await requestLocation(); // trigger GPS update
 
-      // Insert initial SOS in DB
+      if (!currentLocation) {
+        throw new Error('Location not available');
+      }
+      const { latitude, longitude } = currentLocation;
+
+      // ✅ Insert initial SOS in DB
       const { error: insertError } = await supabase
         .from('emergency_alerts')
         .insert({
           user_id: user.id,
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude,
+          longitude,
           status: 'active',
           created_at: new Date().toISOString(),
         });
@@ -163,22 +167,28 @@ export default function EmergencyPage() {
       // Start live location updates every 5 seconds
       sosInterval.current = setInterval(async () => {
         try {
-          const updatedLocation = await requestLocation();
-          if (!updatedLocation || !user) return;
+          // 1. Trigger geolocation update
+          await requestLocation();
 
-          const { error: updateError } = await supabase
+          // 2. Read location from state
+          if (!currentLocation || !user) return;
+
+          const { latitude, longitude } = currentLocation;
+
+          // 3. Update Supabase
+          const { error } = await supabase
             .from('emergency_alerts')
             .update({
-              latitude: updatedLocation.latitude,
-              longitude: updatedLocation.longitude,
+              latitude,
+              longitude,
               updated_at: new Date().toISOString(),
             })
             .eq('user_id', user.id)
             .eq('status', 'active');
 
-          if (updateError) throw updateError;
-        } catch (intervalError) {
-          console.error('Error updating location in interval:', intervalError);
+          if (error) throw error;
+        } catch (err) {
+          console.error('Error updating SOS location:', err);
         }
       }, 5000);
     } catch (err: any) {
