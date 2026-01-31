@@ -1,7 +1,9 @@
+// services/locationService.ts
+
 export interface Location {
   id: string;
   name: string;
-  type: "hospital" | "clinic" | "pharmacy" | "emergency" | "mental-health";
+  type: 'hospital';
   address: string;
   phone: string;
   latitude: number;
@@ -17,188 +19,96 @@ export interface NearbyLocationsResult {
 }
 
 /**
- * Calculate distance between two coordinates using Haversine formula
- * Returns distance in kilometers
+ * Get user's current location using browser Geolocation API (FREE)
  */
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+export function getUserLocation(): Promise<{ lat: number; lng: number }> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject('Geolocation not supported');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => reject('Location permission denied'),
+      { enableHighAccuracy: true },
+    );
+  });
 }
 
 /**
- * Mock database of nearby locations
- * In production, this would be fetched from a real API or Supabase
+ * Fetch nearby hospitals using OpenStreetMap (Overpass API)
+ * radius is in METERS
  */
-const MOCK_LOCATIONS: Location[] = [
-  {
-    id: "h1",
-    name: "City Medical Center",
-    type: "hospital",
-    address: "123 Health Avenue, Downtown",
-    phone: "555-0100",
-    latitude: 40.7128,
-    longitude: -74.006,
-    rating: 4.7,
-    hours: "24/7",
-  },
-  {
-    id: "h2",
-    name: "County General Hospital",
-    type: "hospital",
-    address: "456 Medical Boulevard, Midtown",
-    phone: "555-0200",
-    latitude: 40.7489,
-    longitude: -73.968,
-    rating: 4.5,
-    hours: "24/7",
-  },
-  {
-    id: "c1",
-    name: "Urgent Care Clinic",
-    type: "clinic",
-    address: "789 Health Street, Uptown",
-    phone: "555-0300",
-    latitude: 40.7614,
-    longitude: -73.9776,
-    rating: 4.6,
-    hours: "8 AM - 10 PM",
-  },
-  {
-    id: "p1",
-    name: "24/7 Pharmacy Plus",
-    type: "pharmacy",
-    address: "321 Medicine Lane, Downtown",
-    phone: "555-0400",
-    latitude: 40.71,
-    longitude: -74.0,
-    rating: 4.4,
-    hours: "24/7",
-  },
-  {
-    id: "e1",
-    name: "Emergency Care Center",
-    type: "emergency",
-    address: "654 Emergency Road, East Side",
-    phone: "911",
-    latitude: 40.758,
-    longitude: -73.9855,
-    rating: 4.8,
-    hours: "24/7",
-  },
-  {
-    id: "m1",
-    name: "Mental Health Services",
-    type: "mental-health",
-    address: "987 Wellness Avenue, West Side",
-    phone: "555-0500",
-    latitude: 40.7282,
-    longitude: -74.0076,
-    rating: 4.5,
-    hours: "9 AM - 6 PM",
-  },
-];
-
-export async function getNearbyLocations(
+export async function getNearbyHospitals(
   userLat: number,
-  userLon: number,
-  radiusKm: number = 5,
-  type?: Location["type"]
+  userLng: number,
+  radiusMeters: number = 5000,
 ): Promise<NearbyLocationsResult> {
   try {
-    // Filter locations within radius
-    let filtered = MOCK_LOCATIONS.filter((location) => {
-      const distance = calculateDistance(
-        userLat,
-        userLon,
-        location.latitude,
-        location.longitude
-      );
+    const radiusKm = radiusMeters / 1000;
 
-      return distance <= radiusKm;
+    const query = `
+      [out:json];
+      (
+        node["amenity"="hospital"](around:${radiusMeters},${userLat},${userLng});
+        way["amenity"="hospital"](around:${radiusMeters},${userLat},${userLng});
+        relation["amenity"="hospital"](around:${radiusMeters},${userLat},${userLng});
+      );
+      out center tags;
+    `;
+
+    const response = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: query,
     });
 
-    // Filter by type if specified
-    if (type) {
-      filtered = filtered.filter((location) => location.type === type);
+    if (!response.ok) {
+      throw new Error('Failed to fetch hospitals');
     }
 
-    // Calculate and sort by distance
-    filtered = filtered
-      .map((location) => ({
-        ...location,
-        distance: calculateDistance(
-          userLat,
-          userLon,
-          location.latitude,
-          location.longitude
-        ),
-      }))
-      .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    const data = await response.json();
+
+    const hospitals: Location[] = data.elements.map((el: any) => ({
+      id: String(el.id),
+      name: el.tags?.name || 'Unnamed Hospital',
+      type: 'hospital',
+      address:
+        el.tags?.['addr:full'] ||
+        el.tags?.['addr:street'] ||
+        el.tags?.address ||
+        '',
+      phone: el.tags?.phone || '',
+      latitude: el.lat || el.center?.lat,
+      longitude: el.lon || el.center?.lon,
+    }));
 
     return {
-      locations: filtered,
+      locations: hospitals,
       error: null,
     };
   } catch (error) {
     return {
       locations: [],
-      error: error instanceof Error ? error.message : "Unknown error",
+      error:
+        error instanceof Error ? error.message : 'Unable to load hospitals',
     };
   }
 }
 
 /**
- * Open location in Google Maps (works on all devices)
- */
-export function openInGoogleMaps(
-  latitude: number,
-  longitude: number,
-  label?: string
-): void {
-  const url = `https://www.google.com/maps?q=${latitude},${longitude}${label ? `&q=${label}` : ""}`;
-  window.open(url, "_blank");
-}
-
-/**
- * Open Apple Maps (iOS) or Google Maps (Android/Web)
+ * Open location in OpenStreetMap
  */
 export function openInMaps(
   latitude: number,
   longitude: number,
-  label?: string
+  label?: string,
 ): void {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-  if (isIOS) {
-    const url = `maps://maps.apple.com/?daddr=${latitude},${longitude}${label ? `&q=${label}` : ""}`;
-    window.open(url, "_blank");
-  } else {
-    openInGoogleMaps(latitude, longitude, label);
-  }
-}
-
-/**
- * Generate Google Maps URL for embedding
- */
-export function getGoogleMapsEmbedUrl(
-  latitude: number,
-  longitude: number,
-  zoom: number = 15
-): string {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-  return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${latitude},${longitude}&zoom=${zoom}`;
+  const url = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
+  window.open(url, '_blank');
 }
