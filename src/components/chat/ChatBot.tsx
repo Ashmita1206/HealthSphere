@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
