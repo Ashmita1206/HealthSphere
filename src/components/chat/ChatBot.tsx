@@ -92,6 +92,19 @@ export function ChatBot() {
     }
   }, [isOpen]);
 
+  // 🔒 Lock background scroll when chatbot is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [isOpen]);
+
   const handleVoiceInput = async () => {
     if (isListening) {
       stopListening();
@@ -358,7 +371,22 @@ export function ChatBot() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border bg-card shadow-2xl flex flex-col"
+            className="
+  fixed
+  right-6
+  top-20
+  bottom-6
+  z-50
+  w-96
+  max-w-[calc(100vw-3rem)]
+  overflow-hidden
+  rounded-2xl
+  border
+  bg-card
+  shadow-2xl
+  flex
+  flex-col
+"
           >
             {/* Header */}
             <div className="flex items-center justify-between bg-gradient-primary p-4 text-primary-foreground">
@@ -382,11 +410,8 @@ export function ChatBot() {
             </div>
 
             {/* Messages */}
-            <div
-              ref={scrollAreaRef}
-              className="flex-1 overflow-hidden flex flex-col"
-            >
-              <ScrollArea className="h-full flex-1">
+            <div ref={scrollAreaRef} className="flex-1 min-h-0 flex flex-col">
+              <ScrollArea className="flex-1 overflow-y-auto overscroll-contain">
                 <div className="p-4 space-y-4">
                   {messages.map((message) => (
                     <div
