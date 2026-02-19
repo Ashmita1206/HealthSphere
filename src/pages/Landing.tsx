@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Heart,
   Bot,
@@ -11,48 +11,51 @@ import {
   Droplets,
   ArrowRight,
   CheckCircle,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { Footer } from '@/components/layout/Footer';
 
 const features = [
   {
     icon: Bot,
-    title: "AI Health Assistant",
-    description: "Get instant health guidance with our intelligent AI assistant",
+    title: 'AI Health Assistant',
+    description:
+      'Get instant health guidance with our intelligent AI assistant',
   },
   {
     icon: Pill,
-    title: "Medicine Management",
-    description: "Track medications with smart reminders and adherence monitoring",
+    title: 'Medicine Management',
+    description:
+      'Track medications with smart reminders and adherence monitoring',
   },
   {
     icon: FileText,
-    title: "Digital Health Records",
-    description: "Securely store and access your medical reports anytime",
+    title: 'Digital Health Records',
+    description: 'Securely store and access your medical reports anytime',
   },
   {
     icon: Calendar,
-    title: "Appointment Booking",
-    description: "Schedule and manage all your healthcare appointments",
+    title: 'Appointment Booking',
+    description: 'Schedule and manage all your healthcare appointments',
   },
   {
     icon: AlertTriangle,
-    title: "Emergency SOS",
-    description: "One-click emergency alerts with location sharing",
+    title: 'Emergency SOS',
+    description: 'One-click emergency alerts with location sharing',
   },
   {
     icon: Droplets,
-    title: "Blood & Organ Network",
-    description: "Connect with donors and find matches quickly",
+    title: 'Blood & Organ Network',
+    description: 'Connect with donors and find matches quickly',
   },
 ];
 
 const stats = [
-  { value: "50K+", label: "Active Users" },
-  { value: "99.9%", label: "Uptime" },
-  { value: "24/7", label: "AI Support" },
-  { value: "256-bit", label: "Encryption" },
+  { value: '50K+', label: 'Active Users' },
+  { value: '99.9%', label: 'Uptime' },
+  { value: '24/7', label: 'AI Support' },
+  { value: '256-bit', label: 'Encryption' },
 ];
 
 export default function LandingPage() {
@@ -60,7 +63,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   if (user) {
-    navigate("/dashboard");
+    navigate('/dashboard');
     return null;
   }
 
@@ -88,9 +91,8 @@ export default function LandingPage() {
               transition={{ delay: 0.1 }}
               className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl"
             >
-              Your Complete{" "}
-              <span className="text-gradient">Health Management</span>{" "}
-              Solution
+              Your Complete{' '}
+              <span className="text-gradient">Health Management</span> Solution
             </motion.h1>
 
             <motion.p
@@ -99,8 +101,9 @@ export default function LandingPage() {
               transition={{ delay: 0.2 }}
               className="mt-6 text-lg text-muted-foreground lg:text-xl"
             >
-              AI-powered health assistant, secure medical records, medication tracking, 
-              appointment management, and emergency services — all in one platform.
+              AI-powered health assistant, secure medical records, medication
+              tracking, appointment management, and emergency services — all in
+              one platform.
             </motion.p>
 
             <motion.div
@@ -112,7 +115,7 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 className="btn-healthcare h-14 px-8 text-lg"
-                onClick={() => navigate("/auth/register")}
+                onClick={() => navigate('/auth/register')}
               >
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -121,7 +124,7 @@ export default function LandingPage() {
                 size="lg"
                 variant="outline"
                 className="h-14 px-8 text-lg"
-                onClick={() => navigate("/auth/login")}
+                onClick={() => navigate('/auth/login')}
               >
                 Sign In
               </Button>
@@ -146,7 +149,9 @@ export default function LandingPage() {
                 <div className="text-3xl font-bold text-primary lg:text-4xl">
                   {stat.value}
                 </div>
-                <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {stat.label}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -161,7 +166,8 @@ export default function LandingPage() {
               Everything You Need for Better Health
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Comprehensive tools designed to help you take control of your health journey
+              Comprehensive tools designed to help you take control of your
+              health journey
             </p>
           </div>
 
@@ -179,7 +185,9 @@ export default function LandingPage() {
                   <feature.icon className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <h3 className="text-lg font-semibold">{feature.title}</h3>
-                <p className="mt-2 text-muted-foreground">{feature.description}</p>
+                <p className="mt-2 text-muted-foreground">
+                  {feature.description}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -199,16 +207,17 @@ export default function LandingPage() {
                 Enterprise-Grade Security
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                Your health data deserves the highest level of protection. We use 
-                industry-leading security measures to keep your information safe.
+                Your health data deserves the highest level of protection. We
+                use industry-leading security measures to keep your information
+                safe.
               </p>
 
               <ul className="mt-8 space-y-4">
                 {[
-                  "AES-256-GCM encryption for all data",
-                  "HIPAA-compliant infrastructure",
-                  "Secure authentication with HttpOnly cookies",
-                  "Regular security audits and penetration testing",
+                  'AES-256-GCM encryption for all data',
+                  'HIPAA-compliant infrastructure',
+                  'Secure authentication with HttpOnly cookies',
+                  'Regular security audits and penetration testing',
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-success" />
@@ -248,12 +257,13 @@ export default function LandingPage() {
               Start Your Health Journey Today
             </h2>
             <p className="mt-4 text-lg opacity-90">
-              Join thousands of users who trust HealthSphere for their healthcare needs.
+              Join thousands of users who trust HealthSphere for their
+              healthcare needs.
             </p>
             <Button
               size="lg"
               className="mt-8 h-14 bg-white px-8 text-lg text-primary hover:bg-white/90"
-              onClick={() => navigate("/auth/register")}
+              onClick={() => navigate('/auth/register')}
             >
               Get Started Free
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -261,6 +271,7 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }
