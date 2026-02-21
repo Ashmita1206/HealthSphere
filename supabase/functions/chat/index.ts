@@ -25,12 +25,8 @@ Format your response like: [RISK:LOW]
 Be concise but thorough.`;
 
 Deno.serve(async (req) => {
-  // ✅ Handle CORS preflight properly
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -38,9 +34,7 @@ Deno.serve(async (req) => {
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
-        JSON.stringify({
-          error: "Invalid request: 'messages' missing or not an array",
-        }),
+        JSON.stringify({ error: "Invalid request: 'messages' missing" }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -53,31 +47,27 @@ Deno.serve(async (req) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    // Convert chat messages to single prompt
-    const userPrompt = messages
-      .map(
-        (m: { role: string; content: string }) =>
-          `${m.role.toUpperCase()}: ${m.content}`,
-      )
-      .join('\n');
+    // ✅ Convert chat messages to Gemini format
+    const geminiContents = [
+      {
+        role: 'user',
+        parts: [{ text: systemPrompt }],
+      },
+      ...messages.map((m: { role: string; content: string }) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+    ];
 
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${systemPrompt}\n\n${userPrompt}`,
-                },
-              ],
-            },
-          ],
+          contents: geminiContents,
         }),
       },
     );
@@ -86,15 +76,10 @@ Deno.serve(async (req) => {
       const errorText = await geminiResponse.text();
       console.error('Gemini API error:', geminiResponse.status, errorText);
 
-      return new Response(
-        JSON.stringify({
-          error: 'AI service temporarily unavailable',
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
+      return new Response(JSON.stringify({ error: errorText }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const geminiData = await geminiResponse.json();
@@ -103,7 +88,6 @@ Deno.serve(async (req) => {
       geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'No response generated';
 
-    // ✅ Proper 200 response
     return new Response(
       JSON.stringify({
         choices: [
@@ -124,12 +108,9 @@ Deno.serve(async (req) => {
 
     const message = err instanceof Error ? err.message : String(err);
 
-    return new Response(
-      JSON.stringify({ error: message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    );
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
