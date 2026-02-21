@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
+
 import {
   Heart,
   Bot,
@@ -70,10 +72,12 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
+      
       <section className="relative overflow-hidden py-20 lg:py-32">
         <div className="absolute inset-0 bg-gradient-hero opacity-5" />
         <div className="container relative">
           <div className="mx-auto max-w-4xl text-center">
+            
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

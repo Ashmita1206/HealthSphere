@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle,
@@ -53,6 +53,7 @@ export default function EmergencyPage() {
     null,
   );
   const [loadingHospitals, setLoadingHospitals] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(6);
 
   // =================== SOS State ===================
   const [sosTriggered, setSosTriggered] = useState(false);
@@ -61,8 +62,13 @@ export default function EmergencyPage() {
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
   const [routeTime, setRouteTime] = useState<number | null>(null);
 
-  const routeRef = useRef<HTMLDivElement>(null);
+  
 
+  // ======= Controlled hospital fetch state =======
+  const [fetchHospitalsOnLocation, setFetchHospitalsOnLocation] =
+    useState(false);
+  const [hospitalError, setHospitalError] = useState<string | null>(null);
+  const fetchingHospitalsRef = useRef(false);
   const emergencyNumbers = [
     { name: 'Emergency Services', number: '911' },
     { name: 'Poison Control', number: '1-800-222-1222' },
@@ -70,29 +76,52 @@ export default function EmergencyPage() {
     { name: 'Mental Health Crisis', number: '988' },
   ];
 
-  // =================== Load Nearby Hospitals ===================
+  // =================== Load Nearby Hospitals (button-triggered) ===================
   useEffect(() => {
-    if (!currentLocation) return;
+    let cancelled = false;
 
     const loadHospitals = async () => {
+      if (!fetchHospitalsOnLocation || !currentLocation) return;
+      if (fetchingHospitalsRef.current) return; // prevent duplicates
+
+      fetchingHospitalsRef.current = true;
+      setHospitalError(null);
       setLoadingHospitals(true);
-      const result = await getNearbyHospitals(
-        currentLocation.latitude,
-        currentLocation.longitude,
-      );
-      if (result.error) {
-        toast({
-          title: 'Error',
-          description: result.error,
-          variant: 'destructive',
-        });
-      } else {
-        setNearbyHospitals(result.locations);
+
+      try {
+        const result = await getNearbyHospitals(
+          currentLocation.latitude,
+          currentLocation.longitude,
+        );
+
+        if (cancelled) return;
+
+        if (result.error) {
+          setNearbyHospitals([]);
+          setHospitalError('Unable to fetch nearby hospitals. Please try again.');
+        } else {
+          setNearbyHospitals(result.locations);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setNearbyHospitals([]);
+          setHospitalError('Unable to fetch nearby hospitals. Please try again.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingHospitals(false);
+          setFetchHospitalsOnLocation(false);
+          fetchingHospitalsRef.current = false;
+        }
       }
-      setLoadingHospitals(false);
     };
+
     loadHospitals();
-  }, [currentLocation, toast]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentLocation, fetchHospitalsOnLocation]);
 
   // =================== SOS Functions ===================
   const stopSOS = useCallback(async () => {
@@ -217,6 +246,20 @@ export default function EmergencyPage() {
     window.location.href = `tel:${number}`;
   };
 
+  const handleGetLocationClick = async () => {
+    // Reset previous state and request location, then effect will fetch hospitals
+    setHospitalError(null);
+    setNearbyHospitals([]);
+    setSelectedHospital(null);
+    setFetchHospitalsOnLocation(true);
+    try {
+      await requestLocation();
+    } catch (err) {
+      // requestLocation uses callbacks; errors are surfaced via locationError
+      setFetchHospitalsOnLocation(false);
+    }
+  };
+
   // =================== JSX ===================
   return (
     <div className="container py-8">
@@ -310,62 +353,70 @@ export default function EmergencyPage() {
               </CardTitle>
               <CardDescription>Used for emergency routing</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button
-                onClick={requestLocation}
-                disabled={locationLoading}
-                className="w-full"
-                variant="outline"
-              >
-                <Navigation className="mr-2 h-4 w-4" />
-                Get Current Location
-              </Button>
-            </CardContent>
+              <CardContent>
+                <Button
+                  onClick={handleGetLocationClick}
+                  disabled={locationLoading || loadingHospitals}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Navigation className="mr-2 h-4 w-4" />
+                  Get Current Location
+                </Button>
+
+                <div className="mt-4">
+                  {locationLoading && fetchHospitalsOnLocation && (
+                    <div className="text-sm text-muted-foreground">Fetching location...</div>
+                  )}
+
+                  {!locationLoading && loadingHospitals && (
+                    <div className="text-sm text-muted-foreground">Loading nearby hospitals...</div>
+                  )}
+
+                  {hospitalError && (
+                    <div className="mt-3">
+                      <Alert variant="destructive" className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{hospitalError}</AlertDescription>
+                        </div>
+                        <Button size="sm" onClick={handleGetLocationClick}>
+                          Retry
+                        </Button>
+                      </Alert>
+                    </div>
+                  )}
+
+                  {!hospitalError && !loadingHospitals && (
+                    <div className="mt-4">
+                      <CardTitle className="mb-2">Nearby Hospitals</CardTitle>
+
+                      {/* prepare and display filtered, deduped hospitals */}
+                      {/**
+                       * Filter rules:
+                       * - remove duplicates by id
+                       * - hide invalid or generic names like 'Unnamed Hospital'
+                       */}
+                      <HospitalList
+                        hospitals={nearbyHospitals}
+                        selectedHospitalId={selectedHospital?.id}
+                        onSelect={(h) => setSelectedHospital(h)}
+                        visibleCount={visibleCount}
+                        onShowMore={() => setVisibleCount((c) => c + 6)}
+                      />
+
+                      {/* No hospitals fallback */}
+                      {nearbyHospitals.length === 0 && (
+                        <div className="text-sm text-muted-foreground mt-3">No hospitals found nearby.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
           </Card>
         </div>
 
-        {/* ================= HOSPITAL LIST ================= */}
-        <div ref={routeRef} className="mt-8">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Nearby Hospitals</CardTitle>
-              <CardDescription>Within 5km</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AnimatePresence>
-                {nearbyHospitals.map((hospital) => (
-                  <motion.div
-                    key={hospital.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ duration: 0.3 }}
-                    className={`flex justify-between p-4 rounded border mb-3 cursor-pointer ${
-                      selectedHospital?.id === hospital.id
-                        ? 'bg-red-50 border-red-500'
-                        : 'bg-white'
-                    }`}
-                    onClick={() => setSelectedHospital(hospital)}
-                  >
-                    <div>
-                      <h4 className="font-semibold">{hospital.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {hospital.address}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedHospital(hospital)}
-                    >
-                      <Navigation />
-                    </Button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </CardContent>
-          </Card>
-        </div>
+        
 
         {/* ================= ROUTE MAP ================= */}
         <AnimatePresence>
@@ -417,6 +468,80 @@ export default function EmergencyPage() {
           )}
         </AnimatePresence>
       </motion.div>
+    </div>
+  );
+}
+
+// ------- Hospital list subcomponent (UI-only, keeps parent logic unchanged) -------
+function HospitalList({
+  hospitals,
+  selectedHospitalId,
+  onSelect,
+  visibleCount,
+  onShowMore,
+}: {
+  hospitals: Location[];
+  selectedHospitalId?: string | undefined;
+  onSelect: (h: Location) => void;
+  visibleCount: number;
+  onShowMore: () => void;
+}) {
+  const filtered = useMemo(() => {
+    const map = new Map<string, Location>();
+    for (const h of hospitals) {
+      const name = (h.name || '').trim();
+      if (!name || /unnamed hospital/i.test(name)) continue; // hide invalid names
+      if (!map.has(h.id)) map.set(h.id, h);
+    }
+    return Array.from(map.values());
+  }, [hospitals]);
+
+  const visible = filtered.slice(0, visibleCount);
+
+  return (
+    <div>
+      {filtered.length === 0 ? (
+        <div className="text-sm text-muted-foreground">No hospitals found.</div>
+      ) : (
+        <div className="max-h-80 overflow-auto pr-2 smooth-scroll">
+          <div className="space-y-3">
+            {visible.map((hospital) => (
+              <motion.div
+                key={hospital.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.2 }}
+                className={`flex items-center justify-between p-3 rounded border bg-white cursor-pointer`}
+                onClick={() => onSelect(hospital)}
+              >
+                <div className="flex-1 pr-3">
+                  <div className="font-semibold text-sm">{hospital.name}</div>
+                  <div className="text-xs text-muted-foreground">{hospital.address}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {hospital.distance != null && (
+                    <div className="text-xs text-muted-foreground">
+                      {(hospital.distance / 1000).toFixed(1)} km
+                    </div>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => onSelect(hospital)}>
+                    <Navigation />
+                  </Button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {filtered.length > visibleCount && (
+        <div className="mt-3 flex justify-center">
+          <Button size="sm" onClick={onShowMore}>
+            Show More
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

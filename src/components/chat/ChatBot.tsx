@@ -213,136 +213,92 @@ export function ChatBot() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const chatMessages = messages
-        .filter((m) => m.id !== 'welcome')
-        .map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-      chatMessages.push({ role: 'user', content: userMessage.content });
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/health-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ messages: chatMessages }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get response');
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader');
-
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      const assistantId = (Date.now() + 1).toString();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantId,
-          role: 'assistant',
-          content: '',
-          timestamp: new Date(),
-        },
-      ]);
-
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (!line.startsWith('data: ')) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantContent += content;
-              const { riskLevel, cleanContent } =
-                extractRiskLevel(assistantContent);
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? { ...m, content: cleanContent, riskLevel }
-                    : m,
-                ),
-              );
-            }
-          } catch {
-            // Continue on parse error
-          }
-        }
-      }
-
-      // Speak response if TTS is enabled
-      if (ttsEnabled) {
-        const { cleanContent } = extractRiskLevel(assistantContent);
-        speakText(cleanContent);
-      }
-
-      // Save to database
-      if (user) {
-        const { riskLevel } = extractRiskLevel(assistantContent);
-        await supabase.from('chat_messages').insert([
-          { user_id: user.id, role: 'user', content: userMessage.content },
-          {
-            user_id: user.id,
-            role: 'assistant',
-            content: assistantContent,
-            risk_level: riskLevel,
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content:
-            "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+  const userMessage: Message = {
+    id: Date.now().toString(),
+    role: "user",
+    content: input.trim(),
+    timestamp: new Date(),
   };
 
+  setMessages((prev) => [...prev, userMessage]);
+  setInput("");
+  setIsLoading(true);
+
+  try {
+    // ✅ Prepare chat messages
+    const chatMessages = messages
+      .filter((m) => m.id !== "welcome")
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+    chatMessages.push({
+      role: "user",
+      content: userMessage.content,
+    });
+
+    // ✅ GET REAL USER SESSION FIRST (OUTSIDE FETCH)
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error("User not authenticated");
+    }
+
+    // ✅ NOW CALL EDGE FUNCTION
+    const response = await fetch(
+      "https://ubbioygwkuiqlbgwepdf.supabase.co/functions/v1/chat",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`, // 🔥 REAL JWT
+        },
+        body: JSON.stringify({ messages: chatMessages }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText);
+    }
+
+    const data = await response.json();
+
+    const aiText =
+      data?.choices?.[0]?.message?.content || "No response";
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: aiText,
+        timestamp: new Date(),
+      },
+    ]);
+
+  } catch (error) {
+    console.error("Chat error:", error);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: "assistant",
+        content:
+          "I'm having trouble connecting right now. Please try again.",
+        timestamp: new Date(),
+      },
+    ]);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleEmergencyClick = () => {
     setIsOpen(false);
     navigate('/emergency');

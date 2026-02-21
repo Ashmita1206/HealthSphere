@@ -1,7 +1,7 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
+    'authorization, x-client-info, apikey, content-type, accept',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -22,12 +22,15 @@ RISK LEVELS:
 
 Format your response like: [RISK:LOW]
 
-Be concise but thorough.`; // Add a system prompt
+Be concise but thorough.`;
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
+  // ✅ Handle CORS preflight properly
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
   try {
@@ -50,7 +53,7 @@ Deno.serve(async (req) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    // Convert OpenAI-style messages to single prompt
+    // Convert chat messages to single prompt
     const userPrompt = messages
       .map(
         (m: { role: string; content: string }) =>
@@ -59,14 +62,20 @@ Deno.serve(async (req) => {
       .join('\n');
 
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
+              parts: [
+                {
+                  text: `${systemPrompt}\n\n${userPrompt}`,
+                },
+              ],
             },
           ],
         }),
@@ -74,11 +83,13 @@ Deno.serve(async (req) => {
     );
 
     if (!geminiResponse.ok) {
-      const text = await geminiResponse.text();
-      console.error('Gemini error:', geminiResponse.status, text);
+      const errorText = await geminiResponse.text();
+      console.error('Gemini API error:', geminiResponse.status, errorText);
 
       return new Response(
-        JSON.stringify({ error: 'AI service temporarily unavailable' }),
+        JSON.stringify({
+          error: 'AI service temporarily unavailable',
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -87,29 +98,38 @@ Deno.serve(async (req) => {
     }
 
     const geminiData = await geminiResponse.json();
+
     const aiText =
       geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'No response generated';
 
+    // ✅ Proper 200 response
     return new Response(
       JSON.stringify({
         choices: [
           {
-            message: { content: aiText },
+            message: {
+              content: aiText,
+            },
           },
         ],
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
     );
   } catch (err: unknown) {
     console.error('Server error:', err);
 
-    // Safely get the error message
     const message = err instanceof Error ? err.message : String(err);
 
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 });

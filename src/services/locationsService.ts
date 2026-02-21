@@ -63,12 +63,43 @@ export async function getNearbyHospitals(
       out center tags;
     `;
 
-    const response = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: query,
-    });
+    // Helper that performs fetch with timeout using AbortController
+    const fetchWithTimeout = async (url: string, timeoutMs = 8000) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { method: 'POST', body: query, signal: controller.signal });
+        return res;
+      } finally {
+        clearTimeout(id);
+      }
+    };
 
-    if (!response.ok) {
+    // Use reliable Overpass endpoints. Avoid calling overpass-api.de to prevent
+    // frequent 504 Gateway Timeout errors observed in some regions.
+    const endpoints = [
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.openstreetmap.fr/api/interpreter',
+    ];
+
+    let response: Response | null = null;
+    let lastError: any = null;
+    for (const url of endpoints) {
+      try {
+        response = await fetchWithTimeout(url, 8000);
+        if (response && response.ok) break;
+      } catch (err) {
+        lastError = err;
+        response = null;
+        // try next endpoint
+      }
+    }
+
+    if (!response) {
+      throw new Error('Overpass API request failed or timed out');
+    }
+
+    if (!response || !response.ok) {
       throw new Error('Failed to fetch hospitals');
     }
 
