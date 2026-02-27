@@ -24,7 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -40,6 +39,10 @@ export function ChatBot() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{
+    data: string;
+    mimeType: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -154,6 +157,7 @@ export function ChatBot() {
   const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
+    console.log('Image upload triggered');
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -180,18 +184,32 @@ export function ChatBot() {
     // For now, show a message. In production, upload to storage
     const reader = new FileReader();
     reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
+      console.log('File read complete');
+
+      const base64WithPrefix = e.target?.result as string;
+      const mimeType = file.type;
+      const base64 = base64WithPrefix.split(',')[1];
+
+      setSelectedImage({
+        data: base64,
+        mimeType,
+      });
+
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
-        content: '[Image uploaded]',
-        imageUrl,
+        content: input.trim() || 'Please analyze this medical report.',
+        imageUrl: base64WithPrefix, // ✅ THIS WAS MISSING
         timestamp: new Date(),
       };
+
       setMessages((prev) => [...prev, userMessage]);
+
+      setInput('');
+
       toast({
         title: 'Image Uploaded',
-        description: 'Your image has been sent to the assistant',
+        description: 'Image ready for analysis',
       });
     };
     reader.readAsDataURL(file);
@@ -212,93 +230,100 @@ export function ChatBot() {
     }
   };
 
-  const handleSend = async () => {
-  if (!input.trim() || isLoading) return;
+  const handleSend = async (e?: React.FormEvent) => {
+    console.log('🔥 handleSend triggered');
+    e?.preventDefault();
 
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    role: "user",
-    content: input.trim(),
-    timestamp: new Date(),
-  };
+    if (isLoading) return;
 
-  setMessages((prev) => [...prev, userMessage]);
-  setInput("");
-  setIsLoading(true);
-
-  try {
-    // ✅ Prepare chat messages
-    const chatMessages = messages
-      .filter((m) => m.id !== "welcome")
-      .map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-    chatMessages.push({
-      role: "user",
-      content: userMessage.content,
-    });
-
-    // ✅ GET REAL USER SESSION FIRST (OUTSIDE FETCH)
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      throw new Error("User not authenticated");
+    if (!input.trim() && !selectedImage) {
+      console.log('Nothing to send');
+      return;
     }
 
-    // ✅ NOW CALL EDGE FUNCTION
-    const response = await fetch(
-      "https://ubbioygwkuiqlbgwepdf.supabase.co/functions/v1/chat",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`, // 🔥 REAL JWT
-        },
-        body: JSON.stringify({ messages: chatMessages }),
-      }
-    );
+    setIsLoading(true);
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(errText);
-    }
-
-    const data = await response.json();
-
-    const aiText =
-      data?.choices?.[0]?.message?.content || "No response";
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: aiText,
-        timestamp: new Date(),
-      },
-    ]);
-
-  } catch (error) {
-    console.error("Chat error:", error);
-
-    setMessages((prev) => [
-      ...prev,
-      {
+    try {
+      const userMessage: Message = {
         id: Date.now().toString(),
-        role: "assistant",
-        content:
-          "I'm having trouble connecting right now. Please try again.",
+        role: 'user',
+        content: input.trim() || 'Image attached',
+        imageUrl: selectedImage
+          ? `data:${selectedImage.mimeType};base64,${selectedImage.data}`
+          : undefined,
         timestamp: new Date(),
-      },
-    ]);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        'https://ubbioygwkuiqlbgwepdf.supabase.co/functions/v1/chat',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            messages: [
+              ...messages
+                .filter((m) => m.id !== 'welcome')
+                .map((m) => ({
+                  role: m.role,
+                  content: m.content,
+                })),
+              {
+                role: 'user',
+                content: input.trim() || 'Image attached',
+              },
+            ],
+            image: selectedImage,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+
+      const aiText = data?.choices?.[0]?.message?.content || 'No response';
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: aiText,
+          timestamp: new Date(),
+        },
+      ]);
+
+      setInput('');
+      setSelectedImage(null);
+    } catch (error) {
+      console.error('Chat error:', error);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Something went wrong. Please try again.',
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const handleEmergencyClick = () => {
     setIsOpen(false);
     navigate('/emergency');
@@ -367,8 +392,8 @@ export function ChatBot() {
             </div>
 
             {/* Messages */}
-            <div ref={scrollAreaRef} className="flex-1 min-h-0 flex flex-col">
-              <ScrollArea className="flex-1 overflow-y-auto overscroll-contain">
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
                 <div className="p-4 space-y-4">
                   {messages.map((message) => (
                     <div
@@ -523,13 +548,7 @@ export function ChatBot() {
               </div>
 
               {/* Input */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
-                className="flex gap-2"
-              >
+              <div className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -537,14 +556,18 @@ export function ChatBot() {
                   className="flex-1 text-sm"
                   disabled={isLoading}
                 />
+
                 <Button
-                  type="submit"
+                  type="button"
                   size="icon"
-                  disabled={isLoading || !input.trim()}
+                  disabled={isLoading}
+                  onClick={() => {
+                    console.log('BUTTON CLICKED');
+                  }}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
-              </form>
+              </div>
             </div>
           </motion.div>
         )}

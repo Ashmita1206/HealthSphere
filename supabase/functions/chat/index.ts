@@ -1,3 +1,4 @@
+// ================= CORS =================
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -5,32 +6,50 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const systemPrompt = `You are HealthSphere AI, a professional healthcare assistant. You provide helpful, accurate, and empathetic health guidance.
+// ================= SYSTEM PROMPT =================
+const systemPrompt = `
+You are HealthSphere AI, a professional healthcare assistant.
 
-IMPORTANT GUIDELINES:
-1. Always be empathetic and supportive
-2. Never diagnose conditions - recommend consulting healthcare professionals
-3. Provide general health information and wellness tips
-4. For emergencies, always recommend calling emergency services (911)
-5. Assess health concerns and provide a risk level in your response
+You are allowed to:
+- Read and analyze medical reports and lab results.
+- Explain values in simple language.
+- Identify whether values appear normal, borderline, or abnormal.
+- Assess whether findings appear low concern, moderate concern, or high concern based only on visible values.
 
-RISK LEVELS:
-- LOW
-- MEDIUM
-- HIGH
-- CRITICAL
+You must NOT:
+- Give a final medical diagnosis.
+- Prescribe medication.
+- Replace a doctor.
 
-Format your response like: [RISK:LOW]
+Always:
+- Be empathetic and supportive.
+- Clearly explain findings.
+- Recommend consulting a healthcare professional for confirmation.
+- Provide a risk level in this exact format at the top:
 
-Be concise but thorough.`;
+[RISK:LOW]
+[RISK:MEDIUM]
+[RISK:HIGH]
+[RISK:CRITICAL]
 
+Then give a structured explanation:
+1. Summary
+2. Abnormal Findings (if any)
+3. What It Might Indicate (general explanation only)
+4. Suggested Next Steps
+
+Be clear and medically responsible but do analyze the visible report data.
+`;
+
+// ================= SERVER =================
 Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, image } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -47,20 +66,46 @@ Deno.serve(async (req) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    // ✅ Convert chat messages to Gemini format
-    const geminiContents = [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }],
-      },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-    ];
+    // ================= BUILD GEMINI CONTENT =================
+    const geminiContents: any[] = [];
 
+    // Add system prompt as first user message
+    geminiContents.push({
+      role: 'user',
+      parts: [{ text: systemPrompt }],
+    });
+
+    // If image exists → send text + image together
+    if (image && image.mimeType && image.data) {
+      geminiContents.push({
+        role: 'user',
+        parts: [
+          {
+            text:
+              messages[messages.length - 1]?.content ||
+              'Analyze this medical report.',
+          },
+          {
+            inline_data: {
+              mime_type: image.mimeType,
+              data: image.data,
+            },
+          },
+        ],
+      });
+    } else {
+      // Text only fallback
+      geminiContents.push(
+        ...messages.map((m: { role: string; content: string }) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        })),
+      );
+    }
+
+    // ================= CALL GEMINI =================
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -84,10 +129,19 @@ Deno.serve(async (req) => {
 
     const geminiData = await geminiResponse.json();
 
-    const aiText =
+    let aiText =
       geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'No response generated';
 
+    // Ensure risk label exists
+    if (!aiText.includes('[RISK:')) {
+      aiText =
+        '[RISK:LOW]\n\n' +
+        aiText +
+        '\n\n⚠️ Please consult a healthcare professional for confirmation.';
+    }
+
+    // ================= RETURN RESPONSE =================
     return new Response(
       JSON.stringify({
         choices: [
