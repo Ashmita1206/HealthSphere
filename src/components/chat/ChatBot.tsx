@@ -203,8 +203,6 @@ export function ChatBot() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
-
       setInput('');
 
       toast({
@@ -244,6 +242,8 @@ export function ChatBot() {
     setIsLoading(true);
 
     try {
+      // 1️⃣ Create userMessage (you already have this)
+
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
@@ -254,14 +254,40 @@ export function ChatBot() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
+      // 2️⃣ Update UI immediately
+      setMessages((prev) => {
+        const newMessages = [...prev, userMessage];
+        return newMessages;
+      });
+
+      // 3️⃣ Prepare messages for API (DECLARE OUTSIDE FETCH)
+      const updatedMessages = [
+        ...messages
+          .filter((m) => m.id !== 'welcome')
+          .map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        {
+          role: userMessage.role,
+          content: userMessage.content,
+        },
+      ];
 
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session) throw new Error('Not authenticated');
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
 
+      console.log('PAYLOAD:', {
+        messages: updatedMessages,
+        image: selectedImage,
+      });
+
+      // 4️⃣ Now call fetch
       const response = await fetch(
         'https://ubbioygwkuiqlbgwepdf.supabase.co/functions/v1/chat',
         {
@@ -271,23 +297,11 @@ export function ChatBot() {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            messages: [
-              ...messages
-                .filter((m) => m.id !== 'welcome')
-                .map((m) => ({
-                  role: m.role,
-                  content: m.content,
-                })),
-              {
-                role: 'user',
-                content: input.trim() || 'Image attached',
-              },
-            ],
+            messages: updatedMessages,
             image: selectedImage,
           }),
         },
       );
-
       if (!response.ok) {
         throw new Error(await response.text());
       }
@@ -487,7 +501,7 @@ export function ChatBot() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setTtsEnabled(!ttsEnabled)}
+                  onClick={() => setTtsEnabled((prev) => !prev)}
                   className={ttsEnabled ? 'bg-primary/10' : ''}
                   title="Toggle text-to-speech"
                 >
@@ -547,27 +561,37 @@ export function ChatBot() {
                 </Button>
               </div>
 
+              {/* 🔥 IMAGE PREVIEW GOES HERE */}
+              {selectedImage && (
+                <div className="relative inline-block mt-2">
+                  <img
+                    src={`data:${selectedImage.mimeType};base64,${selectedImage.data}`}
+                    className="max-h-24 rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center shadow"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Input */}
-              <div className="flex gap-2">
+              <form onSubmit={handleSend} className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your health..."
                   className="flex-1 text-sm"
-                  disabled={isLoading}
+                  disabled={isLoading || (!input.trim() && !selectedImage)}
                 />
 
-                <Button
-                  type="button"
-                  size="icon"
-                  disabled={isLoading}
-                  onClick={() => {
-                    console.log('BUTTON CLICKED');
-                  }}
-                >
+                <Button type="submit" size="icon" disabled={isLoading}>
                   <Send className="h-4 w-4" />
                 </Button>
-              </div>
+              </form>
             </div>
           </motion.div>
         )}

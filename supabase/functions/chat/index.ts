@@ -67,17 +67,19 @@ Deno.serve(async (req) => {
     }
 
     // ================= BUILD GEMINI CONTENT =================
-    const geminiContents: any[] = [];
+    // ================= BUILD GEMINI CONTENT =================
 
-    // Add system prompt as first user message
-    geminiContents.push({
-      role: 'user',
-      parts: [{ text: systemPrompt }],
-    });
+    // Convert previous conversation
+    const conversation: any[] = messages.map(
+      (m: { role: string; content: string }) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }),
+    );
 
-    // If image exists → send text + image together
+    // If image exists → attach to last user message
     if (image && image.mimeType && image.data) {
-      geminiContents.push({
+      conversation.push({
         role: 'user',
         parts: [
           {
@@ -93,15 +95,14 @@ Deno.serve(async (req) => {
           },
         ],
       });
-    } else {
-      // Text only fallback
-      geminiContents.push(
-        ...messages.map((m: { role: string; content: string }) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }],
-        })),
-      );
     }
+
+    const requestBody = {
+      contents: conversation,
+      system_instruction: {
+        parts: [{ text: systemPrompt }],
+      },
+    };
 
     // ================= CALL GEMINI =================
     const geminiResponse = await fetch(
@@ -111,9 +112,7 @@ Deno.serve(async (req) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contents: geminiContents,
-        }),
+        body: JSON.stringify(requestBody),
       },
     );
 
