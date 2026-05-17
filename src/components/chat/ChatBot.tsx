@@ -274,39 +274,22 @@ export function ChatBot() {
         },
       ];
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
       console.log('PAYLOAD:', {
         messages: updatedMessages,
         image: selectedImage,
       });
 
       // 4️⃣ Now call fetch
-      const response = await fetch(
-        'https://ubbioygwkuiqlbgwepdf.supabase.co/functions/v1/chat',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            image: selectedImage,
-          }),
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: {
+          messages: updatedMessages,
+          image: selectedImage,
         },
-      );
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
+      });
 
-      const data = await response.json();
+      if (error) {
+        throw error;
+      }
 
       const aiText = data?.choices?.[0]?.message?.content || 'No response';
 
@@ -585,10 +568,14 @@ export function ChatBot() {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your health..."
                   className="flex-1 text-sm"
-                  disabled={isLoading || (!input.trim() && !selectedImage)}
+                  disabled={isLoading}
                 />
 
-                <Button type="submit" size="icon" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isLoading || (!input.trim() && !selectedImage)}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
