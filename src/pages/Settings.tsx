@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/services/api';
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -48,21 +48,15 @@ export default function SettingsPage() {
   const handleSavePreferences = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('user_preferences').upsert(
-        {
-          user_id: user?.id,
-          emergency_alert_email:
-            preferences.medicineReminders ||
-            preferences.appointmentAlerts ||
-            preferences.healthTips,
-          emergency_alert_sms: preferences.emergencyAlerts,
-          share_location_on_sos: preferences.dataSync,
-          auto_contact_emergency: preferences.twoFactorAuth,
-        },
-        { onConflict: 'user_id' },
-      );
-
-      if (error) throw error;
+      await api.put('/user/preferences', {
+        emergency_alert_email:
+          preferences.medicineReminders ||
+          preferences.appointmentAlerts ||
+          preferences.healthTips,
+        emergency_alert_sms: preferences.emergencyAlerts,
+        share_location_on_sos: preferences.dataSync,
+        auto_contact_emergency: preferences.twoFactorAuth,
+      });
 
       toast({
         title: 'Success',
@@ -81,11 +75,9 @@ export default function SettingsPage() {
 
   const handleChangePassword = async () => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user?.email!);
-      if (error) throw error;
       toast({
-        title: 'Success',
-        description: 'Password reset link sent to your email',
+        title: 'Info',
+        description: 'Password reset is managed by support in this backend version',
       });
     } catch (err: any) {
       toast({

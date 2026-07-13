@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/services/api";
 
 interface Report {
   id: string;
@@ -33,13 +33,7 @@ export default function ReportsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("reports")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data = await api.get<Report[]>("/reports");
       setReports(data || []);
     } catch (err: any) {
       console.error("Error fetching reports:", err);
@@ -78,30 +72,10 @@ export default function ReportsPage() {
 
     setUploading(true);
     try {
-      // Upload file to storage
-      const fileName = `${user.id}/${Date.now()}-${form.file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("reports")
-        .upload(fileName, form.file);
-
-      if (uploadError) throw uploadError;
-
-      // Get signed URL
-      const { data: urlData } = await supabase.storage
-        .from("reports")
-        .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year
-
-      // Save report metadata
-      const { error: dbError } = await supabase.from("reports").insert({
-        user_id: user.id,
-        title: form.title,
-        file_type: form.file.type,
-        file_size: form.file.size,
-        file_path: fileName,
-        file_url: urlData?.signedUrl,
-      });
-
-      if (dbError) throw dbError;
+      const payload = new FormData();
+      payload.append("title", form.title);
+      payload.append("file", form.file);
+      await api.post("/reports/upload", payload);
 
       toast({ title: "Success", description: "Report uploaded successfully" });
       setForm({ title: "", file: null });
@@ -116,9 +90,7 @@ export default function ReportsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from("reports").delete().eq("id", id);
-
-      if (error) throw error;
+      await api.delete(`/reports/${id}`);
 
       setReports((prev) => prev.filter((r) => r.id !== id));
       toast({ title: "Success", description: "Report deleted" });

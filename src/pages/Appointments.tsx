@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/services/api";
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function AppointmentsPage() {
 
   const fetch = async () => {
     if (!user) return;
-    const { data } = await supabase.from("appointments").select("*").eq("user_id", user.id).order("appointment_date");
+    const data = await api.get<any[]>("/health/appointments");
     setAppointments(data || []);
   };
 
@@ -27,7 +27,7 @@ export default function AppointmentsPage() {
 
   const handleAdd = async () => {
     if (!user || !form.doctor_name || !form.appointment_date) return;
-    await supabase.from("appointments").insert({ user_id: user.id, ...form });
+    await api.post("/health/appointments", form);
     toast({ title: "Appointment Added" });
     setOpen(false);
     setForm({ doctor_name: "", specialty: "", hospital: "", appointment_date: "" });
@@ -35,7 +35,7 @@ export default function AppointmentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("appointments").delete().eq("id", id);
+    await api.delete(`/health/appointments/${id}`);
     fetch();
   };
 

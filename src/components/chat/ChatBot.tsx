@@ -18,11 +18,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { api } from '@/services/api';
 
 interface Message {
   id: string;
@@ -274,39 +274,10 @@ export function ChatBot() {
         },
       ];
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      console.log('PAYLOAD:', {
+      const data = await api.post('/health/chat', {
         messages: updatedMessages,
         image: selectedImage,
       });
-
-      // 4️⃣ Now call fetch
-      const response = await fetch(
-        'https://ubbioygwkuiqlbgwepdf.supabase.co/functions/v1/chat',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            image: selectedImage,
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const data = await response.json();
 
       const aiText = data?.choices?.[0]?.message?.content || 'No response';
 
@@ -585,10 +556,14 @@ export function ChatBot() {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your health..."
                   className="flex-1 text-sm"
-                  disabled={isLoading || (!input.trim() && !selectedImage)}
+                  disabled={isLoading}
                 />
 
-                <Button type="submit" size="icon" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isLoading || (!input.trim() && !selectedImage)}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
