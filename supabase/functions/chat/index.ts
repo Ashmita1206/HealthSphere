@@ -37,8 +37,6 @@ Then give a structured explanation:
 2. Abnormal Findings (if any)
 3. What It Might Indicate (general explanation only)
 4. Suggested Next Steps
-
-Be clear and medically responsible but do analyze the visible report data.
 `;
 
 // ================= SERVER =================
@@ -49,9 +47,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, image } = await req.json();
+    // ✅ Safe JSON parsing
+    const body = await req.json().catch(() => null);
 
-    if (!messages || !Array.isArray(messages)) {
+    if (!body || !body.messages || !Array.isArray(body.messages)) {
       return new Response(
         JSON.stringify({ error: "Invalid request: 'messages' missing" }),
         {
@@ -61,23 +60,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    const { messages, image } = body;
+
+    // ✅ Get API key
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     if (!GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    // ================= BUILD GEMINI CONTENT =================
-    // ================= BUILD GEMINI CONTENT =================
-
-    // Convert previous conversation
-    const conversation: any[] = messages.map(
+    // ================= BUILD CONVERSATION =================
+    const conversation = messages.map(
       (m: { role: string; content: string }) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       }),
     );
 
-    // If image exists → attach to last user message
+    // ✅ Attach image if present
     if (image && image.mimeType && image.data) {
       conversation.push({
         role: 'user',
@@ -106,7 +105,7 @@ Deno.serve(async (req) => {
 
     // ================= CALL GEMINI =================
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -132,7 +131,7 @@ Deno.serve(async (req) => {
       geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'No response generated';
 
-    // Ensure risk label exists
+    // ✅ Ensure risk label
     if (!aiText.includes('[RISK:')) {
       aiText =
         '[RISK:LOW]\n\n' +
@@ -161,9 +160,17 @@ Deno.serve(async (req) => {
 
     const message = err instanceof Error ? err.message : String(err);
 
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const stack = err instanceof Error ? err.stack : null;
+
+    return new Response(
+      JSON.stringify({
+        error: message,
+        stack: stack,
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 });
