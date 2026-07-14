@@ -30,10 +30,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/services/api";
 
 const adherenceData = [
   { day: "Mon", adherence: 100 },
@@ -72,14 +72,14 @@ export default function DashboardPage() {
       if (!user) return;
 
       const [profileRes, medicinesRes, appointmentsRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("user_id", user.id).single(),
-        supabase.from("medicines").select("*").eq("user_id", user.id).eq("is_active", true).limit(5),
-        supabase.from("appointments").select("*").eq("user_id", user.id).eq("status", "scheduled").order("appointment_date").limit(3),
+        api.get<any>("/user/profile"),
+        api.get<any[]>("/health/medicines?active=true"),
+        api.get<any[]>("/health/appointments?status=scheduled"),
       ]);
 
-      setProfile(profileRes.data);
-      setMedicines(medicinesRes.data || []);
-      setAppointments(appointmentsRes.data || []);
+      setProfile(profileRes);
+      setMedicines((medicinesRes || []).slice(0, 5));
+      setAppointments((appointmentsRes || []).slice(0, 3));
       setLoading(false);
     }
 

@@ -1,32 +1,32 @@
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { Layout } from '@/components/layout/Layout';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Analytics } from '@vercel/analytics/react';
-import Landing from './pages/Landing';
-import LoginPage from './pages/auth/Login';
-import RegisterPage from './pages/auth/Register';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import Medicines from './pages/Medicines';
-import Reports from './pages/Reports';
-import Appointments from './pages/Appointments';
-import BloodOrgan from './pages/BloodOrgan';
-import BloodOrganInfo from './pages/BloodOrganInfo';
-import Reminders from './pages/Reminders';
-import Emergency from './pages/Emergency';
-import Settings from './pages/Settings';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
-import NotFound from './pages/NotFound';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, HashRouter } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { Layout } from "@/components/layout/Layout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+import Landing from "./pages/Landing";
+import LoginPage from "./pages/auth/Login";
+import RegisterPage from "./pages/auth/Register";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Medicines from "./pages/Medicines";
+import Reports from "./pages/Reports";
+import Appointments from "./pages/Appointments";
+import BloodOrgan from "./pages/BloodOrgan";
+import BloodOrganInfo from "./pages/BloodOrganInfo";
+import Reminders from "./pages/Reminders";
+import Emergency from "./pages/Emergency";
+import Settings from "./pages/Settings";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +38,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
+            <HashRouter>
               <Routes>
                 {/* Public routes */}
                 <Route element={<Layout />}>
@@ -139,8 +139,7 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-            <Analytics />
+            </HashRouter>
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>

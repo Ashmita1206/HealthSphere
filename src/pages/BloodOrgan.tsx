@@ -29,8 +29,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { api } from '@/services/api';
 
 export default function BloodOrganPage() {
   const { user } = useAuth();
@@ -66,19 +66,14 @@ export default function BloodOrganPage() {
 
     setDonorLoading(true);
     try {
-      const { error } = await supabase.from('donors').insert({
-        user_id: user.id,
+      await api.post('/health/donors', {
         blood_type: donorForm.blood_type,
         organ_type:
           donorForm.organ_type && donorForm.organ_type !== 'none'
             ? donorForm.organ_type
             : null,
-        donation_type: donorForm.willing_to_donate,
-        status: 'active',
-        is_available: true,
+        willing_to_donate: donorForm.willing_to_donate,
       });
-
-      if (error) throw error;
 
       toast({
         title: 'Success',
@@ -113,8 +108,7 @@ export default function BloodOrganPage() {
 
     setRequestLoading(true);
     try {
-      const { error } = await supabase.from('donation_requests').insert({
-        user_id: user.id,
+      await api.post('/health/donation-requests', {
         request_type:
           requestForm.blood_type === 'Not Applicable' ? 'organ' : 'blood',
         blood_type:
@@ -127,10 +121,7 @@ export default function BloodOrganPage() {
             : null,
         urgency: requestForm.urgency,
         notes: requestForm.medical_reason,
-        status: 'active',
       });
-
-      if (error) throw error;
 
       toast({
         title: 'Success',

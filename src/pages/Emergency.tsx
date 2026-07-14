@@ -20,8 +20,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getNearbyHospitals, type Location } from '@/services/locationsService';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/services/api';
 
 // =================== Web Speech Helper ===================
 const speak = (text: string, lang = 'en-US') => {
@@ -133,13 +133,7 @@ export default function EmergencyPage() {
 
     if (user) {
       try {
-        const { error } = await supabase
-          .from('emergency_alerts')
-          .update({ status: 'resolved' })
-          .eq('user_id', user.id)
-          .eq('status', 'active');
-
-        if (error) throw error;
+        await api.post('/emergency/resolve');
       } catch (error) {
         console.error('Error stopping SOS in database:', error);
       }
@@ -173,18 +167,7 @@ export default function EmergencyPage() {
       }
       const { latitude, longitude } = currentLocation;
 
-      // ✅ Insert initial SOS in DB
-      const { error: insertError } = await supabase
-        .from('emergency_alerts')
-        .insert({
-          user_id: user.id,
-          latitude,
-          longitude,
-          status: 'active',
-          created_at: new Date().toISOString(),
-        });
-
-      if (insertError) throw insertError;
+      await api.post('/emergency/sos', { latitude, longitude });
 
       speak('Emergency SOS activated. Live location sharing started.');
       toast({
@@ -204,18 +187,7 @@ export default function EmergencyPage() {
 
           const { latitude, longitude } = currentLocation;
 
-          // 3. Update Supabase
-          const { error } = await supabase
-            .from('emergency_alerts')
-            .update({
-              latitude,
-              longitude,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', user.id)
-            .eq('status', 'active');
-
-          if (error) throw error;
+          await api.post('/emergency/sos', { latitude, longitude });
         } catch (err) {
           console.error('Error updating SOS location:', err);
         }

@@ -34,9 +34,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/services/api';
 
 interface Reminder {
   id: string;
@@ -68,13 +68,7 @@ export default function RemindersPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('time', { ascending: true });
-
-      if (error) throw error;
+      const data = await api.get<Reminder[]>('/reminders');
       setReminders(data || []);
     } catch (err: any) {
       console.error('Error fetching reminders:', err);
@@ -86,42 +80,7 @@ export default function RemindersPage() {
   useEffect(() => {
     fetchReminders();
 
-    // Set up real-time subscription for reminders
-    if (!user) return;
-
-    const subscription = supabase
-      .channel(`reminders:${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reminders',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setReminders((prev) => [payload.new as Reminder, ...prev]);
-            toast({
-              title: 'Reminder Created',
-              description: 'New reminder added successfully',
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setReminders((prev) =>
-              prev.map((r) =>
-                r.id === payload.new.id ? (payload.new as Reminder) : r,
-              ),
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setReminders((prev) => prev.filter((r) => r.id !== payload.old.id));
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => {};
   }, [user]);
 
   const handleAdd = async () => {
@@ -136,17 +95,13 @@ export default function RemindersPage() {
 
     setSubmitLoading(true);
     try {
-      const { error } = await supabase.from('reminders').insert({
-        user_id: user.id,
+      await api.post('/reminders', {
         title: form.title,
         description: form.description,
         reminder_type: form.reminder_type,
         reminder_time: form.time,
         frequency: form.frequency,
-        is_active: true,
       });
-
-      if (error) throw error;
 
       toast({ title: 'Success', description: 'Reminder created successfully' });
       setForm({
@@ -171,12 +126,7 @@ export default function RemindersPage() {
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('reminders')
-        .update({ is_active: !isActive })
-        .eq('id', id);
-
-      if (error) throw error;
+      await api.put(`/reminders/${id}`, { is_active: !isActive });
 
       setReminders((prev) =>
         prev.map((r) => (r.id === id ? { ...r, is_active: !isActive } : r)),
@@ -196,9 +146,7 @@ export default function RemindersPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from('reminders').delete().eq('id', id);
-
-      if (error) throw error;
+      await api.delete(`/reminders/${id}`);
 
       setReminders((prev) => prev.filter((r) => r.id !== id));
       toast({ title: 'Success', description: 'Reminder deleted' });

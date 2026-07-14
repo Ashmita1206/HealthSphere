@@ -18,11 +18,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { api } from '@/services/api';
 
 interface Message {
   id: string;
@@ -274,22 +274,10 @@ export function ChatBot() {
         },
       ];
 
-      console.log('PAYLOAD:', {
+      const data = await api.post('/health/chat', {
         messages: updatedMessages,
         image: selectedImage,
       });
-
-      // 4️⃣ Now call fetch
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: {
-          messages: updatedMessages,
-          image: selectedImage,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
 
       const aiText = data?.choices?.[0]?.message?.content || 'No response';
 

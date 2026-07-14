@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/services/api";
 
 export default function MedicinesPage() {
   const { user } = useAuth();
@@ -20,7 +20,7 @@ export default function MedicinesPage() {
 
   const fetchMedicines = async () => {
     if (!user) return;
-    const { data } = await supabase.from("medicines").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const data = await api.get<any[]>("/health/medicines");
     setMedicines(data || []);
   };
 
@@ -28,7 +28,7 @@ export default function MedicinesPage() {
 
   const handleAdd = async () => {
     if (!user || !form.name) return;
-    await supabase.from("medicines").insert({ user_id: user.id, ...form });
+    await api.post("/health/medicines", form);
     toast({ title: "Medicine Added" });
     setForm({ name: "", dosage: "", frequency: "" });
     setOpen(false);
@@ -36,7 +36,7 @@ export default function MedicinesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("medicines").delete().eq("id", id);
+    await api.delete(`/health/medicines/${id}`);
     toast({ title: "Medicine Deleted" });
     fetchMedicines();
   };

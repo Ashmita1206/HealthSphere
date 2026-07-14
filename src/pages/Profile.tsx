@@ -29,10 +29,10 @@ import {
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { api } from '@/services/api';
 
 interface Profile {
   full_name: string;
@@ -78,12 +78,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setFetchingProfile(true);
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-        .then(({ data }) => {
+      api.get<Profile>('/user/profile')
+        .then((data) => {
           if (data) {
             setProfile({
               full_name: data.full_name || '',
@@ -106,11 +102,7 @@ export default function ProfilePage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(profile)
-        .eq('user_id', user.id);
-      if (error) throw error;
+      await api.put('/user/profile', profile);
       toast({
         title: 'Success',
         description: 'Your profile has been updated successfully.',
