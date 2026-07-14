@@ -55,16 +55,86 @@ const App = () => (
 
                 {/* Protected routes */}
                 <Route element={<Layout showSidebar />}>
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  <Route path="/medicines" element={<ProtectedRoute><Medicines /></ProtectedRoute>} />
-                  <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                  <Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
-                  <Route path="/blood-organ" element={<ProtectedRoute><BloodOrgan /></ProtectedRoute>} />
-                  <Route path="/blood-organ/info" element={<ProtectedRoute><BloodOrganInfo /></ProtectedRoute>} />
-                  <Route path="/reminders" element={<ProtectedRoute><Reminders /></ProtectedRoute>} />
-                  <Route path="/emergency" element={<ProtectedRoute><Emergency /></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/medicines"
+                    element={
+                      <ProtectedRoute>
+                        <Medicines />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports"
+                    element={
+                      <ProtectedRoute>
+                        <Reports />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/appointments"
+                    element={
+                      <ProtectedRoute>
+                        <Appointments />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/blood-organ"
+                    element={
+                      <ProtectedRoute>
+                        <BloodOrgan />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/blood-organ/info"
+                    element={
+                      <ProtectedRoute>
+                        <BloodOrganInfo />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reminders"
+                    element={
+                      <ProtectedRoute>
+                        <Reminders />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/emergency"
+                    element={
+                      <ProtectedRoute>
+                        <Emergency />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute>
+                        <Settings />
+                      </ProtectedRoute>
+                    }
+                  />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

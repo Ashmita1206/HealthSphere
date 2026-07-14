@@ -62,31 +62,42 @@ See `src/App.tsx` for routing and protected-route setup.
 1. Clone the repository
 
 ```bash
-git clone <repo-url>
-cd healthsphere-guardian-main
+cd healthsphere-ai
 ```
 
-2. Install dependencies
+---
+
+## 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-3. Configure environment variables (see next section)
+---
 
-4. Start the development server
+## 4. Configure Environment Variables
+
+Create a `.env` file and add the required keys.
+
+---
+
+## 5. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Open the app at the URL shown by Vite (usually http://localhost:5173).
+Application will run at:
+
+```bash
+http://localhost:5173
+```
 
 ---
 
-## 🧪 Testing
+# 🧪 Testing
 
-Run unit tests:
+Run tests using:
 
 ```bash
 npm run test
@@ -111,10 +122,11 @@ npm run build
 ```
 
 - Deploy the static frontend to Vercel, Netlify, or any static host that supports SPA routing.
-- Deploy the backend server to a Node.js host and configure the API base URL appropriately.
+- Deploy Supabase resources (tables, storage bucket, Edge Functions) via the Supabase dashboard or CLI. Configure `LOVABLE_API_KEY` as an environment variable for the `health-chat` function if AI chat is needed.
 
 Notes:
-- The project now uses a custom Node.js + Express backend with MongoDB and Cloudinary.
+
+- The project is a frontend SPA that relies on Supabase for backend services. Provisioning the Supabase project (tables, storage buckets, RLS policies, and Edge Functions) is required for full functionality.
 
 ---
 
@@ -124,29 +136,36 @@ Notes:
 - `src/components/` — UI building blocks and the chat widget
 - `src/contexts/` — global providers (`AuthContext`, `ThemeContext`)
 - `src/hooks/` — custom hooks: `useGeolocation`, `useSpeechRecognition`, `useMediaPermissions`, `use-toast`, etc.
-- `server/` — backend API routes and controllers
+- `src/integrations/supabase/` — Supabase client and generated types
+- `supabase/functions/` — Edge Functions (AI chat)
 
 ---
 
-## Backend API and Storage
+## Database tables (referenced in source code)
 
-This app now uses the custom backend exposed under `/api`:
+Create these tables in your Supabase project (names used in client queries):
 
-- `GET /api/user/profile` — fetch authenticated user profile
-- `PUT /api/user/profile` — update authenticated user profile
-- `POST /api/auth/signup` — register a new user
-- `POST /api/auth/login` — authenticate and receive JWT token
-- `GET /api/reminders` — list authenticated user's reminders
-- `POST /api/reminders` — create a reminder
-- `PUT /api/reminders/:id` — toggle or update a reminder
-- `DELETE /api/reminders/:id` — delete a reminder
-- `GET /api/reports` — list authenticated user's medical reports
-- `POST /api/reports/upload` — upload a report file via Cloudinary
-- `DELETE /api/reports/:id` — delete a report
-- `POST /api/health/chat` — AI chat endpoint returning backend-compatible responses
-- `GET /api/emergency/nearby` — server-side nearby hospital lookup (no browser CORS to Overpass)
+- `profiles`
+- `medicines`
+- `appointments`
+- `reminders`
+- `reports`
+- `chat_messages`
 
-Reports are stored via Cloudinary through the backend; there is no client-side cloud storage SDK.
+The application expects a `reports` storage bucket for report uploads.
+
+---
+
+## API / Endpoints (in this repo)
+
+- Supabase Edge Function: `/functions/v1/health-chat` (implemented at `supabase/functions/health-chat/index.ts`). The frontend calls:
+  - `${VITE_SUPABASE_URL}/functions/v1/health-chat` with `Authorization: Bearer ${VITE_SUPABASE_PUBLISHABLE_KEY}`
+
+  The function forwards messages to an external AI gateway using the `LOVABLE_API_KEY` environment variable (set on Supabase function/config).
+
+- Supabase Storage: bucket `reports` used by `src/pages/Reports.tsx` to upload files and create signed URLs.
+
+Client-side API interactions use `@supabase/supabase-js` via `src/integrations/supabase/client.ts`.
 
 ---
 
@@ -154,20 +173,19 @@ Reports are stored via Cloudinary through the backend; there is no client-side c
 
 Create a `.env` file at the project root based on [.env.example](./.env.example).
 
-Frontend & Backend variables used in code:
+Frontend (Vite) variables used in code:
 
-- `VITE_API_BASE_URL=http://localhost:4000/api`
-- `VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key`
-- `PORT=4000`
-- `MONGODB_URI=...`
-- `JWT_SECRET=...`
-- `OPENAI_API_KEY=...`
-- `OPENAI_MODEL=gpt-4o-mini`
-- `CLOUDINARY_CLOUD_NAME=...`
-- `CLOUDINARY_API_KEY=...`
-- `CLOUDINARY_API_SECRET=...`
+- `VITE_SUPABASE_URL` — your Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase publishable / anon key used by the client
+- `VITE_GOOGLE_MAPS_API_KEY` — (optional) used by `getGoogleMapsEmbedUrl` in `src/services/locationsService.ts`
 
-Important: Do not commit `.env` files or secret keys to the repository.
+Supabase Edge Function (server-side) variables:
+
+- `LOVABLE_API_KEY` — API key for the external AI gateway used by `health-chat` function
+
+Important: Do not store service-role secrets in the frontend environment.
+
+For detailed setup instructions, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
 
 ---
 
@@ -185,9 +203,9 @@ See [screenshots/README.md](./screenshots/README.md) for guidance on adding appl
 
 ## Future Enhancements / Roadmap
 
-- Replace the mock `locationsService` with a real Places API or backend hospital lookup.
-- Add server-side validation and tighten backend access controls for production.
-- Add CI/CD to automate frontend builds and backend deployments.
+- Replace the mock `locationsService` with a real Places API or Supabase-stored locations.
+- Add server-side validation and tighten RLS policies for production.
+- Add CI/CD to automate frontend builds and Supabase migrations.
 - Add end-to-end tests and visual regression tests for UI flows.
 
 ---
