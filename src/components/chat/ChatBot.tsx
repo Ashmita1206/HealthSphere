@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useChatSocket } from '@/hooks/useChatSocket';
 import {
   MessageCircle,
   X,
@@ -33,9 +34,24 @@ interface Message {
   imageUrl?: string;
 }
 
+interface Conversation {
+  _id: string;
+  title: string;
+  lastMessageAt: string;
+}
+
+interface ChatHistoryResponse {
+  success: boolean;
+  data: Conversation[];
+}
+
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<
+    string | null
+  >(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -58,6 +74,14 @@ export function ChatBot() {
     hasPermission,
   } = useSpeechRecognition();
   const { micPermission, requestMicPermission } = useMediaPermissions();
+
+  const {
+    conversationId,
+    startConversation,
+    sendMessage,
+    aiResponse,
+    isTyping,
+  } = useChatSocket();
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -83,7 +107,12 @@ export function ChatBot() {
   }, [messages, isOpen]);
 
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (!isOpen) return;
+
+    loadConversations();
+
+    // Add welcome message only once
+    if (messages.length === 0) {
       setMessages([
         {
           id: 'welcome',
@@ -94,7 +123,29 @@ export function ChatBot() {
         },
       ]);
     }
+
+    // Start a new conversation with the backend
+    if (!conversationId) {
+      startConversation();
+    }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!aiResponse) return;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: aiResponse.response,
+        riskLevel: aiResponse.riskLevel as any,
+        timestamp: new Date(),
+      },
+    ]);
+
+    setIsLoading(false);
+  }, [aiResponse]);
 
   // 🔒 Lock background scroll when chatbot is open
   useEffect(() => {
@@ -108,6 +159,14 @@ export function ChatBot() {
       document.body.classList.remove('overflow-hidden');
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    setSelectedConversation(conversationId);
+
+    loadConversations();
+  }, [conversationId]);
 
   const handleVoiceInput = async () => {
     if (isListening) {
@@ -274,22 +333,7 @@ export function ChatBot() {
         },
       ];
 
-      const data = await api.post('/health/chat', {
-        messages: updatedMessages,
-        image: selectedImage,
-      });
-
-      const aiText = data?.choices?.[0]?.message?.content || 'No response';
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: aiText,
-          timestamp: new Date(),
-        },
-      ]);
+      sendMessage(userMessage.content);
 
       setInput('');
       setSelectedImage(null);
@@ -309,6 +353,47 @@ export function ChatBot() {
       setIsLoading(false);
     }
   };
+
+  const loadConversations = async () => {
+    if (!user?.id) return;
+
+    try {
+      const res = await api.get<ChatHistoryResponse>(
+        `/chat/conversations/${user.id}`,
+      );
+
+      console.log('Conversations:', res);
+
+      setConversations(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadConversationMessages = async (conversationId: string) => {
+    try {
+      setSelectedConversation(conversationId);
+
+      const res = await api.get<any>(`/chat/conversation/${conversationId}`);
+
+      console.log('Conversation Loaded:', res);
+
+      const history: Message[] = res.data.messages.map(
+        (message: any, index: number) => ({
+          id: `${index}`,
+          role: message.role === 'model' ? 'assistant' : 'user',
+          content: message.text,
+          riskLevel: message.riskLevel?.toUpperCase(),
+          timestamp: new Date(message.createdAt),
+        }),
+      );
+
+      setMessages(history);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleEmergencyClick = () => {
     setIsOpen(false);
     navigate('/emergency');
@@ -339,20 +424,20 @@ export function ChatBot() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="
-  fixed
-  right-6
-  top-20
-  bottom-6
-  z-50
-  w-96
-  max-w-[calc(100vw-3rem)]
-  overflow-hidden
-  rounded-2xl
-  border
-  bg-card
-  shadow-2xl
-  flex
-  flex-col
+    fixed
+    right-6
+    top-20
+    bottom-6
+    z-50
+    w-[900px]
+    max-w-[95vw]
+    overflow-hidden
+    rounded-2xl
+    border
+    bg-card
+    shadow-2xl
+    flex
+    flex-col
 "
           >
             {/* Header */}
@@ -377,7 +462,52 @@ export function ChatBot() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 min-h-0">
+            <div className="flex flex-1 min-h-0">
+              <div className="w-64 min-w-[256px] border-r bg-muted/30 overflow-y-auto flex-shrink-0">
+                <div className="p-2">
+                  <Button
+                    className="w-full justify-start mb-3"
+                    onClick={() => {
+                      setSelectedConversation(null);
+
+                      setMessages([
+                        {
+                          id: 'welcome',
+                          role: 'assistant',
+                          content:
+                            "Hello! I'm your HealthSphere AI assistant. I can help you with health questions, medication reminders, appointment info, and general wellness guidance. How can I assist you today?",
+                          timestamp: new Date(),
+                        },
+                      ]);
+
+                      startConversation();
+
+                      setTimeout(() => {
+                        loadConversations();
+                      }, 500);
+                    }}
+                  >
+                    + New Chat
+                  </Button>
+
+                  {conversations.map((chat) => (
+                    <button
+                      key={chat._id}
+                      onClick={() => loadConversationMessages(chat._id)}
+                      className={cn(
+                        'w-full rounded-lg p-3 text-left transition mb-1 border',
+                        selectedConversation === chat._id
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'hover:bg-accent border-transparent hover:border-border',
+                      )}
+                    >
+                      <p className="truncate text-sm font-medium">
+                        {chat.title || 'New Conversation'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <ScrollArea className="h-full">
                 <div className="p-4 space-y-4">
                   {messages.map((message) => (
@@ -404,7 +534,7 @@ export function ChatBot() {
                       </div>
                       <div
                         className={cn(
-                          'flex-1 rounded-2xl px-4 py-2.5',
+                          'min-w-0 flex-1 rounded-2xl  px-4 py-2.5',
                           message.role === 'user'
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted',

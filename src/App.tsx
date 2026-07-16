@@ -1,32 +1,31 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, HashRouter } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { Layout } from "@/components/layout/Layout";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route, HashRouter } from 'react-router-dom';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { Layout } from '@/components/layout/Layout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-import Landing from "./pages/Landing";
-import LoginPage from "./pages/auth/Login";
-import RegisterPage from "./pages/auth/Register";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
-import Medicines from "./pages/Medicines";
-import Reports from "./pages/Reports";
-import Appointments from "./pages/Appointments";
-import BloodOrgan from "./pages/BloodOrgan";
-import BloodOrganInfo from "./pages/BloodOrganInfo";
-import Reminders from "./pages/Reminders";
-import Emergency from "./pages/Emergency";
-import Settings from "./pages/Settings";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import NotFound from "./pages/NotFound";
+import Landing from './pages/Landing';
+import LoginPage from './pages/auth/Login';
+import RegisterPage from './pages/auth/Register';
+import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
+import Medicines from './pages/Medicines';
+import Reports from './pages/Reports';
+import Appointments from './pages/Appointments';
+import BloodOrgan from './pages/BloodOrgan';
+import BloodOrganInfo from './pages/BloodOrganInfo';
+import Reminders from './pages/Reminders';
+import Emergency from './pages/Emergency';
+import Settings from './pages/Settings';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
 
@@ -55,86 +54,19 @@ const App = () => (
 
                 {/* Protected routes */}
                 <Route element={<Layout showSidebar />}>
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute>
-                        <Dashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/profile"
-                    element={
-                      <ProtectedRoute>
-                        <Profile />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/medicines"
-                    element={
-                      <ProtectedRoute>
-                        <Medicines />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/reports"
-                    element={
-                      <ProtectedRoute>
-                        <Reports />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/appointments"
-                    element={
-                      <ProtectedRoute>
-                        <Appointments />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/blood-organ"
-                    element={
-                      <ProtectedRoute>
-                        <BloodOrgan />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/medicines" element={<Medicines />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/appointments" element={<Appointments />} />
+                  <Route path="/blood-organ" element={<BloodOrgan />} />
                   <Route
                     path="/blood-organ/info"
-                    element={
-                      <ProtectedRoute>
-                        <BloodOrganInfo />
-                      </ProtectedRoute>
-                    }
+                    element={<BloodOrganInfo />}
                   />
-                  <Route
-                    path="/reminders"
-                    element={
-                      <ProtectedRoute>
-                        <Reminders />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/emergency"
-                    element={
-                      <ProtectedRoute>
-                        <Emergency />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <ProtectedRoute>
-                        <Settings />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/reminders" element={<Reminders />} />
+                  <Route path="/emergency" element={<Emergency />} />
+                  <Route path="/settings" element={<Settings />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
