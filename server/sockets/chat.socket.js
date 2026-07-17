@@ -18,7 +18,26 @@ const { validateUser } = require('../services/chatValidation.service');
 
 const { handleUserMessage } = require('../services/chatHandler.service');
 
+const jwt = require('jsonwebtoken');
+
 function registerChatSocket(io) {
+  io.use((socket, next) => {
+    try {
+      const header = socket.handshake.headers['authorization'] || socket.handshake.auth.token || "";
+      const token = header.startsWith("Bearer ") ? header.slice(7) : header;
+      
+      if (!token) {
+        return next(new Error("Authentication error"));
+      }
+      
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.user = decoded;
+      next();
+    } catch (err) {
+      next(new Error("Authentication error"));
+    }
+  });
+
   io.on(events.CONNECTION, (socket) => {
     logger.info('Socket Connected', {
       socketId: socket.id,

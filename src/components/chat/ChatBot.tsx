@@ -12,11 +12,19 @@ import {
   AlertTriangle,
   ImagePlus,
   AlertCircle,
+  MoreVertical,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -399,6 +407,47 @@ export function ChatBot() {
     navigate('/emergency');
   };
 
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      await api.delete(`/chat/conversation/${conversationId}`);
+
+      // Remove it immediately from sidebar
+      setConversations((prev) =>
+        prev.filter((chat) => chat._id !== conversationId),
+      );
+
+      // If the deleted conversation is currently open
+      if (selectedConversation === conversationId) {
+        setSelectedConversation(null);
+
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content:
+              "Hello! I'm your HealthSphere AI assistant. How can I help you today?",
+            timestamp: new Date(),
+          },
+        ]);
+
+        startConversation();
+      }
+
+      toast({
+        title: 'Conversation Deleted',
+        description: 'The conversation has been deleted successfully.',
+      });
+    } catch (err) {
+      console.error(err);
+
+      toast({
+        title: 'Delete Failed',
+        description: 'Unable to delete conversation.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getRiskBadge = (riskLevel?: Message['riskLevel']) => {
     if (!riskLevel) return null;
     const variants = {
@@ -491,20 +540,46 @@ export function ChatBot() {
                   </Button>
 
                   {conversations.map((chat) => (
-                    <button
+                    <div
                       key={chat._id}
-                      onClick={() => loadConversationMessages(chat._id)}
                       className={cn(
-                        'w-full rounded-lg p-3 text-left transition mb-1 border',
+                        'group flex items-center rounded-lg border transition mb-1',
                         selectedConversation === chat._id
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'hover:bg-accent border-transparent hover:border-border',
                       )}
                     >
-                      <p className="truncate text-sm font-medium">
-                        {chat.title || 'New Conversation'}
-                      </p>
-                    </button>
+                      <button
+                        className="flex-1 p-3 text-left"
+                        onClick={() => loadConversationMessages(chat._id)}
+                      >
+                        <p className="truncate text-sm font-medium">
+                          {chat.title || 'New Conversation'}
+                        </p>
+                      </button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="mr-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-red-500"
+                            onClick={() => deleteConversation(chat._id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Conversation
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   ))}
                 </div>
               </div>

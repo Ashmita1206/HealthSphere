@@ -11,11 +11,16 @@ const {
   deleteChat,
 } = require('../controllers/chat.controller');
 
+const { protect } = require('../middlewares/authMiddleware');
+
 /*
 ==================================================
 Conversation Routes
 ==================================================
 */
+
+// Protect all conversation routes
+router.use(protect);
 
 // Create Conversation
 router.post('/conversation', createChat);

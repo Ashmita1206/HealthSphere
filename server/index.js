@@ -4,6 +4,7 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
 const mongoose = require('mongoose');
 
 const logger = require('./utils/logger');
@@ -29,6 +30,8 @@ const httpServer = createServer(app);
 Middlewares
 ====================================================
 */
+
+app.use(helmet());
 
 app.use(
   cors({

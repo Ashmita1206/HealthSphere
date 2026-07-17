@@ -39,19 +39,21 @@ async function listLogs(req, res, next) {
 }
 async function createLog(req, res, next) {
   try {
+    const { symptoms, notes, date } = req.body;
     res
       .status(201)
-      .json(await HealthLog.create({ userId: req.user._id, ...req.body }));
+      .json(await HealthLog.create({ userId: req.user._id, symptoms, notes, date }));
   } catch (e) {
     next(e);
   }
 }
 async function updateLog(req, res, next) {
   try {
+    const { symptoms, notes, date } = req.body;
     res.json(
       await HealthLog.findOneAndUpdate(
         { _id: req.params.id, userId: req.user._id },
-        req.body,
+        { $set: { symptoms, notes, date } },
         { new: true },
       ),
     );
