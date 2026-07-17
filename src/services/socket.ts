@@ -1,16 +1,12 @@
 import { io } from 'socket.io-client';
 
-import { tokenStore } from '@/services/api';
+const URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
-
-export const socket = io(SOCKET_URL, {
+export const socket = io(URL, {
   autoConnect: false,
-  transports: ['websocket'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
+  withCredentials: true,
   auth: (cb) => {
-    cb({ token: tokenStore.get() });
-  },
+    const token = localStorage.getItem('healthsphere_token');
+    cb({ token });
+  }
 });

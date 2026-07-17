@@ -1,76 +1,40 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useChatSocket } from '@/hooks/useChatSocket';
-import {
-  MessageCircle,
-  X,
-  Send,
-  Bot,
-  User,
-  Mic,
-  Volume2,
-  AlertTriangle,
-  ImagePlus,
-  AlertCircle,
-  MoreVertical,
-  Trash2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
+import { cn } from '@/lib/utils';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  timestamp: Date;
-  imageUrl?: string;
-}
-
-interface Conversation {
-  _id: string;
-  title: string;
-  lastMessageAt: string;
-}
-
-interface ChatHistoryResponse {
-  success: boolean;
-  data: Conversation[];
-}
+// Sub-components
+import { ChatHeader } from './ChatHeader';
+import { ConversationSidebar } from './ConversationSidebar';
+import { ChatMessages } from './ChatMessages';
+import { ChatInput, SelectedImage } from './ChatInput';
+import { Message, Conversation, ChatHistoryResponse } from './types';
 
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<
-    string | null
-  >(null);
-  const [input, setInput] = useState('');
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<{
-    data: string;
-    mimeType: string;
-  } | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  // Suggestion state passed to ChatInput
+  const [suggestionText, setSuggestionText] = useState<string | undefined>();
 
-  // Use the new hooks
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Custom Hooks
   const {
     isListening,
     transcript,
@@ -82,62 +46,25 @@ export function ChatBot() {
     hasPermission,
   } = useSpeechRecognition();
   const { micPermission, requestMicPermission } = useMediaPermissions();
-
   const {
     conversationId,
     startConversation,
     sendMessage,
     aiResponse,
-    isTyping,
   } = useChatSocket();
 
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
-  // Update input when transcript changes
-  useEffect(() => {
-    if (transcript) {
-      setInput((prev) => prev + ' ' + transcript);
-      resetTranscript();
-    }
-  }, [transcript, resetTranscript]);
-
-  // Auto-scroll to bottom when new messages arrive or chat opens
-  useEffect(() => {
-    const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    // Use a small timeout to ensure DOM is updated
-    const timeoutId = setTimeout(scrollToBottom, 0);
-    return () => clearTimeout(timeoutId);
-  }, [messages, isOpen]);
-
+  // Load conversations when chatbot opens
   useEffect(() => {
     if (!isOpen) return;
 
     loadConversations();
 
-    // Add welcome message only once
     if (messages.length === 0) {
-      setMessages([
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content:
-            "Hello! I'm your HealthSphere AI assistant. I can help you with health questions, medication reminders, appointment info, and general wellness guidance. How can I assist you today?",
-          timestamp: new Date(),
-        },
-      ]);
-    }
-
-    // Start a new conversation with the backend
-    if (!conversationId) {
-      startConversation();
+      startNewChat();
     }
   }, [isOpen]);
 
+  // Handle incoming AI responses
   useEffect(() => {
     if (!aiResponse) return;
 
@@ -147,259 +74,120 @@ export function ChatBot() {
         id: Date.now().toString(),
         role: 'assistant',
         content: aiResponse.response,
-        riskLevel: aiResponse.riskLevel as any,
+        riskLevel: aiResponse.riskLevel as Message['riskLevel'],
         timestamp: new Date(),
       },
     ]);
-
     setIsLoading(false);
   }, [aiResponse]);
 
-  // 🔒 Lock background scroll when chatbot is open
+  // Lock body scroll when chatbot is open on mobile to prevent double scrolling
   useEffect(() => {
     if (isOpen) {
-      document.body.classList.add('overflow-hidden');
+      document.body.classList.add('overflow-hidden', 'md:overflow-auto');
     } else {
-      document.body.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden', 'md:overflow-auto');
     }
-
-    return () => {
-      document.body.classList.remove('overflow-hidden');
-    };
+    return () => document.body.classList.remove('overflow-hidden', 'md:overflow-auto');
   }, [isOpen]);
 
+  // Sync active conversation
   useEffect(() => {
     if (!conversationId) return;
-
     setSelectedConversation(conversationId);
-
     loadConversations();
   }, [conversationId]);
 
-  const handleVoiceInput = async () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
-
-    // Request permission if needed
-    if (micPermission === 'prompt') {
-      const granted = await requestMicPermission();
-      if (!granted) {
-        toast({
-          title: 'Microphone Error',
-          description: 'Microphone permission is required for voice input',
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
-
-    if (!hasPermission && micPermission === 'denied') {
-      toast({
-        title: 'Permission Denied',
-        description:
-          'Please enable microphone permissions in your browser settings',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    startListening();
-  };
-
-  const extractRiskLevel = (
-    content: string,
-  ): { riskLevel?: Message['riskLevel']; cleanContent: string } => {
-    const riskMatch = content.match(/\[RISK:(LOW|MEDIUM|HIGH|CRITICAL)\]/);
-    if (riskMatch) {
-      return {
-        riskLevel: riskMatch[1] as Message['riskLevel'],
-        cleanContent: content.replace(riskMatch[0], '').trim(),
-      };
-    }
-    return { cleanContent: content };
-  };
-
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    console.log('Image upload triggered');
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Error',
-        description: 'Please select an image file',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'Error',
-        description: 'Image size must be less than 5MB',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // For now, show a message. In production, upload to storage
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      console.log('File read complete');
-
-      const base64WithPrefix = e.target?.result as string;
-      const mimeType = file.type;
-      const base64 = base64WithPrefix.split(',')[1];
-
-      setSelectedImage({
-        data: base64,
-        mimeType,
-      });
-
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: input.trim() || 'Please analyze this medical report.',
-        imageUrl: base64WithPrefix, // ✅ THIS WAS MISSING
-        timestamp: new Date(),
-      };
-
-      setInput('');
-
-      toast({
-        title: 'Image Uploaded',
-        description: 'Image ready for analysis',
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      speechSynthesis.speak(utterance);
-    } else {
-      toast({
-        title: 'Error',
-        description: 'Text-to-speech is not supported',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleSend = async (e?: React.FormEvent) => {
-    console.log('🔥 handleSend triggered');
-    e?.preventDefault();
-
-    if (isLoading) return;
-
-    if (!input.trim() && !selectedImage) {
-      console.log('Nothing to send');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // 1️⃣ Create userMessage (you already have this)
-
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: input.trim() || 'Image attached',
-        imageUrl: selectedImage
-          ? `data:${selectedImage.mimeType};base64,${selectedImage.data}`
-          : undefined,
-        timestamp: new Date(),
-      };
-
-      // 2️⃣ Update UI immediately
-      setMessages((prev) => {
-        const newMessages = [...prev, userMessage];
-        return newMessages;
-      });
-
-      // 3️⃣ Prepare messages for API (DECLARE OUTSIDE FETCH)
-      const updatedMessages = [
-        ...messages
-          .filter((m) => m.id !== 'welcome')
-          .map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        {
-          role: userMessage.role,
-          content: userMessage.content,
-        },
-      ];
-
-      sendMessage(userMessage.content);
-
-      setInput('');
-      setSelectedImage(null);
-    } catch (error) {
-      console.error('Chat error:', error);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: 'Something went wrong. Please try again.',
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // API Calls
   const loadConversations = async () => {
     if (!user?.id) return;
-
     try {
-      const res = await api.get<ChatHistoryResponse>(
-        `/chat/conversations/${user.id}`,
-      );
-
-      console.log('Conversations:', res);
-
+      const res = await api.get<ChatHistoryResponse>(`/chat/conversations/${user.id}`);
       setConversations(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const loadConversationMessages = async (conversationId: string) => {
+  const loadConversationMessages = async (id: string) => {
     try {
-      setSelectedConversation(conversationId);
-
-      const res = await api.get<any>(`/chat/conversation/${conversationId}`);
-
-      console.log('Conversation Loaded:', res);
-
-      const history: Message[] = res.data.messages.map(
-        (message: any, index: number) => ({
-          id: `${index}`,
-          role: message.role === 'model' ? 'assistant' : 'user',
-          content: message.text,
-          riskLevel: message.riskLevel?.toUpperCase(),
-          timestamp: new Date(message.createdAt),
-        }),
-      );
-
+      setSelectedConversation(id);
+      const res = await api.get<any>(`/chat/conversation/${id}`);
+      const history: Message[] = res.data.messages.map((message: any, index: number) => ({
+        id: `${index}`,
+        role: message.role === 'model' ? 'assistant' : 'user',
+        content: message.text,
+        riskLevel: message.riskLevel?.toUpperCase(),
+        timestamp: new Date(message.createdAt),
+      }));
       setMessages(history);
     } catch (err) {
       console.error(err);
+      toast({ title: 'Error', description: 'Failed to load conversation.', variant: 'destructive' });
     }
+  };
+
+  const deleteConversation = async (id: string) => {
+    try {
+      await api.delete(`/chat/conversation/${id}`);
+      setConversations((prev) => prev.filter((chat) => chat._id !== id));
+      if (selectedConversation === id) {
+        startNewChat();
+      }
+      toast({ title: 'Conversation Deleted', description: 'The conversation has been deleted successfully.' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Delete Failed', description: 'Unable to delete conversation.', variant: 'destructive' });
+    }
+  };
+
+  const startNewChat = () => {
+    setSelectedConversation(null);
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: "Hello! I'm your HealthSphere AI assistant. I can help you with health questions, medication reminders, appointment info, and general wellness guidance. How can I assist you today?",
+        timestamp: new Date(),
+      },
+    ]);
+    startConversation();
+    setTimeout(() => loadConversations(), 500);
+  };
+
+  // Input Handlers
+  const handleVoiceInput = async () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    if (micPermission === 'prompt') {
+      const granted = await requestMicPermission();
+      if (!granted) {
+        toast({ title: 'Microphone Error', description: 'Permission required for voice input', variant: 'destructive' });
+        return;
+      }
+    }
+    if (!hasPermission && micPermission === 'denied') {
+      toast({ title: 'Permission Denied', description: 'Please enable microphone permissions in browser', variant: 'destructive' });
+      return;
+    }
+    startListening();
+  };
+
+  const handleSend = (content: string, image?: SelectedImage) => {
+    setIsLoading(true);
+    
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: content || 'Image attached',
+      imageUrl: image ? `data:${image.mimeType};base64,${image.data}` : undefined,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    sendMessage(content);
   };
 
   const handleEmergencyClick = () => {
@@ -407,390 +195,125 @@ export function ChatBot() {
     navigate('/emergency');
   };
 
-  const deleteConversation = async (conversationId: string) => {
-    try {
-      await api.delete(`/chat/conversation/${conversationId}`);
-
-      // Remove it immediately from sidebar
-      setConversations((prev) =>
-        prev.filter((chat) => chat._id !== conversationId),
-      );
-
-      // If the deleted conversation is currently open
-      if (selectedConversation === conversationId) {
-        setSelectedConversation(null);
-
-        setMessages([
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content:
-              "Hello! I'm your HealthSphere AI assistant. How can I help you today?",
-            timestamp: new Date(),
-          },
-        ]);
-
-        startConversation();
-      }
-
-      toast({
-        title: 'Conversation Deleted',
-        description: 'The conversation has been deleted successfully.',
-      });
-    } catch (err) {
-      console.error(err);
-
-      toast({
-        title: 'Delete Failed',
-        description: 'Unable to delete conversation.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const getRiskBadge = (riskLevel?: Message['riskLevel']) => {
-    if (!riskLevel) return null;
-    const variants = {
-      LOW: 'risk-low',
-      MEDIUM: 'risk-medium',
-      HIGH: 'risk-high',
-      CRITICAL: 'risk-critical',
-    };
-    return (
-      <Badge className={cn('ml-2 text-xs', variants[riskLevel])}>
-        {riskLevel === 'CRITICAL' && <AlertTriangle className="mr-1 h-3 w-3" />}
-        {riskLevel}
-      </Badge>
-    );
-  };
-
   return (
     <>
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="
-    fixed
-    right-6
-    top-20
-    bottom-6
-    z-50
-    w-[900px]
-    max-w-[95vw]
-    overflow-hidden
-    rounded-2xl
-    border
-    bg-card
-    shadow-2xl
-    flex
-    flex-col
-"
+            initial={{ opacity: 0, y: '100%', scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: '100%', scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className={cn(
+              "fixed z-50 overflow-hidden bg-card border shadow-2xl flex flex-col",
+              // Mobile: Fullscreen modal
+              "inset-0 w-full h-full rounded-none",
+              // Tablet/Desktop: Floating panel
+              "md:top-20 md:bottom-6 md:right-6 md:left-auto md:w-[90vw] md:max-w-[900px] md:h-auto md:rounded-2xl"
+            )}
+            role="dialog"
+            aria-modal="true"
+            aria-label="HealthSphere AI Chatbot"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setIsOpen(false);
+            }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between bg-gradient-primary p-4 text-primary-foreground">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                  <Bot className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Health Assistant</h3>
-                  <p className="text-xs opacity-80">AI-powered guidance</p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(false)}
-                className="text-primary-foreground hover:bg-white/20"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
+            <ChatHeader 
+              onClose={() => setIsOpen(false)} 
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+              isSidebarOpen={isSidebarOpen}
+            />
 
-            {/* Messages */}
-            <div className="flex flex-1 min-h-0">
-              <div className="w-64 min-w-[256px] border-r bg-muted/30 overflow-y-auto flex-shrink-0">
-                <div className="p-2">
-                  <Button
-                    className="w-full justify-start mb-3"
-                    onClick={() => {
-                      setSelectedConversation(null);
-
-                      setMessages([
-                        {
-                          id: 'welcome',
-                          role: 'assistant',
-                          content:
-                            "Hello! I'm your HealthSphere AI assistant. I can help you with health questions, medication reminders, appointment info, and general wellness guidance. How can I assist you today?",
-                          timestamp: new Date(),
-                        },
-                      ]);
-
-                      startConversation();
-
-                      setTimeout(() => {
-                        loadConversations();
-                      }, 500);
-                    }}
-                  >
-                    + New Chat
-                  </Button>
-
-                  {conversations.map((chat) => (
-                    <div
-                      key={chat._id}
-                      className={cn(
-                        'group flex items-center rounded-lg border transition mb-1',
-                        selectedConversation === chat._id
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'hover:bg-accent border-transparent hover:border-border',
-                      )}
-                    >
-                      <button
-                        className="flex-1 p-3 text-left"
-                        onClick={() => loadConversationMessages(chat._id)}
-                      >
-                        <p className="truncate text-sm font-medium">
-                          {chat.title || 'New Conversation'}
-                        </p>
-                      </button>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="mr-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-red-500"
-                            onClick={() => deleteConversation(chat._id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Conversation
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <ScrollArea className="h-full">
-                <div className="p-4 space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        'flex gap-3',
-                        message.role === 'user' ? 'flex-row-reverse' : '',
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted',
-                        )}
-                      >
-                        {message.role === 'user' ? (
-                          <User className="h-4 w-4" />
-                        ) : (
-                          <Bot className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div
-                        className={cn(
-                          'min-w-0 flex-1 rounded-2xl  px-4 py-2.5',
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted',
-                        )}
-                      >
-                        {message.imageUrl && (
-                          <img
-                            src={message.imageUrl}
-                            alt="uploaded"
-                            className="max-w-[200px] rounded-lg mb-2"
-                          />
-                        )}
-                        <p className="text-sm whitespace-pre-wrap">
-                          {message.content}
-                        </p>
-                        {message.role === 'assistant' && (
-                          <div className="mt-2 flex items-center gap-2">
-                            {message.riskLevel &&
-                              getRiskBadge(message.riskLevel)}
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={() => speakText(message.content)}
-                              title="Read aloud"
-                            >
-                              <Volume2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                        <Bot className="h-4 w-4" />
-                      </div>
-                      <div className="rounded-2xl bg-muted px-4 py-3">
-                        <div className="flex gap-1">
-                          <span
-                            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
-                            style={{ animationDelay: '0ms' }}
-                          />
-                          <span
-                            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
-                            style={{ animationDelay: '150ms' }}
-                          />
-                          <span
-                            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
-                            style={{ animationDelay: '300ms' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
-            </div>
-
-            {/* Controls */}
-            <div className="border-t p-3 space-y-2">
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setTtsEnabled((prev) => !prev)}
-                  className={ttsEnabled ? 'bg-primary/10' : ''}
-                  title="Toggle text-to-speech"
-                >
-                  <Volume2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleVoiceInput}
-                  disabled={micPermission === 'denied'}
-                  className={
-                    isListening
-                      ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30'
-                      : ''
-                  }
-                  title={isListening ? 'Stop listening' : 'Start voice input'}
-                >
-                  <Mic className="h-4 w-4" />
-                  <span className="text-xs ml-1">
-                    {isListening ? 'Stop' : 'Voice'}
-                  </span>
-                </Button>
-                {speechError && (
-                  <span className="text-xs text-destructive px-2 animate-pulse">
-                    {speechError}
-                  </span>
-                )}
-                {isListening && interimTranscript && (
-                  <span className="text-xs text-muted-foreground px-2">
-                    {interimTranscript}
-                  </span>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  title="Upload image"
-                >
-                  <label className="cursor-pointer">
-                    <ImagePlus className="h-4 w-4" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEmergencyClick}
-                  className="ml-auto text-destructive hover:bg-destructive/10"
-                  title="Emergency"
-                >
-                  <AlertCircle className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* 🔥 IMAGE PREVIEW GOES HERE */}
-              {selectedImage && (
-                <div className="relative inline-block mt-2">
-                  <img
-                    src={`data:${selectedImage.mimeType};base64,${selectedImage.data}`}
-                    className="max-h-24 rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedImage(null)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center shadow"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {/* Input */}
-              <form onSubmit={handleSend} className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about your health..."
-                  className="flex-1 text-sm"
-                  disabled={isLoading}
+            <div className="flex flex-1 min-h-0 relative">
+              {/* Desktop Sidebar (Fixed) */}
+              <div className="hidden lg:block w-[260px] border-r border-border/50 shrink-0 bg-background/50">
+                <ConversationSidebar
+                  conversations={conversations}
+                  selectedConversation={selectedConversation}
+                  onSelect={loadConversationMessages}
+                  onDelete={deleteConversation}
+                  onNewChat={startNewChat}
                 />
+              </div>
 
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={isLoading || (!input.trim() && !selectedImage)}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+              {/* Mobile Sidebar Overlay */}
+              <AnimatePresence>
+                {isSidebarOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 lg:hidden"
+                      aria-hidden="true"
+                    />
+                    <motion.div
+                      initial={{ x: '-100%' }}
+                      animate={{ x: 0 }}
+                      exit={{ x: '-100%' }}
+                      transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+                      className="absolute inset-y-0 left-0 w-3/4 max-w-[300px] border-r bg-card z-30 lg:hidden shadow-xl"
+                    >
+                      <ConversationSidebar
+                        conversations={conversations}
+                        selectedConversation={selectedConversation}
+                        onSelect={loadConversationMessages}
+                        onDelete={deleteConversation}
+                        onNewChat={startNewChat}
+                        onCloseMobile={() => setIsSidebarOpen(false)}
+                      />
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+
+              {/* Main Chat Area */}
+              <div className="flex flex-col flex-1 min-w-0 bg-background/50">
+                <ChatMessages 
+                  messages={messages} 
+                  isLoading={isLoading} 
+                  onSuggestionClick={(text) => setSuggestionText(text)} 
+                />
+                
+                <ChatInput
+                  isLoading={isLoading}
+                  onSend={handleSend}
+                  ttsEnabled={ttsEnabled}
+                  onToggleTts={() => setTtsEnabled(!ttsEnabled)}
+                  isListening={isListening}
+                  transcript={transcript}
+                  interimTranscript={interimTranscript}
+                  speechError={speechError}
+                  onVoiceInput={handleVoiceInput}
+                  resetTranscript={resetTranscript}
+                  onEmergencyClick={handleEmergencyClick}
+                  suggestionText={suggestionText}
+                  onClearSuggestion={() => setSuggestionText(undefined)}
+                />
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* FAB */}
-      <motion.button
-        onClick={() => setIsOpen(!isOpen)}
-        className="chat-fab text-primary-foreground"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        aria-label="Open chat"
-      >
-        {isOpen ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <MessageCircle className="h-6 w-6" />
+      {/* Floating Action Button (FAB) */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsOpen(true)}
+            className="chat-fab text-primary-foreground shadow-lg flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-primary/50"
+            aria-label="Open chat"
+          >
+            <MessageCircle className="h-6 w-6 sm:h-7 sm:w-7" />
+          </motion.button>
         )}
-      </motion.button>
+      </AnimatePresence>
     </>
   );
 }
