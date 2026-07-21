@@ -17,7 +17,7 @@ const healthRoutes = require('./routes/healthRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const emergencyRoutes = require('./routes/emergencyRoutes');
-const chatRoutes = require('./routes/chat.routes');
+const chatRoutes = require('./routes/chat.Routes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
