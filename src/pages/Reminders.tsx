@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
   Plus,
@@ -7,6 +7,14 @@ import {
   Clock,
   ToggleLeft,
   ToggleRight,
+  CheckCircle2,
+  Calendar,
+  Sparkles,
+  Pill,
+  Activity,
+  User,
+  Zap,
+  Check
 } from 'lucide-react';
 import {
   Card,
@@ -37,6 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 interface Reminder {
   id: string;
@@ -79,7 +88,6 @@ export default function RemindersPage() {
 
   useEffect(() => {
     fetchReminders();
-
     return () => {};
   }, [user]);
 
@@ -162,222 +170,265 @@ export default function RemindersPage() {
   const getReminderTypeColor = (type: string) => {
     switch (type) {
       case 'medication':
-        return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
+        return 'bg-teal-50 text-teal-800 border-teal-200';
       case 'appointment':
-        return 'bg-purple-500/10 text-purple-700 dark:text-purple-400';
+        return 'bg-purple-50 text-purple-800 border-purple-200';
       case 'checkup':
-        return 'bg-green-500/10 text-green-700 dark:text-green-400';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-200';
       case 'exercise':
-        return 'bg-orange-500/10 text-orange-700 dark:text-orange-400';
+        return 'bg-amber-50 text-amber-800 border-amber-200';
       default:
-        return 'bg-gray-500/10 text-gray-700 dark:text-gray-400';
+        return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
   if (loading) {
     return (
-      <div className="container py-8 flex items-center justify-center min-h-[50vh]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-700 animate-bounce flex items-center justify-center text-white font-bold shadow-md">
+            <Bell className="w-6 h-6" />
+          </div>
+          <p className="text-xs font-bold text-slate-500 font-heading">Loading Medical Reminders Timeline...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Reminders</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your health reminders and notifications
-            </p>
-          </div>
+    <div className="space-y-6 pb-12">
+      
+      {/* Header */}
+      <PageHeader
+        title="Medication & Health Reminders"
+        description="Schedule time-critical medication doses, upcoming clinical checkups, and wellness alerts."
+        breadcrumbs={[{ label: "Reminders" }]}
+        badge="Active Schedule"
+        actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="btn-healthcare">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Reminder
+              <Button className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                <span>Add Reminder</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+
+            <DialogContent className="max-w-md rounded-3xl p-6 border-slate-200 shadow-2xl">
               <DialogHeader>
-                <DialogTitle>Create New Reminder</DialogTitle>
-                <DialogDescription>
-                  Set up a reminder for medications, appointments, or health
-                  activities
+                <DialogTitle className="text-xl font-extrabold text-slate-900 font-heading flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-teal-700" />
+                  Create Health Reminder
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 font-normal">
+                  Set automatic notification alerts for medications, visits, or daily vitals check-ins.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div>
-                  <Label>Title *</Label>
+
+              <div className="space-y-4 mt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Reminder Title *</Label>
                   <Input
                     value={form.title}
-                    onChange={(e) =>
-                      setForm({ ...form, title: e.target.value })
-                    }
-                    placeholder="e.g., Take Blood Pressure Medicine"
-                    className="mt-1"
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    placeholder="e.g., Take Metformin 500mg (Post Meal)"
+                    className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
                   />
                 </div>
-                <div>
-                  <Label>Description</Label>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Instructions / Description</Label>
                   <Input
                     value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                    placeholder="Additional notes (optional)"
-                    className="mt-1"
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="e.g., Take with a full glass of water after lunch"
+                    className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
                   />
                 </div>
-                <div>
-                  <Label>Type</Label>
-                  <Select
-                    value={form.reminder_type}
-                    onValueChange={(v) =>
-                      setForm({ ...form, reminder_type: v })
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="medication">Medication</SelectItem>
-                      <SelectItem value="appointment">Appointment</SelectItem>
-                      <SelectItem value="checkup">Health Checkup</SelectItem>
-                      <SelectItem value="exercise">Exercise</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Category</Label>
+                    <Select
+                      value={form.reminder_type}
+                      onValueChange={(v) => setForm({ ...form, reminder_type: v })}
+                    >
+                      <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="medication">Medication</SelectItem>
+                        <SelectItem value="appointment">Appointment</SelectItem>
+                        <SelectItem value="checkup">Health Checkup</SelectItem>
+                        <SelectItem value="exercise">Exercise</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Reminder Time</Label>
+                    <Input
+                      type="time"
+                      value={form.time}
+                      onChange={(e) => setForm({ ...form, time: e.target.value })}
+                      className="h-10 text-xs rounded-xl border-slate-200"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Time</Label>
-                  <Input
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => setForm({ ...form, time: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Frequency</Label>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Repeat Frequency</Label>
                   <Select
                     value={form.frequency}
                     onValueChange={(v) => setForm({ ...form, frequency: v })}
                   >
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="daily">Everyday (Daily)</SelectItem>
                       <SelectItem value="weekly">Weekly</SelectItem>
                       <SelectItem value="monthly">Monthly</SelectItem>
                       <SelectItem value="once">One Time</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
                 <Button
                   onClick={handleAdd}
                   disabled={submitLoading}
-                  className="w-full btn-healthcare"
+                  className="w-full h-11 bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm rounded-xl shadow-md transition-all mt-2"
                 >
-                  {submitLoading ? 'Creating...' : 'Create Reminder'}
+                  {submitLoading ? 'Creating...' : 'Save & Activate Reminder'}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+        }
+      />
 
-        {reminders.length === 0 ? (
-          <Card className="card-healthcare">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Bell className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">No Reminders Yet</h3>
-              <p className="text-muted-foreground text-center mt-2">
-                Set up reminders for medications, appointments, and health
-                check-ups.
+      {/* Reminders Timeline */}
+      {reminders.length === 0 ? (
+        <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center">
+              <Bell className="h-8 w-8 stroke-[1.8]" />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900 font-heading">No Reminders Scheduled</h3>
+              <p className="text-xs text-slate-500 max-w-sm mt-1">
+                Add your daily prescription doses and upcoming checkups to stay on track.
               </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {reminders.map((reminder) => (
+            </div>
+            <Button
+              onClick={() => setOpen(true)}
+              className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add First Reminder
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <AnimatePresence>
+            {reminders.map((reminder, idx) => (
               <motion.div
                 key={reminder.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3, delay: idx * 0.05 }}
               >
-                <Card className="card-healthcare">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold">{reminder.title}</h3>
-                          <Badge
-                            className={getReminderTypeColor(
-                              reminder.reminder_type,
-                            )}
-                          >
+                <Card className={`rounded-2xl border transition-all duration-300 ${
+                  reminder.is_active ? 'bg-white border-slate-200/80 shadow-sm hover:shadow-md' : 'bg-slate-50/70 border-slate-200/50 opacity-75'
+                }`}>
+                  <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    
+                    <div className="flex items-start gap-4">
+                      {/* Clock / Icon Badge */}
+                      <div className="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-bold shrink-0">
+                        <Clock className="w-5 h-5 stroke-[2.2]" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-extrabold text-slate-900 font-heading">
+                            {reminder.title}
+                          </h3>
+                          
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getReminderTypeColor(reminder.reminder_type)}`}>
                             {reminder.reminder_type}
-                          </Badge>
-                          {reminder.is_active ? (
-                            <Badge variant="default" className="bg-success">
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Inactive</Badge>
-                          )}
+                          </span>
+
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            reminder.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {reminder.is_active ? 'Active' : 'Paused'}
+                          </span>
                         </div>
+
                         {reminder.description && (
-                          <p className="text-sm text-muted-foreground mb-2">
+                          <p className="text-xs text-slate-600 font-normal">
                             {reminder.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
+
+                        <div className="flex items-center gap-4 text-xs font-semibold text-slate-500 pt-1">
+                          <span className="flex items-center gap-1 text-teal-800 font-bold">
+                            <Clock className="h-3.5 w-3.5" />
                             {reminder.time}
                           </span>
-                          <span className="capitalize">
-                            {reminder.frequency}
-                          </span>
+                          <span className="capitalize text-slate-400">• {reminder.frequency}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            handleToggle(reminder.id, reminder.is_active)
-                          }
-                          title={reminder.is_active ? 'Disable' : 'Enable'}
-                        >
-                          {reminder.is_active ? (
-                            <ToggleRight className="h-5 w-5 text-success" />
-                          ) : (
-                            <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(reminder.id)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
                     </div>
+
+                    {/* Toggle and Delete Actions */}
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggle(reminder.id, reminder.is_active)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
+                          reminder.is_active
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                            : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {reminder.is_active ? (
+                          <span className="flex items-center gap-1">
+                            <ToggleRight className="w-4 h-4 text-emerald-600" />
+                            <span>Enabled</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <ToggleLeft className="w-4 h-4 text-slate-400" />
+                            <span>Disabled</span>
+                          </span>
+                        )}
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(reminder.id)}
+                        className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl h-9 w-9"
+                        title="Delete Reminder"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
-          </div>
-        )}
-      </motion.div>
+          </AnimatePresence>
+        </div>
+      )}
+
     </div>
   );
 }
+

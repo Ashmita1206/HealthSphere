@@ -6,6 +6,12 @@ import {
   MapPin,
   Navigation,
   AlertCircle,
+  ShieldAlert,
+  Radio,
+  Building2,
+  CheckCircle2,
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +28,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { getNearbyHospitals, type Location } from '@/services/locationsService';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 // =================== Web Speech Helper ===================
 const speak = (text: string, lang = 'en-US') => {
@@ -62,18 +69,16 @@ export default function EmergencyPage() {
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
   const [routeTime, setRouteTime] = useState<number | null>(null);
 
-  
-
   // ======= Controlled hospital fetch state =======
   const [fetchHospitalsOnLocation, setFetchHospitalsOnLocation] =
     useState(false);
   const [hospitalError, setHospitalError] = useState<string | null>(null);
   const fetchingHospitalsRef = useRef(false);
   const emergencyNumbers = [
-    { name: 'Emergency Services', number: '911' },
-    { name: 'Poison Control', number: '1-800-222-1222' },
-    { name: 'Ambulance', number: '102' },
-    { name: 'Mental Health Crisis', number: '988' },
+    { name: 'National Emergency Dispatch', number: '911', desc: 'Police, Fire & General SOS' },
+    { name: 'Poison Control Hotline', number: '1-800-222-1222', desc: 'Toxic & Chemical Ingestion' },
+    { name: 'Ambulance & Trauma Response', number: '102', desc: 'Medical Transport Unit' },
+    { name: 'Mental Health Crisis Line', number: '988', desc: 'Suicide & Distress Helpline' },
   ];
 
   // =================== Load Nearby Hospitals (button-triggered) ===================
@@ -219,7 +224,6 @@ export default function EmergencyPage() {
   };
 
   const handleGetLocationClick = async () => {
-    // Reset previous state and request location, then effect will fetch hospitals
     setHospitalError(null);
     setNearbyHospitals([]);
     setSelectedHospital(null);
@@ -227,224 +231,227 @@ export default function EmergencyPage() {
     try {
       await requestLocation();
     } catch (err) {
-      // requestLocation uses callbacks; errors are surfaced via locationError
       setFetchHospitalsOnLocation(false);
     }
   };
 
-  // =================== JSX ===================
   return (
-    <div className="container py-8">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-3xl font-bold mb-8 text-center md:text-left">
-          Emergency Services
-        </h1>
+    <div className="space-y-6 pb-12">
+      
+      {/* Page Header */}
+      <PageHeader
+        title="24/7 Emergency SOS & Trauma Dispatch"
+        description="One-touch GPS emergency broadcast, live location sharing, and nearby hospital routing."
+        breadcrumbs={[{ label: "Emergency" }]}
+        badge="Urgent Response"
+      />
 
-        {locationError && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{locationError}</AlertDescription>
-          </Alert>
-        )}
+      {locationError && (
+        <Alert variant="destructive" className="rounded-2xl bg-rose-50 border-rose-200 text-rose-800">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs font-semibold">{locationError}</AlertDescription>
+        </Alert>
+      )}
 
-        {/* ================= SOS BUTTON ================= */}
-        <Card className="mb-8 border-2 border-red-600 shadow-xl hover:shadow-2xl transition-all duration-300">
-          <CardContent className="flex flex-col items-center py-12 relative">
-            {sosTriggered && (
-              <motion.div
-                className="absolute h-40 w-40 bg-red-500/20 rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                animate={{ scale: [1, 1.8], opacity: [0.8, 0] }}
-                transition={{ repeat: Infinity, duration: 1.2 }}
-              />
-            )}
+      {/* SOS MAIN RED CARD */}
+      <Card className="rounded-3xl border-2 border-rose-600 bg-gradient-to-b from-rose-900 via-rose-950 to-slate-950 text-white shadow-2xl overflow-hidden relative">
+        <CardContent className="flex flex-col items-center justify-center py-12 px-6 relative text-center">
+          
+          {/* Animated Pulsing Ring */}
+          {sosTriggered && (
+            <motion.div
+              className="absolute h-64 w-64 bg-rose-500/30 rounded-full pointer-events-none"
+              animate={{ scale: [1, 2.2], opacity: [0.8, 0] }}
+              transition={{ repeat: Infinity, duration: 1.2 }}
+            />
+          )}
 
-            <motion.button
-              onClick={sosTriggered ? stopSOS : startSOS}
-              animate={sosTriggered ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-              transition={{
-                repeat: sosTriggered ? Infinity : 0,
-                duration: 0.8,
-              }}
-              whileTap={{ scale: 0.9 }}
-              className="mb-6 h-32 w-32 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl relative overflow-hidden"
+          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-rose-200 text-xs font-bold border border-white/20">
+            <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+            <span>{sosTriggered ? "LIVE SOS BROADCAST ACTIVE" : "EMERGENCY DISPATCH READY"}</span>
+          </div>
+
+          <motion.button
+            onClick={sosTriggered ? stopSOS : startSOS}
+            animate={sosTriggered ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+            transition={{
+              repeat: sosTriggered ? Infinity : 0,
+              duration: 0.8,
+            }}
+            whileTap={{ scale: 0.95 }}
+            className={`mb-6 w-36 h-36 rounded-full flex flex-col items-center justify-center shadow-2xl relative transition-all duration-300 ${
+              sosTriggered
+                ? "bg-rose-500 text-white ring-8 ring-rose-400/40"
+                : "bg-rose-600 text-white hover:bg-rose-500 hover:scale-105"
+            }`}
+          >
+            <ShieldAlert className="w-14 h-14 stroke-[2.2]" />
+            <span className="text-xs font-extrabold uppercase tracking-wider mt-1">
+              {sosTriggered ? "CANCEL SOS" : "PRESS FOR SOS"}
+            </span>
+          </motion.button>
+
+          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-tight">
+            {sosTriggered ? "Emergency Broadcast Active" : "One-Touch Emergency SOS"}
+          </h2>
+          
+          <p className="mt-2 text-xs sm:text-sm text-rose-100/90 max-w-md font-normal leading-relaxed">
+            {sosTriggered
+              ? "Your precise GPS location is being transmitted every 5 seconds to emergency response centers."
+              : "Press the red button above in an emergency to alert nearby trauma hospitals and emergency contacts."}
+          </p>
+
+          {sosTriggered && (
+            <Button
+              onClick={stopSOS}
+              className="mt-6 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-2.5 rounded-xl border border-slate-700"
             >
-              <AlertTriangle className="h-12 w-12" />
-            </motion.button>
+              Deactivate & End SOS
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-            <h2 className="text-2xl font-bold">Emergency SOS</h2>
-            <p className="mt-2 text-muted-foreground text-center max-w-md">
-              Press in emergency. Your live location will be shared.
-            </p>
-
-            {sosTriggered && (
-              <Button
-                onClick={stopSOS}
-                className="mt-4 w-32 bg-gray-800 text-white"
+      {/* NUMBERS + LOCATION SELECTOR GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Emergency Numbers Grid */}
+        <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+              <Phone className="w-5 h-5 text-rose-600" />
+              Direct Emergency Hotlines
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500 font-normal">Tap to instantly dial national helpline services</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            {emergencyNumbers.map((e) => (
+              <div
+                key={e.name}
+                onClick={() => callNumber(e.number)}
+                className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-rose-50/50 hover:border-rose-200 transition-all cursor-pointer group"
               >
-                Stop SOS
-              </Button>
-            )}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 font-heading group-hover:text-rose-700 transition-colors">{e.name}</h4>
+                  <p className="text-[11px] text-slate-500 font-normal mt-0.5">{e.desc}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
+                    {e.number}
+                  </span>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
-        {/* ================= NUMBERS + LOCATION ================= */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex gap-2">
-                <Phone /> Emergency Numbers
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {emergencyNumbers.map((e) => (
-                <motion.div
-                  key={e.name}
-                  whileHover={{ scale: 1.02 }}
-                  className="flex justify-between p-3 rounded bg-muted cursor-pointer"
-                >
-                  <span>{e.name}</span>
-                  <button
-                    className="font-bold text-primary"
-                    onClick={() => callNumber(e.number)}
-                  >
-                    {e.number}
-                  </button>
-                </motion.div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex gap-2">
-                <MapPin /> Your Location
-              </CardTitle>
-              <CardDescription>Used for emergency routing</CardDescription>
-            </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={handleGetLocationClick}
-                  disabled={locationLoading || loadingHospitals}
-                  className="w-full"
-                  variant="outline"
-                >
-                  <Navigation className="mr-2 h-4 w-4" />
-                  Get Current Location
-                </Button>
-
-                <div className="mt-4">
-                  {locationLoading && fetchHospitalsOnLocation && (
-                    <div className="text-sm text-muted-foreground">Fetching location...</div>
-                  )}
-
-                  {!locationLoading && loadingHospitals && (
-                    <div className="text-sm text-muted-foreground">Loading nearby hospitals...</div>
-                  )}
-
-                  {hospitalError && (
-                    <div className="mt-3">
-                      <Alert variant="destructive" className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>{hospitalError}</AlertDescription>
-                        </div>
-                        <Button size="sm" onClick={handleGetLocationClick}>
-                          Retry
-                        </Button>
-                      </Alert>
-                    </div>
-                  )}
-
-                  {!hospitalError && !loadingHospitals && (
-                    <div className="mt-4">
-                      <CardTitle className="mb-2">Nearby Hospitals</CardTitle>
-
-                      {/* prepare and display filtered, deduped hospitals */}
-                      {/**
-                       * Filter rules:
-                       * - remove duplicates by id
-                       * - hide invalid or generic names like 'Unnamed Hospital'
-                       */}
-                      <HospitalList
-                        hospitals={nearbyHospitals}
-                        selectedHospitalId={selectedHospital?.id}
-                        onSelect={(h) => setSelectedHospital(h)}
-                        visibleCount={visibleCount}
-                        onShowMore={() => setVisibleCount((c) => c + 6)}
-                      />
-
-                      {/* No hospitals fallback */}
-                      {nearbyHospitals.length === 0 && (
-                        <div className="text-sm text-muted-foreground mt-3">No hospitals found nearby.</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-          </Card>
-        </div>
-
-        
-
-        {/* ================= ROUTE MAP ================= */}
-        <AnimatePresence>
-          {selectedHospital && currentLocation && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              transition={{ duration: 0.5 }}
+        {/* GPS Location & Hospital Locator */}
+        <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-teal-700" />
+              Trauma Hospital Locator
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500 font-normal">Detect GPS coordinates to find nearest open medical centers</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <Button
+              onClick={handleGetLocationClick}
+              disabled={locationLoading || loadingHospitals}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-11 rounded-xl shadow-sm flex items-center justify-center gap-2"
             >
-              <Card className="mt-6 shadow-xl overflow-hidden rounded-xl relative">
-                <CardContent className="relative h-96 p-0">
-                  <RouteMap
-                    userLat={currentLocation.latitude}
-                    userLng={currentLocation.longitude}
-                    destLat={selectedHospital.latitude}
-                    destLng={selectedHospital.longitude}
-                    onRouteFound={(d, t) => {
-                      setRouteDistance(d);
-                      setRouteTime(t);
-                    }}
-                    showHospitalPins
-                    selectedHospitalId={selectedHospital.id}
-                    sosTriggered={sosTriggered}
-                  />
+              <Navigation className="h-4 w-4" />
+              <span>{locationLoading ? "Fetching GPS Coordinates..." : "Locate Nearby Hospitals"}</span>
+            </Button>
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-4 left-4 bg-white/90 p-4 rounded-xl shadow-lg z-[1000]"
-                  >
-                    <h3 className="font-bold">{selectedHospital.name}</h3>
-                    {routeDistance && routeTime && (
-                      <p className="text-xs text-gray-500">
-                        {(routeDistance / 1000).toFixed(1)} km ·{' '}
-                        {Math.round(routeTime / 60)} min
-                      </p>
-                    )}
-                    <Button
-                      onClick={sosTriggered ? stopSOS : startSOS}
-                      className="mt-2 w-full bg-red-600 text-white"
-                    >
-                      {sosTriggered ? 'Stop SOS' : 'Activate SOS'}
-                    </Button>
-                  </motion.div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+            <div>
+              {locationLoading && fetchHospitalsOnLocation && (
+                <div className="text-xs text-slate-500 italic p-3 text-center">Acquiring satellite GPS fix...</div>
+              )}
+
+              {!locationLoading && loadingHospitals && (
+                <div className="text-xs text-teal-700 font-bold p-3 text-center flex items-center justify-center gap-2">
+                  <div className="w-3.5 h-3.5 border-2 border-teal-700 border-t-transparent rounded-full animate-spin" />
+                  <span>Searching open trauma emergency centers...</span>
+                </div>
+              )}
+
+              {hospitalError && (
+                <Alert variant="destructive" className="mt-2 rounded-xl bg-rose-50 border-rose-200">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs font-semibold">{hospitalError}</AlertDescription>
+                </Alert>
+              )}
+
+              {!hospitalError && !loadingHospitals && nearbyHospitals.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  <h4 className="text-xs font-bold text-slate-900 font-heading uppercase tracking-wider mb-2">
+                    Verified Emergency Centers
+                  </h4>
+
+                  <HospitalList
+                    hospitals={nearbyHospitals}
+                    selectedHospitalId={selectedHospital?.id}
+                    onSelect={(h) => setSelectedHospital(h)}
+                    visibleCount={visibleCount}
+                    onShowMore={() => setVisibleCount((c) => c + 6)}
+                  />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* ROUTE MAP CONTAINER */}
+      <AnimatePresence>
+        {selectedHospital && currentLocation && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Card className="rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden bg-white">
+              <CardHeader className="border-b border-slate-100 pb-3">
+                <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-teal-700" />
+                    <span>Emergency Route to {selectedHospital.name}</span>
+                  </div>
+                  {routeDistance && routeTime && (
+                    <span className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
+                      {(routeDistance / 1000).toFixed(1)} km • {Math.round(routeTime / 60)} mins drive
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-96 p-0 relative">
+                <RouteMap
+                  userLat={currentLocation.latitude}
+                  userLng={currentLocation.longitude}
+                  destLat={selectedHospital.latitude}
+                  destLng={selectedHospital.longitude}
+                  onRouteFound={(d, t) => {
+                    setRouteDistance(d);
+                    setRouteTime(t);
+                  }}
+                  showHospitalPins
+                  selectedHospitalId={selectedHospital.id}
+                  sosTriggered={sosTriggered}
+                />
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
 
-// ------- Hospital list subcomponent (UI-only, keeps parent logic unchanged) -------
+// ------- Hospital list subcomponent -------
 function HospitalList({
   hospitals,
   selectedHospitalId,
@@ -462,7 +469,7 @@ function HospitalList({
     const map = new Map<string, Location>();
     for (const h of hospitals) {
       const name = (h.name || '').trim();
-      if (!name || /unnamed hospital/i.test(name)) continue; // hide invalid names
+      if (!name || /unnamed hospital/i.test(name)) continue;
       if (!map.has(h.id)) map.set(h.id, h);
     }
     return Array.from(map.values());
@@ -471,49 +478,57 @@ function HospitalList({
   const visible = filtered.slice(0, visibleCount);
 
   return (
-    <div>
-      {filtered.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No hospitals found.</div>
-      ) : (
-        <div className="max-h-80 overflow-auto pr-2 smooth-scroll">
-          <div className="space-y-3">
-            {visible.map((hospital) => (
-              <motion.div
-                key={hospital.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.2 }}
-                className={`flex items-center justify-between p-3 rounded border bg-white cursor-pointer`}
-                onClick={() => onSelect(hospital)}
-              >
-                <div className="flex-1 pr-3">
-                  <div className="font-semibold text-sm">{hospital.name}</div>
-                  <div className="text-xs text-muted-foreground">{hospital.address}</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {hospital.distance != null && (
-                    <div className="text-xs text-muted-foreground">
-                      {(hospital.distance / 1000).toFixed(1)} km
-                    </div>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => onSelect(hospital)}>
-                    <Navigation />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="space-y-2">
+      <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
+        {visible.map((hospital) => {
+          const isSelected = selectedHospitalId === hospital.id;
+          return (
+            <motion.div
+              key={hospital.id}
+              onClick={() => onSelect(hospital)}
+              className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                isSelected
+                  ? "bg-teal-50 border-teal-300 shadow-sm"
+                  : "bg-slate-50 border-slate-100 hover:bg-slate-100"
+              }`}
+            >
+              <div className="flex-1 truncate">
+                <h5 className="text-xs font-bold text-slate-900 font-heading truncate">{hospital.name}</h5>
+                <p className="text-[11px] text-slate-500 font-normal truncate mt-0.5">{hospital.address}</p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {hospital.distance != null && (
+                  <span className="text-[10px] font-bold text-teal-800 bg-white px-2 py-1 rounded-md border border-slate-200">
+                    {(hospital.distance / 1000).toFixed(1)} km
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  variant={isSelected ? "default" : "outline"}
+                  className={`h-8 text-xs font-bold px-3 rounded-lg ${
+                    isSelected ? "bg-teal-700 text-white" : "border-slate-300"
+                  }`}
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
 
       {filtered.length > visibleCount && (
-        <div className="mt-3 flex justify-center">
-          <Button size="sm" onClick={onShowMore}>
-            Show More
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onShowMore}
+          className="w-full text-xs font-bold text-teal-700 hover:bg-teal-50 rounded-xl"
+        >
+          Show More Hospitals ({filtered.length - visibleCount} remaining)
+        </Button>
       )}
     </div>
   );
 }
+

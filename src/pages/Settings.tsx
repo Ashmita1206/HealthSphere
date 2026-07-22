@@ -7,6 +7,11 @@ import {
   Shield,
   Globe,
   Save,
+  Lock,
+  Key,
+  ShieldCheck,
+  CheckCircle2,
+  Sliders
 } from 'lucide-react';
 import {
   Card,
@@ -23,6 +28,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -89,244 +95,242 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-3xl font-bold mb-8">Settings</h1>
-        <div className="max-w-2xl space-y-6">
-          {/* Appearance */}
-          <Card className="card-healthcare">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Moon className="h-5 w-5" />
-                Appearance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Dark Mode</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Toggle dark/light theme
-                  </p>
-                </div>
-                <Switch
-                  checked={theme === 'dark'}
-                  onCheckedChange={toggleTheme}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notifications */}
-          <Card className="card-healthcare">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notifications
-              </CardTitle>
-              <CardDescription>
-                Control how you receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Medicine Reminders</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified for medications
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.medicineReminders}
-                  onCheckedChange={(checked) =>
-                    setPreferences({
-                      ...preferences,
-                      medicineReminders: checked,
-                    })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Appointment Alerts</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Reminders before appointments
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.appointmentAlerts}
-                  onCheckedChange={(checked) =>
-                    setPreferences({
-                      ...preferences,
-                      appointmentAlerts: checked,
-                    })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Health Tips</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Daily wellness recommendations
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.healthTips}
-                  onCheckedChange={(checked) =>
-                    setPreferences({ ...preferences, healthTips: checked })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Emergency Alerts</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Critical health notifications
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.emergencyAlerts}
-                  onCheckedChange={(checked) =>
-                    setPreferences({ ...preferences, emergencyAlerts: checked })
-                  }
-                  disabled
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Account Settings */}
-          <Card className="card-healthcare">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Account Settings
-              </CardTitle>
-              <CardDescription>Manage your account information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Email Address</Label>
-                <Input
-                  type="email"
-                  value={emailSettings.email}
-                  disabled
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your email cannot be changed directly
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Language</Label>
-                  <select
-                    value={emailSettings.language}
-                    onChange={(e) =>
-                      setEmailSettings({
-                        ...emailSettings,
-                        language: e.target.value,
-                      })
-                    }
-                    className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="en">English</option>
-                    <option value="es">Spanish</option>
-                    <option value="fr">French</option>
-                    <option value="de">German</option>
-                  </select>
-                </div>
-                <div>
-                  <Label>Timezone</Label>
-                  <select
-                    value={emailSettings.timezone}
-                    onChange={(e) =>
-                      setEmailSettings({
-                        ...emailSettings,
-                        timezone: e.target.value,
-                      })
-                    }
-                    className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="UTC">UTC</option>
-                    <option value="EST">EST</option>
-                    <option value="CST">CST</option>
-                    <option value="MST">MST</option>
-                    <option value="PST">PST</option>
-                  </select>
-                </div>
-              </div>
-              <Button
-                onClick={handleChangePassword}
-                variant="outline"
-                className="w-full"
-              >
-                Change Password
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Privacy & Security */}
-          <Card className="card-healthcare">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Privacy & Security
-              </CardTitle>
-              <CardDescription>Protect your health data</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Two-Factor Authentication</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Add extra security to your account
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.twoFactorAuth}
-                  onCheckedChange={(checked) =>
-                    setPreferences({ ...preferences, twoFactorAuth: checked })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Auto-Sync Health Data</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Sync data across devices
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.dataSync}
-                  onCheckedChange={(checked) =>
-                    setPreferences({ ...preferences, dataSync: checked })
-                  }
-                />
-              </div>
-              <div className="p-3 rounded-lg bg-muted">
-                <p className="text-sm">
-                  <strong>Data Encryption:</strong> AES-256 encryption is always
-                  enabled for your health data.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Save Button */}
+    <div className="space-y-6 pb-12">
+      
+      {/* Header */}
+      <PageHeader
+        title="Platform & Security Settings"
+        description="Configure notification channels, security policies, data synchronization, and accessibility themes."
+        breadcrumbs={[{ label: "Settings" }]}
+        badge="System Config"
+        actions={
           <Button
             onClick={handleSavePreferences}
             disabled={loading}
-            className="btn-healthcare w-full"
+            className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2"
           >
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? 'Saving...' : 'Save All Settings'}
+            <Save className="h-4 w-4" />
+            <span>{loading ? 'Saving...' : 'Save All Preferences'}</span>
           </Button>
-        </div>
-      </motion.div>
+        }
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Appearance & Interface */}
+        <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-100">
+                <Moon className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-extrabold text-slate-900 font-heading">Appearance & Display</CardTitle>
+                <CardDescription className="text-xs text-slate-500 font-normal">Visual comfort and dark mode styling</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <Label className="text-xs font-bold text-slate-900">Dark Mode Contrast</Label>
+                <p className="text-[11px] text-slate-500 font-normal mt-0.5">Toggle between dark mode and clinical white mode</p>
+              </div>
+              <Switch
+                checked={theme === 'dark'}
+                onCheckedChange={toggleTheme}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications Control */}
+        <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-100">
+                <Bell className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-extrabold text-slate-900 font-heading">Notification Controls</CardTitle>
+                <CardDescription className="text-xs text-slate-500 font-normal">Manage email, push, and SMS dispatch channels</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-3">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <Label className="text-xs font-bold text-slate-900">Medication Dose Reminders</Label>
+                <p className="text-[11px] text-slate-500 font-normal mt-0.5">Automated push alerts for daily prescription schedule</p>
+              </div>
+              <Switch
+                checked={preferences.medicineReminders}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, medicineReminders: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <Label className="text-xs font-bold text-slate-900">Appointment Alerts</Label>
+                <p className="text-[11px] text-slate-500 font-normal mt-0.5">Advance SMS notifications 24 hours prior to visit</p>
+              </div>
+              <Switch
+                checked={preferences.appointmentAlerts}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, appointmentAlerts: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <Label className="text-xs font-bold text-slate-900">Daily Health & Wellness Tips</Label>
+                <p className="text-[11px] text-slate-500 font-normal mt-0.5">Personalized AI recommendations for lifestyle</p>
+              </div>
+              <Switch
+                checked={preferences.healthTips}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, healthTips: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-rose-50/60 border border-rose-100">
+              <div>
+                <Label className="text-xs font-bold text-rose-900">Critical Trauma & SOS Dispatch</Label>
+                <p className="text-[11px] text-rose-700/80 font-normal mt-0.5">Mandatory alerts during active emergency dispatch</p>
+              </div>
+              <Switch checked disabled />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Account & Regional Settings */}
+        <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-100">
+                <Globe className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-extrabold text-slate-900 font-heading">Account & Regional Settings</CardTitle>
+                <CardDescription className="text-xs text-slate-500 font-normal">Primary credential and localization options</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Account Email Address</Label>
+              <Input
+                type="email"
+                value={emailSettings.email}
+                disabled
+                className="h-10 text-xs rounded-xl bg-slate-100 border-slate-200 text-slate-600 cursor-not-allowed"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Interface Language</Label>
+                <select
+                  value={emailSettings.language}
+                  onChange={(e) => setEmailSettings({ ...emailSettings, language: e.target.value })}
+                  className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-teal-700/20 text-slate-800"
+                >
+                  <option value="en">English (US)</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Timezone</Label>
+                <select
+                  value={emailSettings.timezone}
+                  onChange={(e) => setEmailSettings({ ...emailSettings, timezone: e.target.value })}
+                  className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-teal-700/20 text-slate-800"
+                >
+                  <option value="UTC">UTC (Universal Coordinated Time)</option>
+                  <option value="EST">EST (Eastern Standard)</option>
+                  <option value="CST">CST (Central Standard)</option>
+                  <option value="PST">PST (Pacific Standard)</option>
+                </select>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleChangePassword}
+              variant="outline"
+              className="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl h-10 mt-2"
+            >
+              <Key className="w-4 h-4 mr-2 text-teal-700" />
+              <span>Reset Account Password</span>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Privacy & Security */}
+        <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-100">
+                <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-extrabold text-slate-900 font-heading">Data Security & Encryption</CardTitle>
+                <CardDescription className="text-xs text-slate-500 font-normal">HIPAA compliance and two-factor authentication</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <Label className="text-xs font-bold text-slate-900">Two-Factor Authentication (2FA)</Label>
+                <p className="text-[11px] text-slate-500 font-normal mt-0.5">Require an authenticator app code on login</p>
+              </div>
+              <Switch
+                checked={preferences.twoFactorAuth}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, twoFactorAuth: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <Label className="text-xs font-bold text-slate-900">Automatic Data Synchronization</Label>
+                <p className="text-[11px] text-slate-500 font-normal mt-0.5">Seamless sync across connected mobile & desktop devices</p>
+              </div>
+              <Switch
+                checked={preferences.dataSync}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, dataSync: checked })
+                }
+              />
+            </div>
+
+            <div className="p-4 rounded-2xl bg-teal-50/70 border border-teal-200/80 text-xs text-teal-900 flex items-start gap-3">
+              <Lock className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
+              <div>
+                <h5 className="font-extrabold font-heading text-teal-950">AES-256 Bit Encryption Active</h5>
+                <p className="text-[11px] text-teal-800 mt-0.5 leading-relaxed font-normal">
+                  All personal records, lab PDFs, and medical chat logs are encrypted both in transit (TLS 1.3) and at rest (AES-256) adhering to HIPAA & GDPR guidelines.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+
     </div>
   );
 }
+
