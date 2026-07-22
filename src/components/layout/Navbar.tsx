@@ -1,5 +1,8 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Menu, Moon, Sun, User, LogOut, Heart } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { 
+  Menu, User, LogOut, Activity, Search, Bell, ShieldAlert, Sparkles, X, ChevronDown, CheckCircle2
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "@/components/ui/input";
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -18,8 +21,10 @@ interface NavbarProps {
 
 export function Navbar({ onMenuClick }: NavbarProps) {
   const { user, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -27,90 +32,171 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   };
 
   const getInitials = () => {
-    if (!user?.email) return "U";
+    if (!user?.email) return "P";
     return user.email.charAt(0).toUpperCase();
   };
 
+  const isPublicPage = ["/", "/about", "/contact", "/privacy", "/terms"].includes(location.pathname);
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass border-b">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-3">
-          {user && (
+    <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200/80 transition-all">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        
+        {/* Left section: Logo & Mobile Toggle */}
+        <div className="flex items-center gap-4">
+          {user && !isPublicPage && (
             <Button
               variant="ghost"
               size="icon"
               onClick={onMenuClick}
-              className="md:hidden"
+              className="lg:hidden text-slate-700 hover:bg-slate-100 rounded-xl"
               aria-label="Toggle menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
           )}
-          <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary">
-              <Heart className="h-5 w-5 text-primary-foreground" />
+
+          <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-teal-700 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-300">
+              <Activity className="h-5 w-5 stroke-[2.5]" />
             </div>
-            <span className="text-xl font-bold text-gradient">HealthSphere</span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl font-extrabold tracking-tight text-slate-900 font-heading">
+                  HealthSphere
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200">
+                  AI
+                </span>
+              </div>
+            </div>
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
+        {/* Middle Navigation - Public Landing Nav */}
+        {isPublicPage && (
+          <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
+            <a href="#hero" className="hover:text-teal-700 transition-colors">Home</a>
+            <a href="#features" className="hover:text-teal-700 transition-colors">Features</a>
+            <Link to="/about" className="hover:text-teal-700 transition-colors">About</Link>
+            <a href="#how-it-works" className="hover:text-teal-700 transition-colors">Services</a>
+            <a href="#testimonials" className="hover:text-teal-700 transition-colors">Testimonials</a>
+            <Link to="/contact" className="hover:text-teal-700 transition-colors">Contact</Link>
+          </nav>
+        )}
 
+        {/* Dashboard Search Bar for Logged in User */}
+        {user && !isPublicPage && (
+          <div className="hidden md:flex items-center relative max-w-sm w-full mx-4">
+            <Search className="w-4 h-4 absolute left-3 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search reports, vitals, medicines... (Ctrl+K)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl bg-slate-100/80 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-700/20 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+            />
+          </div>
+        )}
+
+        {/* Right Section: CTAs / Notifications / Profile */}
+        <div className="flex items-center gap-3">
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src="" alt="Profile" />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <div className="flex items-center gap-2 p-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user.email}</p>
-                    <p className="text-xs text-muted-foreground">Manage your account</p>
+            <>
+              {/* Emergency Quick Badge */}
+              <Link to="/emergency" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200/80 transition-colors">
+                <ShieldAlert className="w-4 h-4 animate-pulse" />
+                <span>Emergency SOS</span>
+              </Link>
+
+              {/* Notification Popover */}
+              <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative text-slate-600 hover:bg-slate-100 rounded-xl">
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-teal-600 ring-2 ring-white animate-pulse" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl border border-slate-200 shadow-xl bg-white">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <h4 className="font-bold text-sm text-slate-900 font-heading">Notifications</h4>
+                    <span className="text-xs text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-full">2 New</span>
                   </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                    <div className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-700 shrink-0">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">Lab Analysis Ready</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Your Blood Panel CBC report has been analyzed by AI.</p>
+                        <span className="text-[10px] text-slate-400 mt-1 block">10 mins ago</span>
+                      </div>
+                    </div>
+                    <div className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">Medicine Reminder</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Time for Metformin 500mg (Post Lunch).</p>
+                        <span className="text-[10px] text-slate-400 mt-1 block">1 hour ago</span>
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* User Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-2 px-2 py-1 h-auto rounded-xl hover:bg-slate-100 transition-colors">
+                    <Avatar className="h-8 w-8 border border-teal-200">
+                      <AvatarImage src="" alt="Profile" />
+                      <AvatarFallback className="bg-teal-700 text-white font-bold text-xs">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden sm:inline-block text-xs font-semibold text-slate-800 max-w-[100px] truncate">
+                      {user.email?.split('@')[0]}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-60 p-2 rounded-2xl border border-slate-200 shadow-xl" align="end">
+                  <div className="px-3 py-2 bg-slate-50 rounded-xl mb-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">{user.email}</p>
+                    <p className="text-[11px] text-teal-700 font-medium flex items-center gap-1 mt-0.5">
+                      <Sparkles className="w-3 h-3" /> HealthSphere AI Patient
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="rounded-xl text-xs font-medium py-2">
+                    <User className="mr-2 h-4 w-4 text-slate-500" />
+                    Profile & Medical History
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem onClick={handleSignOut} className="rounded-xl text-xs font-semibold py-2 text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => navigate("/auth/login")}>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/auth/login")}
+                className="text-sm font-semibold text-slate-700 hover:text-teal-700 hover:bg-teal-50 rounded-xl"
+              >
                 Log In
               </Button>
-              <Button className="btn-healthcare" onClick={() => navigate("/auth/register")}>
-                Sign Up
+              <Button
+                onClick={() => navigate("/auth/register")}
+                className="bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm px-5 py-2 rounded-xl shadow-sm hover:shadow-md transition-all"
+              >
+                Get Started
               </Button>
             </div>
           )}
@@ -119,3 +205,4 @@ export function Navbar({ onMenuClick }: NavbarProps) {
     </header>
   );
 }
+

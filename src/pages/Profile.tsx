@@ -9,6 +9,11 @@ import {
   MapPin,
   Phone,
   Calendar,
+  ShieldCheck,
+  Activity,
+  AlertCircle,
+  FileCheck,
+  Check
 } from 'lucide-react';
 import {
   Card,
@@ -33,6 +38,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { api } from '@/services/api';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 interface Profile {
   full_name: string;
@@ -64,15 +70,15 @@ export default function ProfilePage() {
   });
 
   const getHealthScoreColor = (score: number): string => {
-    if (score >= 80) return 'text-green-600 dark:text-green-400';
-    if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (score >= 80) return 'text-emerald-700';
+    if (score >= 60) return 'text-amber-700';
+    return 'text-rose-700';
   };
 
   const getHealthScoreBg = (score: number): string => {
-    if (score >= 80) return 'bg-green-100 dark:bg-green-900/30';
-    if (score >= 60) return 'bg-yellow-100 dark:bg-yellow-900/30';
-    return 'bg-red-100 dark:bg-red-900/30';
+    if (score >= 80) return 'bg-emerald-50 border-emerald-200';
+    if (score >= 60) return 'bg-amber-50 border-amber-200';
+    return 'bg-rose-50 border-rose-200';
   };
 
   useEffect(() => {
@@ -120,306 +126,241 @@ export default function ProfilePage() {
 
   if (fetchingProfile) {
     return (
-      <div className="container py-8 flex items-center justify-center min-h-[50vh]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-700 animate-bounce flex items-center justify-center text-white font-bold shadow-md">
+            <User className="w-6 h-6" />
+          </div>
+          <p className="text-xs font-bold text-slate-500 font-heading">Loading Medical Profile...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto"
-      >
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Profile Settings</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your personal and health information
-          </p>
-        </div>
-
-        {/* Health Score Card */}
-        <Card
-          className={cn(
-            'card-healthcare mb-6 border-2',
-            getHealthScoreBg(profile.health_score),
-          )}
-        >
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div
-                  className={cn(
-                    'flex h-16 w-16 items-center justify-center rounded-full',
-                    getHealthScoreBg(profile.health_score),
-                  )}
-                >
-                  <Zap
-                    className={cn(
-                      'h-8 w-8',
-                      getHealthScoreColor(profile.health_score),
-                    )}
-                  />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Overall Health Score
-                  </p>
-                  <p
-                    className={cn(
-                      'text-3xl font-bold',
-                      getHealthScoreColor(profile.health_score),
-                    )}
-                  >
-                    {profile.health_score}
-                  </p>
-                </div>
-              </div>
-              <Badge className="text-lg px-4 py-2">
-                {profile.health_score >= 80
-                  ? 'Excellent'
-                  : profile.health_score >= 60
-                    ? 'Good'
-                    : 'Needs Improvement'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Personal Information Section */}
-        <Card className="card-healthcare mb-6">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <User className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>
-                  Update your basic profile details
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Avatar Section */}
-            <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20 border-2 border-primary/20">
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                  {profile.full_name?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <Button variant="outline" className="gap-2">
-                  <Camera className="h-4 w-4" />
-                  Change Avatar
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  JPG, PNG or GIF (max 2MB)
-                </p>
-              </div>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            {/* Grid Layout for Form Fields */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-medium">
-                  Full Name *
-                </Label>
-                <Input
-                  id="fullName"
-                  value={profile.full_name}
-                  onChange={(e) =>
-                    setProfile({ ...profile, full_name: e.target.value })
-                  }
-                  placeholder="Enter your full name"
-                  className="border-primary/20"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="phone"
-                  className="text-sm font-medium flex items-center gap-2"
-                >
-                  <Phone className="h-4 w-4" />
-                  Phone Number
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={profile.phone}
-                  onChange={(e) =>
-                    setProfile({ ...profile, phone: e.target.value })
-                  }
-                  placeholder="+1 (555) 123-4567"
-                  className="border-primary/20"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="dob"
-                  className="text-sm font-medium flex items-center gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  Date of Birth
-                </Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={profile.date_of_birth}
-                  onChange={(e) =>
-                    setProfile({ ...profile, date_of_birth: e.target.value })
-                  }
-                  className="border-primary/20"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gender" className="text-sm font-medium">
-                  Gender
-                </Label>
-                <Select
-                  value={profile.gender || ''}
-                  onValueChange={(v) => setProfile({ ...profile, gender: v })}
-                >
-                  <SelectTrigger id="gender" className="border-primary/20">
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                    <SelectItem value="prefer-not-to-say">
-                      Prefer not to say
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="bloodType"
-                  className="text-sm font-medium flex items-center gap-2"
-                >
-                  <Heart className="h-4 w-4 text-destructive" />
-                  Blood Type
-                </Label>
-                <Select
-                  value={profile.blood_type || ''}
-                  onValueChange={(v) =>
-                    setProfile({ ...profile, blood_type: v })
-                  }
-                >
-                  <SelectTrigger id="bloodType" className="border-primary/20">
-                    <SelectValue placeholder="Select blood type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(
-                      (type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="address"
-                  className="text-sm font-medium flex items-center gap-2"
-                >
-                  <MapPin className="h-4 w-4" />
-                  Address
-                </Label>
-                <Input
-                  id="address"
-                  value={profile.address}
-                  onChange={(e) =>
-                    setProfile({ ...profile, address: e.target.value })
-                  }
-                  placeholder="123 Main St, City, State"
-                  className="border-primary/20 md:col-span-2"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Emergency Contact Section */}
-        <Card className="card-healthcare mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Emergency Contact</CardTitle>
-            <CardDescription>
-              Information for emergency situations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="emergencyName" className="text-sm font-medium">
-                  Contact Name
-                </Label>
-                <Input
-                  id="emergencyName"
-                  value={profile.emergency_contact_name}
-                  onChange={(e) =>
-                    setProfile({
-                      ...profile,
-                      emergency_contact_name: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., John Doe"
-                  className="border-primary/20"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="emergencyPhone"
-                  className="text-sm font-medium flex items-center gap-2"
-                >
-                  <Phone className="h-4 w-4" />
-                  Contact Number
-                </Label>
-                <Input
-                  id="emergencyPhone"
-                  type="tel"
-                  value={profile.emergency_contact_phone}
-                  onChange={(e) =>
-                    setProfile({
-                      ...profile,
-                      emergency_contact_phone: e.target.value,
-                    })
-                  }
-                  placeholder="+1 (555) 987-6543"
-                  className="border-primary/20"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-end">
-          <Button variant="outline">Cancel</Button>
+    <div className="space-y-6 pb-12">
+      
+      {/* Header */}
+      <PageHeader
+        title="Patient Health Record & Profile"
+        description="Manage your clinical demographics, emergency contacts, and vital medical history."
+        breadcrumbs={[{ label: "Profile" }]}
+        badge="HIPAA Compliant"
+        actions={
           <Button
             onClick={handleSave}
             disabled={loading}
-            className="btn-healthcare gap-2"
+            className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2"
           >
             <Save className="h-4 w-4" />
-            {loading ? 'Saving...' : 'Save Changes'}
+            <span>{loading ? 'Saving...' : 'Save Profile Changes'}</span>
           </Button>
-        </div>
-      </motion.div>
+        }
+      />
+
+      {/* Health Score Banner */}
+      <Card className={`rounded-3xl border ${getHealthScoreBg(profile.health_score)} shadow-sm`}>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-teal-700 shadow-sm shrink-0">
+                <Activity className="w-8 h-8 stroke-[2.2]" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Clinical Wellness Score</span>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-4xl font-extrabold font-heading ${getHealthScoreColor(profile.health_score)}`}>
+                    {profile.health_score}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-500">/ 100</span>
+                </div>
+              </div>
+            </div>
+
+            <Badge className="text-xs font-extrabold uppercase tracking-wider px-4 py-1.5 rounded-full bg-white text-slate-800 border border-slate-200 shadow-xs">
+              {profile.health_score >= 80
+                ? 'Optimal Health Rating'
+                : profile.health_score >= 60
+                  ? 'Good Clinical Baseline'
+                  : 'Follow-Up Recommended'}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Personal Info Card */}
+      <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-100">
+              <User className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-extrabold text-slate-900 font-heading">Demographics & Personal Details</CardTitle>
+              <CardDescription className="text-xs text-slate-500 font-normal">Primary identification and communication preferences</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6 space-y-6">
+          
+          {/* Avatar Section */}
+          <div className="flex items-center gap-5">
+            <Avatar className="h-20 w-20 rounded-2xl border-2 border-teal-600/30 shadow-md">
+              <AvatarFallback className="bg-teal-700 text-white font-extrabold text-2xl font-heading rounded-2xl">
+                {profile.full_name?.charAt(0)?.toUpperCase() || 'P'}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <Button variant="outline" className="text-xs font-bold text-slate-700 border-slate-200 rounded-xl h-9 gap-2">
+                <Camera className="h-3.5 w-3.5 text-teal-700" />
+                <span>Upload New Avatar</span>
+              </Button>
+              <p className="text-[11px] text-slate-400 mt-1 font-normal">JPG, PNG or WEBP (Max size 2MB)</p>
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          {/* Form Fields Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Legal Name *</Label>
+              <Input
+                value={profile.full_name}
+                onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                placeholder="e.g. Dr. Eleanor Vance"
+                className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-teal-700" />
+                Phone Number
+              </Label>
+              <Input
+                type="tel"
+                value={profile.phone}
+                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                placeholder="+1 (555) 019-2834"
+                className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-teal-700" />
+                Date of Birth
+              </Label>
+              <Input
+                type="date"
+                value={profile.date_of_birth}
+                onChange={(e) => setProfile({ ...profile, date_of_birth: e.target.value })}
+                className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Gender</Label>
+              <Select
+                value={profile.gender || ''}
+                onValueChange={(v) => setProfile({ ...profile, gender: v })}
+              >
+                <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                  <SelectValue placeholder="Select Gender" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Heart className="h-3.5 w-3.5 text-rose-600" />
+                Blood Group
+              </Label>
+              <Select
+                value={profile.blood_type || ''}
+                onValueChange={(v) => setProfile({ ...profile, blood_type: v })}
+              >
+                <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                  <SelectValue placeholder="Select Blood Group" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-teal-700" />
+                Residential Address
+              </Label>
+              <Input
+                value={profile.address}
+                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                placeholder="742 Evergreen Terrace, Springfield, OR"
+                className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
+              />
+            </div>
+
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Emergency Contact Card */}
+      <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold border border-rose-100">
+              <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-extrabold text-slate-900 font-heading">Emergency Next-of-Kin Contact</CardTitle>
+              <CardDescription className="text-xs text-slate-500 font-normal">Designated guardian notified during 24/7 SOS dispatch alerts</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Contact Person Name</Label>
+              <Input
+                value={profile.emergency_contact_name}
+                onChange={(e) => setProfile({ ...profile, emergency_contact_name: e.target.value })}
+                placeholder="e.g. Robert Vance (Spouse)"
+                className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-rose-600" />
+                Contact Direct Phone
+              </Label>
+              <Input
+                type="tel"
+                value={profile.emergency_contact_phone}
+                onChange={(e) => setProfile({ ...profile, emergency_contact_phone: e.target.value })}
+                placeholder="+1 (555) 982-1100"
+                className="h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
+

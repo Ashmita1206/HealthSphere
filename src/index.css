@@ -8,40 +8,40 @@
   :root {
     /* Healthcare-inspired color palette - Clean, trustworthy, professional */
     --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --foreground: 222 47% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 47% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 222 47% 18%;
 
-    /* Primary - Medical Teal/Blue */
-    --primary: 187 80% 42%;
+    /* Primary - Medical Teal #0F766E */
+    --primary: 175 77% 26%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft Blue-Gray */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary - #14B8A6 */
+    --secondary: 173 80% 40%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Muted */
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent - Healthcare Green */
-    --accent: 158 64% 52%;
+    /* Accent - Healthcare Blue #3B82F6 */
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
-    /* Destructive - Alert Red */
+    /* Destructive - Alert Red #EF4444 */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Warning - Amber */
+    /* Warning - Amber #F59E0B */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    /* Success - Healthcare Green */
-    --success: 142 76% 36%;
+    /* Success - Healthcare Emerald #10B981 */
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
 
     /* Info - Sky Blue */
@@ -50,57 +50,57 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 187 80% 42%;
+    --ring: 175 77% 26%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 187 80% 42%;
+    --sidebar-foreground: 222 47% 18%;
+    --sidebar-primary: 175 77% 26%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-accent: 173 80% 96%;
+    --sidebar-accent-foreground: 175 77% 26%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 187 80% 42%;
+    --sidebar-ring: 175 77% 26%;
 
     /* Custom Healthcare Gradients */
 
     --gradient-primary: linear-gradient(
-      -45deg,
-      black 0%,
-      rgb(0, 255, 170) 100%
+      135deg,
+      #0F766E 0%,
+      #14B8A6 100%
     );
 
     --gradient-accent: linear-gradient(
       135deg,
-      hsl(158 64% 52%) 0%,
-      hsl(142 76% 36%) 100%
+      #14B8A6 0%,
+      #3B82F6 100%
     );
     --gradient-hero: linear-gradient(
       135deg,
-      hsl(187 80% 42%) 0%,
-      hsl(210 60% 50%) 50%,
-      hsl(158 64% 52%) 100%
+      #0F766E 0%,
+      #14B8A6 50%,
+      #3B82F6 100%
     );
     --gradient-card: linear-gradient(
       180deg,
-      hsl(0 0% 100%) 0%,
-      hsl(210 40% 98%) 100%
+      #FFFFFF 0%,
+      #F8FAFC 100%
     );
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
+    --shadow-sm: 0 1px 2px 0 rgba(15, 118, 110, 0.05);
     --shadow-md:
-      0 4px 6px -1px hsl(222 47% 11% / 0.1),
-      0 2px 4px -2px hsl(222 47% 11% / 0.1);
+      0 4px 6px -1px rgba(15, 118, 110, 0.08),
+      0 2px 4px -2px rgba(15, 118, 110, 0.05);
     --shadow-lg:
-      0 10px 15px -3px hsl(222 47% 11% / 0.1),
-      0 4px 6px -4px hsl(222 47% 11% / 0.1);
+      0 10px 15px -3px rgba(15, 118, 110, 0.08),
+      0 4px 6px -4px rgba(15, 118, 110, 0.05);
     --shadow-xl:
-      0 20px 25px -5px hsl(222 47% 11% / 0.1),
-      0 8px 10px -6px hsl(222 47% 11% / 0.1);
-    --shadow-glow: 0 0 20px hsl(187 80% 42% / 0.3);
+      0 20px 25px -5px rgba(15, 118, 110, 0.1),
+      0 8px 10px -6px rgba(15, 118, 110, 0.05);
+    --shadow-glow: 0 0 25px rgba(20, 184, 166, 0.35);
   }
 
   .dark {

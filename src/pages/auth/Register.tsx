@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Heart, Mail, Lock, User, ArrowRight, AlertCircle, Check } from "lucide-react";
+import { 
+  Eye, EyeOff, Activity, Mail, Lock, User, ArrowRight, AlertCircle, Check, ShieldCheck, Sparkles, CheckCircle2 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,52 +104,106 @@ export default function RegisterPage() {
 
   const passwordStrength = getPasswordStrength();
   const getStrengthColor = () => {
-    if (passwordStrength <= 2) return "bg-destructive";
-    if (passwordStrength <= 3) return "bg-yellow-500";
-    return "bg-success";
+    if (passwordStrength <= 2) return "bg-rose-500";
+    if (passwordStrength <= 3) return "bg-amber-500";
+    return "bg-emerald-500";
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Gradient */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-hero items-center justify-center p-12">
+    <div className="min-h-screen flex bg-slate-50">
+      
+      {/* Left Column: Enterprise Branding & Trust */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
+        
+        {/* Soft Background Accents */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Logo Header */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center text-slate-900 font-bold shadow-md">
+            <Activity className="h-6 w-6 stroke-[2.5]" />
+          </div>
+          <span className="text-2xl font-extrabold font-heading tracking-tight">
+            HealthSphere <span className="text-teal-400">AI</span>
+          </span>
+        </div>
+
+        {/* Middle Copy */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-center text-primary-foreground max-w-md"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 space-y-6 max-w-lg"
         >
-          <h2 className="text-4xl font-bold mb-4">Start Your Health Journey</h2>
-          <p className="text-lg opacity-90">
-            Join thousands of users managing their health with AI-powered insights, medication tracking, and emergency support.
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-800/80 border border-teal-700/80 text-xs font-bold text-teal-200">
+            <Sparkles className="w-4 h-4 text-teal-400" />
+            <span>Join 50,000+ Active Patients</span>
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight leading-tight">
+            Start Your Intelligent Health Journey Today
+          </h2>
+
+          <p className="text-slate-300 text-sm leading-relaxed">
+            Create your account to unlock AI symptom triage, digital report OCR parsing, medication reminders, and 24/7 emergency dispatch.
           </p>
+
+          <div className="space-y-3 pt-2">
+            {[
+              "End-to-End Encrypted Health Records",
+              "Personalized Medication Schedule Alerts",
+              "Instant GPS Trauma Center SOS Network"
+            ].map((bullet, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-xs text-teal-100 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>{bullet}</span>
+              </div>
+            ))}
+          </div>
         </motion.div>
+
+        {/* Footer Security Badge */}
+        <div className="relative z-10 flex items-center gap-3 pt-6 border-t border-teal-800/80 text-xs text-slate-400">
+          <ShieldCheck className="w-5 h-5 text-teal-400" />
+          <span>Strict HIPAA & SOC-2 Compliant Platform</span>
+        </div>
+
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      {/* Right Column: Register Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md space-y-8"
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-md bg-white border border-slate-200/80 shadow-xl rounded-3xl p-8 sm:p-10 space-y-7"
         >
-          <div className="text-center">
-            <Link to="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary">
-                <Heart className="h-7 w-7 text-primary-foreground" />
+          <div className="text-center space-y-2">
+            <Link to="/" className="inline-flex lg:hidden items-center gap-2 mb-2">
+              <div className="w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center text-white font-bold">
+                <Activity className="h-5 w-5 stroke-[2.5]" />
               </div>
+              <span className="text-xl font-extrabold text-slate-900 font-heading">HealthSphere AI</span>
             </Link>
-            <h1 className="text-3xl font-bold">Create Account</h1>
-            <p className="mt-2 text-muted-foreground">
-              Sign up to start managing your health
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading tracking-tight">
+              Create Account
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-normal">
+              Join HealthSphere AI for smarter, personalized care
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Full Name */}
+            <div className="space-y-1">
+              <Label htmlFor="fullName" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Full Name
+              </Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="fullName"
                   type="text"
@@ -157,47 +213,57 @@ export default function RegisterPage() {
                     setFullName(e.target.value);
                     if (errors.fullName) setErrors({ ...errors, fullName: undefined });
                   }}
-                  className={`pl-10 h-12 ${errors.fullName ? "border-destructive" : ""}`}
+                  className={`pl-10 h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700 ${
+                    errors.fullName ? "border-rose-500 focus:ring-rose-500/20" : ""
+                  }`}
                   required
                 />
               </div>
               {errors.fullName && (
-                <div className="flex items-center gap-2 text-sm text-destructive mt-1">
-                  <AlertCircle className="h-4 w-4" />
+                <p className="flex items-center gap-1 text-[11px] text-rose-600 font-semibold mt-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
                   {errors.fullName}
-                </div>
+                </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+            {/* Email Address */}
+            <div className="space-y-1">
+              <Label htmlFor="email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Email Address
+              </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="patient@example.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (errors.email) setErrors({ ...errors, email: undefined });
                   }}
-                  className={`pl-10 h-12 ${errors.email ? "border-destructive" : ""}`}
+                  className={`pl-10 h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700 ${
+                    errors.email ? "border-rose-500 focus:ring-rose-500/20" : ""
+                  }`}
                   required
                 />
               </div>
               {errors.email && (
-                <div className="flex items-center gap-2 text-sm text-destructive mt-1">
-                  <AlertCircle className="h-4 w-4" />
+                <p className="flex items-center gap-1 text-[11px] text-rose-600 font-semibold mt-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
                   {errors.email}
-                </div>
+                </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            {/* Password */}
+            <div className="space-y-1">
+              <Label htmlFor="password" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Password
+              </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -207,50 +273,57 @@ export default function RegisterPage() {
                     setPassword(e.target.value);
                     if (errors.password) setErrors({ ...errors, password: undefined });
                   }}
-                  className={`pl-10 pr-10 h-12 ${errors.password ? "border-destructive" : ""}`}
+                  className={`pl-10 pr-10 h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700 ${
+                    errors.password ? "border-rose-500 focus:ring-rose-500/20" : ""
+                  }`}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+
               {password && (
-                <div className="mt-2 space-y-1">
-                  <div className="flex h-2 gap-1">
+                <div className="mt-1.5 space-y-1">
+                  <div className="flex h-1.5 gap-1">
                     {[...Array(5)].map((_, i) => (
                       <div
                         key={i}
-                        className={`h-2 flex-1 rounded-full ${
-                          i < passwordStrength ? getStrengthColor() : "bg-muted"
+                        className={`h-1.5 flex-1 rounded-full ${
+                          i < passwordStrength ? getStrengthColor() : "bg-slate-100"
                         }`}
                       />
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[10px] font-semibold text-slate-500">
+                    Strength:{" "}
                     {passwordStrength <= 2
-                      ? "Weak password"
+                      ? "Weak"
                       : passwordStrength <= 3
-                      ? "Fair password"
-                      : "Strong password"}
+                      ? "Fair"
+                      : "Strong"}
                   </p>
                 </div>
               )}
               {errors.password && (
-                <div className="flex items-center gap-2 text-sm text-destructive mt-1">
-                  <AlertCircle className="h-4 w-4" />
+                <p className="flex items-center gap-1 text-[11px] text-rose-600 font-semibold mt-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
                   {errors.password}
-                </div>
+                </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            {/* Confirm Password */}
+            <div className="space-y-1">
+              <Label htmlFor="confirmPassword" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Confirm Password
+              </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="confirmPassword"
                   type={showPassword ? "text" : "password"}
@@ -260,48 +333,56 @@ export default function RegisterPage() {
                     setConfirmPassword(e.target.value);
                     if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
                   }}
-                  className={`pl-10 h-12 ${errors.confirmPassword ? "border-destructive" : ""}`}
+                  className={`pl-10 h-10 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20 focus:border-teal-700 ${
+                    errors.confirmPassword ? "border-rose-500 focus:ring-rose-500/20" : ""
+                  }`}
                   required
                 />
               </div>
               {confirmPassword && password === confirmPassword && (
-                <div className="flex items-center gap-2 text-sm text-success mt-1">
-                  <Check className="h-4 w-4" />
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 font-semibold mt-1">
+                  <Check className="h-3.5 w-3.5" />
                   Passwords match
-                </div>
+                </p>
               )}
               {errors.confirmPassword && (
-                <div className="flex items-center gap-2 text-sm text-destructive mt-1">
-                  <AlertCircle className="h-4 w-4" />
+                <p className="flex items-center gap-1 text-[11px] text-rose-600 font-semibold mt-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
                   {errors.confirmPassword}
-                </div>
+                </p>
               )}
             </div>
 
+            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full h-12 btn-healthcare"
               disabled={isLoading}
+              className="w-full h-11 bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm rounded-xl shadow-md transition-all mt-2"
             >
               {isLoading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : (
-                <>
-                  Create Account
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </>
+                <span className="flex items-center justify-center gap-2">
+                  <span>Create Free Account</span>
+                  <ArrowRight className="w-4 h-4" />
+                </span>
               )}
             </Button>
           </form>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link to="/auth/login" className="font-medium text-primary hover:underline">
-              Sign in
-            </Link>
-          </p>
+          {/* Login Link */}
+          <div className="text-center pt-2 border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              Already have an account?{" "}
+              <Link to="/auth/login" className="font-bold text-teal-700 hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </div>
         </motion.div>
       </div>
+
     </div>
   );
 }
+

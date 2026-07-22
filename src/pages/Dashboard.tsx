@@ -11,6 +11,14 @@ import {
   FileText,
   Plus,
   AlertCircle,
+  Sparkles,
+  Bot,
+  ArrowRight,
+  ShieldAlert,
+  CheckCircle2,
+  ChevronRight,
+  User,
+  Zap
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +32,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -34,6 +40,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/services/api";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const adherenceData = [
   { day: "Mon", adherence: 100 },
@@ -46,16 +53,16 @@ const adherenceData = [
 ];
 
 const wellnessData = [
-  { metric: "Sleep", value: 7.5, max: 8 },
-  { metric: "Exercise", value: 45, max: 60 },
-  { metric: "Water", value: 2.5, max: 3 },
-  { metric: "Steps", value: 8500, max: 10000 },
+  { metric: "Sleep Hours", value: 7.5, max: 8, unit: "hrs" },
+  { metric: "Physical Activity", value: 45, max: 60, unit: "mins" },
+  { metric: "Hydration Target", value: 2.5, max: 3, unit: "L" },
+  { metric: "Daily Steps", value: 8500, max: 10000, unit: "steps" },
 ];
 
 const riskData = [
-  { name: "Low Risk", value: 60, color: "hsl(142, 76%, 36%)" },
-  { name: "Medium Risk", value: 25, color: "hsl(38, 92%, 50%)" },
-  { name: "High Risk", value: 15, color: "hsl(0, 84%, 60%)" },
+  { name: "Low Risk", value: 60, color: "#10B981" },
+  { name: "Medium Risk", value: 25, color: "#F59E0B" },
+  { name: "High Risk", value: 15, color: "#EF4444" },
 ];
 
 export default function DashboardPage() {
@@ -90,177 +97,252 @@ export default function DashboardPage() {
 
   const statCards = [
     {
-      title: "Health Score",
+      title: "Patient Health Index",
       value: `${healthScore}%`,
-      description: "Overall wellness",
+      description: "Overall Clinical Wellness",
       icon: Heart,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      color: "teal",
+      bg: "bg-teal-50 text-teal-700 border-teal-200/80",
     },
     {
-      title: "Medicine Adherence",
+      title: "Medication Compliance",
       value: "92%",
-      description: "This week",
+      description: "Weekly adherence rate",
       icon: Pill,
-      color: "text-success",
-      bgColor: "bg-success/10",
+      color: "emerald",
+      bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
     },
     {
-      title: "Upcoming Appointments",
+      title: "Upcoming Consultations",
       value: appointments.length.toString(),
-      description: "Scheduled",
+      description: "Scheduled appointments",
       icon: Calendar,
-      color: "text-info",
-      bgColor: "bg-info/10",
+      color: "blue",
+      bg: "bg-blue-50 text-blue-700 border-blue-200/80",
     },
     {
-      title: "Active Alerts",
+      title: "Active Clinical Alerts",
       value: "2",
-      description: "Require attention",
+      description: "Requires attention",
       icon: AlertTriangle,
-      color: "text-warning",
-      bgColor: "bg-warning/10",
+      color: "amber",
+      bg: "bg-amber-50 text-amber-700 border-amber-200/80",
     },
   ];
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-700 animate-bounce flex items-center justify-center text-white font-bold shadow-md">
+            <Activity className="w-6 h-6" />
+          </div>
+          <p className="text-xs font-bold text-slate-500 font-heading">Loading Clinical Dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
+    <div className="space-y-8 pb-10">
+      
+      {/* Page Header */}
+      <PageHeader
+        title={`Welcome back, ${profile?.full_name || user?.email?.split('@')[0] || "Patient"}`}
+        description="Here is your real-time clinical health overview, medication timeline, and AI insights."
+        badge="Live Vitals"
+        actions={
+          <Button
+            onClick={() => navigate("/emergency")}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm flex items-center gap-2 border border-rose-500"
+          >
+            <ShieldAlert className="w-4 h-4 animate-pulse" />
+            <span>Emergency SOS</span>
+          </Button>
+        }
+      />
+
+      {/* Hero Patient Greeting & Health Score Card */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6"
       >
-        <h1 className="text-3xl font-bold">
-          Welcome back, {profile?.full_name || "User"}!
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Here's an overview of your health status
-        </p>
+        <div className="space-y-3 max-w-xl text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-teal-200 text-xs font-bold border border-white/15">
+            <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+            <span>HealthSphere AI Active Assistant</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-tight leading-tight">
+            Your Vitals Are Stable Today
+          </h2>
+
+          <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed font-normal">
+            No critical lab anomalies detected. You have <strong>{medicines.length} pending medication doses</strong> and <strong>{appointments.length} upcoming doctor consultation</strong> scheduled.
+          </p>
+
+          <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
+            <Button
+              onClick={() => {
+                const chatWidgetBtn = document.getElementById("ai-chat-trigger");
+                if (chatWidgetBtn) chatWidgetBtn.click();
+                else navigate("/dashboard");
+              }}
+              className="bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2"
+            >
+              <Bot className="w-4 h-4" />
+              <span>Consult AI Assistant</span>
+            </Button>
+            <Button
+              onClick={() => navigate("/reports")}
+              variant="outline"
+              className="border-white/30 text-white hover:bg-white/10 font-semibold text-xs px-4 py-2.5 rounded-xl"
+            >
+              <span>Upload Medical Report</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Circular Radial Gauge Score Preview */}
+        <div className="shrink-0 flex flex-col items-center justify-center p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 w-44 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-teal-200">Patient Health Score</p>
+          <div className="relative my-2 w-20 h-20 rounded-full border-4 border-teal-400/40 flex items-center justify-center bg-teal-950/60 shadow-inner">
+            <span className="text-3xl font-extrabold font-heading text-white">{healthScore}</span>
+            <span className="text-xs font-bold text-teal-300">/100</span>
+          </div>
+          <span className="text-[10px] font-semibold text-emerald-300 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Excellent Status
+          </span>
+        </div>
       </motion.div>
 
-      {/* Stat Cards */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat, index) => (
+      {/* Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {statCards.map((stat, idx) => (
           <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
+            key={idx}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: idx * 0.08 }}
+            className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex items-start justify-between"
           >
-            <Card className="card-healthcare">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="mt-1 text-3xl font-bold">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">{stat.description}</p>
-                  </div>
-                  <div className={`rounded-xl p-3 ${stat.bgColor}`}>
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.title}</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading mt-1.5 tracking-tight">
+                {stat.value}
+              </h3>
+              <p className="text-xs text-slate-500 font-normal mt-1">{stat.description}</p>
+            </div>
+            <div className={`p-3 rounded-xl ${stat.bg} border shadow-sm`}>
+              <stat.icon className="w-5 h-5 stroke-[2.2]" />
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mb-8"
-      >
-        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-          <Button
-            variant="outline"
-            className="h-auto flex flex-col items-center gap-2 p-4"
-            onClick={() => navigate("/medicines")}
-          >
-            <Plus className="h-5 w-5" />
-            <span className="text-xs">Add Medicine</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex flex-col items-center gap-2 p-4"
-            onClick={() => navigate("/appointments")}
-          >
-            <Calendar className="h-5 w-5" />
-            <span className="text-xs">Book Appointment</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex flex-col items-center gap-2 p-4"
-            onClick={() => navigate("/reports")}
-          >
-            <FileText className="h-5 w-5" />
-            <span className="text-xs">Upload Report</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex flex-col items-center gap-2 p-4"
-            onClick={() => navigate("/reminders")}
-          >
-            <Clock className="h-5 w-5" />
-            <span className="text-xs">Set Reminder</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex flex-col items-center gap-2 p-4 border-destructive text-destructive hover:bg-destructive/10"
+      {/* Quick Actions Panel */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-heading">
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          
+          <button
             onClick={() => navigate("/emergency")}
+            className="p-4 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 transition-all flex flex-col items-center text-center gap-2 group shadow-sm"
           >
-            <AlertCircle className="h-5 w-5" />
-            <span className="text-xs">Emergency</span>
-          </Button>
-        </div>
-      </motion.div>
+            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold">Emergency SOS</span>
+          </button>
 
-      {/* Charts Row */}
-      <div className="mb-8 grid gap-6 lg:grid-cols-2">
-        {/* Adherence Chart */}
+          <button
+            onClick={() => navigate("/reports")}
+            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-800 transition-all flex flex-col items-center text-center gap-2 group shadow-sm"
+          >
+            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <FileText className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold">Upload Report</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/medicines")}
+            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-800 transition-all flex flex-col items-center text-center gap-2 group shadow-sm"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Plus className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold">Add Medicine</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/appointments")}
+            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-800 transition-all flex flex-col items-center text-center gap-2 group shadow-sm"
+          >
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold">Book Visit</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/reminders")}
+            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-800 transition-all flex flex-col items-center text-center gap-2 group shadow-sm col-span-2 sm:col-span-1"
+          >
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Clock className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold">Set Reminder</span>
+          </button>
+
+        </div>
+      </div>
+
+      {/* Analytics Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Weekly Medicine Adherence */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.2 }}
         >
-          <Card className="chart-container">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Weekly Medicine Adherence
+          <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-teal-700" />
+                Weekly Medication Compliance
               </CardTitle>
-              <CardDescription>Your medication compliance this week</CardDescription>
+              <CardDescription className="text-xs text-slate-500 font-normal">
+                Daily dosage compliance percentage for this week
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-64">
+            <CardContent className="pt-6">
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={adherenceData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="day" className="text-xs" />
-                    <YAxis domain={[0, 100]} className="text-xs" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="day" stroke="#64748B" fontSize={11} tickLine={false} />
+                    <YAxis domain={[0, 100]} stroke="#64748B" fontSize={11} tickLine={false} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
+                        backgroundColor: "#FFFFFF",
+                        borderColor: "#E2E8F0",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                        fontSize: "12px",
                       }}
                     />
                     <Line
                       type="monotone"
                       dataKey="adherence"
-                      stroke="hsl(var(--primary))"
+                      stroke="#0F766E"
                       strokeWidth={3}
-                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2 }}
+                      dot={{ fill: "#0F766E", r: 4 }}
+                      activeDot={{ r: 6, fill: "#14B8A6" }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -269,31 +351,33 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* Risk Distribution */}
+        {/* Clinical Health Risk Distribution */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.25 }}
         >
-          <Card className="chart-container">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                Health Risk Distribution
+          <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+                <Activity className="w-5 h-5 text-teal-700" />
+                Biomarker Risk Stratification
               </CardTitle>
-              <CardDescription>Based on your health data analysis</CardDescription>
+              <CardDescription className="text-xs text-slate-500 font-normal">
+                Aggregated AI risk assessment based on uploaded vitals
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center">
+            <CardContent className="pt-6">
+              <div className="h-56 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={riskData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
+                      innerRadius={65}
                       outerRadius={90}
-                      paddingAngle={5}
+                      paddingAngle={4}
                       dataKey="value"
                     >
                       {riskData.map((entry, index) => (
@@ -302,147 +386,139 @@ export default function DashboardPage() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
+                        backgroundColor: "#FFFFFF",
+                        borderColor: "#E2E8F0",
+                        borderRadius: "12px",
+                        fontSize: "12px"
                       }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-center gap-4 mt-4">
+              <div className="flex justify-center gap-6 mt-2 pt-2 border-t border-slate-100 text-xs font-bold">
                 {riskData.map((item) => (
                   <div key={item.name} className="flex items-center gap-2">
                     <div
-                      className="h-3 w-3 rounded-full"
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-xs text-muted-foreground">{item.name}</span>
+                    <span className="text-slate-700">{item.name} ({item.value}%)</span>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
         </motion.div>
+
       </div>
 
-      {/* Bottom Row */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Bottom Grid: Medicines, Appointments & Today's Wellness */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
         {/* Active Medicines */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Pill className="h-5 w-5 text-primary" />
-                  Active Medicines
-                </CardTitle>
-                <CardDescription>Your current medications</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/medicines">View All</Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {medicines.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No active medicines</p>
-              ) : (
-                <div className="space-y-3">
-                  {medicines.map((medicine) => (
-                    <div key={medicine.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-                      <div>
-                        <p className="font-medium">{medicine.name}</p>
-                        <p className="text-xs text-muted-foreground">{medicine.dosage} - {medicine.frequency}</p>
-                      </div>
-                      <Badge variant="secondary">{medicine.adherence_rate}%</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Upcoming Appointments */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Upcoming Appointments
-                </CardTitle>
-                <CardDescription>Your scheduled visits</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/appointments">View All</Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {appointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No upcoming appointments</p>
-              ) : (
-                <div className="space-y-3">
-                  {appointments.map((apt) => (
-                    <div key={apt.id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Clock className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{apt.doctor_name}</p>
-                        <p className="text-xs text-muted-foreground">{apt.specialty}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(apt.appointment_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Wellness Metrics */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-        >
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                Today's Wellness
+        <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white">
+          <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+                <Pill className="w-4 h-4 text-teal-700" />
+                Active Medicines
               </CardTitle>
-              <CardDescription>Your daily health metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {wellnessData.map((metric) => (
-                  <div key={metric.metric}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>{metric.metric}</span>
-                      <span className="text-muted-foreground">
-                        {metric.value} / {metric.max}
-                      </span>
+              <CardDescription className="text-xs text-slate-500 font-normal">Daily dosage schedule</CardDescription>
+            </div>
+            <Link to="/medicines" className="text-xs font-bold text-teal-700 hover:underline flex items-center gap-0.5">
+              <span>View All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {medicines.length === 0 ? (
+              <p className="text-xs text-slate-500 italic p-4 text-center">No active medicines logged</p>
+            ) : (
+              <div className="space-y-2.5">
+                {medicines.map((medicine) => (
+                  <div key={medicine.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                    <div>
+                      <p className="font-bold text-slate-900">{medicine.name}</p>
+                      <p className="text-[11px] text-slate-500 font-normal mt-0.5">{medicine.dosage} • {medicine.frequency}</p>
                     </div>
-                    <Progress value={(metric.value / metric.max) * 100} className="h-2" />
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                      {medicine.adherence_rate}% rate
+                    </span>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Scheduled Appointments */}
+        <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white">
+          <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-teal-700" />
+                Scheduled Consultations
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500 font-normal">Upcoming doctor visits</CardDescription>
+            </div>
+            <Link to="/appointments" className="text-xs font-bold text-teal-700 hover:underline flex items-center gap-0.5">
+              <span>View All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {appointments.length === 0 ? (
+              <p className="text-xs text-slate-500 italic p-4 text-center">No upcoming appointments scheduled</p>
+            ) : (
+              <div className="space-y-2.5">
+                {appointments.map((apt) => (
+                  <div key={apt.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900">{apt.doctor_name}</p>
+                        <p className="text-[11px] text-slate-500 font-normal">{apt.specialty}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-200 text-slate-700">
+                      {new Date(apt.appointment_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Daily Wellness Tracker */}
+        <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white">
+          <CardHeader className="border-b border-slate-100 pb-3">
+            <CardTitle className="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+              <Zap className="w-4 h-4 text-teal-700" />
+              Daily Vitals & Wellness
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500 font-normal">Real-time daily goal progress</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            {wellnessData.map((m, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800">{m.metric}</span>
+                  <span className="font-semibold text-slate-500">
+                    {m.value} / {m.max} {m.unit}
+                  </span>
+                </div>
+                <Progress value={(m.value / m.max) * 100} className="h-2 bg-slate-100" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
       </div>
+
     </div>
   );
 }
+
