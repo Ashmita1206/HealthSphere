@@ -1,239 +1,219 @@
-# 🏥 HealthSphere
+# 🏥 HealthSphere — Next-Generation Personal Health & Emergency Platform
 
-HealthSphere is a production-ready frontend application for personal health management. This repository contains a Vite + React + TypeScript single-page application backed by a custom Node.js + Express + MongoDB API. The app uses JWT authentication, Cloudinary uploads for reports, and a backend AI chat endpoint.
+[![React](https://img.shields.io/badge/React-18.3.1-blue.svg?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8.0.10-646CFF.svg?logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.17-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This README documents implemented functionality directly reflected in the source code.
-
----
-
-## 🚀 Key Features (implemented)
-
-- Authentication: email/password sign-up, sign-in, session handling via `AuthContext` and JWT.
-- Profile management: view & update user profile persisted in MongoDB.
-- Medicines: CRUD for medicines stored in the backend.
-- Reminders: create/enable/disable/delete reminders through `/api/reminders`.
-- Appointments: create/delete appointments stored in MongoDB.
-- Reports vault: upload/download/delete medical reports using Cloudinary via `/api/reports/upload`.
-- AI Chat assistant: client chat UI (`src/components/chat/ChatBot.tsx`) with backend `/api/health/chat`.
-- Chat response compatibility: backend returns `{ choices: [{ message: { content } }], response, recommendations, riskLevel, requiresDoctor }`.
-- Dashboard: overview page that fetches backend data and renders charts with `recharts`.
-- Media & Speech: browser-based SpeechRecognition (speech-to-text), SpeechSynthesis (TTS), and media permission handling via `useMediaPermissions`.
-- Geolocation: `useGeolocation` hook and backend emergency hospital lookup via `/api/emergency/nearby`.
-- UI & Accessibility: Tailwind CSS, Radix primitives/shadcn-style components, theme provider (light/dark), responsive layout and sidebar.
+**HealthSphere** is a production-grade, AI-powered longitudinal healthcare platform designed to seamlessly integrate personal health management, interactive clinical timeline analytics, automated prescription tracking, instant Emergency SOS dispatch routing, digital medical ID cards, and real-time AI medical consultations.
 
 ---
 
-## 🧱 Tech Stack
+## 🌟 Overview
 
-- Frontend: Vite, React 18, TypeScript
-- Styling & UI: Tailwind CSS, Radix UI primitives (shadcn-style components), `lucide-react`, `framer-motion`
-- Data & State: `@tanstack/react-query`, `react-router-dom`, `react-hook-form`, `zod`
-- Backend: Node.js, Express, MongoDB Atlas, Mongoose, JWT auth, Cloudinary uploads
-- AI gateway: OpenAI via backend `/api/health/chat`
-- Charts: `recharts`
-- Tooling & Tests: Vitest, ESLint, TypeScript
+HealthSphere bridges the gap between disparate health records and actionable patient insights. Built with a modern responsive frontend using **React 18**, **TypeScript**, and **Tailwind CSS**, HealthSphere delivers an intuitive, accessible, and fast patient portal.
 
----
-
-## 📁 Repository Layout (top-level)
-
-- `src/` — application source code
-  - `pages/` — route pages (Landing, Dashboard, Reminders, Medicines, Reports, Appointments, Profile, Settings, Emergency, etc.)
-  - `components/` — reusable UI components and the chat widget (`src/components/chat/ChatBot.tsx`)
-  - `contexts/` — `AuthContext`, `ThemeContext`
-  - `hooks/` — `useGeolocation`, `useSpeechRecognition`, `useMediaPermissions`, `use-toast`, etc.
-  - `services/` — backend-aware helper services like `locationsService`
-- `public/` — static assets
-- `server/` — custom Node.js + Express backend routes and controllers
-- `package.json` — scripts and dependencies
-
-See `src/App.tsx` for routing and protected-route setup.
+### Key Highlights
+- 🧠 **AI Health Consultations**: Interactive AI assistant powered by Google Gemini with speech-to-text input, medical document attachments, and clinical summaries.
+- ⚡ **One-Touch Emergency SOS**: Instant geolocation tracking, automated SOS trigger, nearby hospital locator with Leaflet maps, and 24/7 emergency contact dispatch.
+- 📅 **Longitudinal Health Timeline**: Unified chronological view aggregating prescriptions, lab reports, appointments, vital logs, and blood donations into a filterable timeline.
+- 💊 **Smart Prescription Tracking**: Dosage schedules, adherence stats, timing badges, calendar views, and CSV/PDF export options.
+- 🪪 **Digital Medical ID & Vault**: Instant Medical ID card generator, BMI calculator, emergency details, and encrypted medical document storage.
 
 ---
 
-## ⚙️ Prerequisites
+## ✨ Features
 
-- Node.js 18+ (recommended)
-- npm (or yarn)
-- MongoDB Atlas, Cloudinary, and OpenAI credentials configured in `.env`
+### 1. Interactive Patient Dashboard
+- Comprehensive health overview with real-time vitals summary cards.
+- Embedded clinical timeline preview, care network map, and adherence progress widgets.
+- One-click navigation to all core health tools.
 
-## 📥 Quick Start — Run Locally
+### 2. Longitudinal Health Timeline (`/timeline`)
+- Adapter pattern (`timelineAdapters.ts`) aggregating all patient records.
+- Filter by date range (Today, This Week, Last Month, Custom), record type, and priority level.
+- Interactive event drawer with full diagnostic notes and attachments.
 
-1. Clone the repository
+### 3. Emergency SOS System (`/emergency`)
+- One-tap SOS trigger with animated countdown and browser `useGeolocation` tracking.
+- Interactive Leaflet map displaying nearby hospitals and ambulance services.
+- Digital Medical ID display and instant emergency contact caller.
 
-```bash
-cd healthsphere-ai
+### 4. Smart Medication Tracker (`/medicines`)
+- Add and manage prescription schedules with timing badges (Before Meal, After Meal, Bedtime).
+- Dose adherence progress tracker, calendar view, and refill reminders.
+- Data export in CSV format for physician reviews.
+
+### 5. AI Assistant & Health Advisor (`/ai-assistant`)
+- Generative AI consultation leveraging `@google/generative-ai`.
+- Speech-to-text input via `useSpeechRecognition` hook.
+- Pre-configured prompt templates for quick health questions.
+
+### 6. Profile & Medical Document Vault (`/profile`)
+- Complete patient demographics, blood group, allergies, and chronic conditions.
+- Automatic profile completion percentage calculator.
+- Digital Medical ID card exportable for offline emergency use.
+
+---
+
+## 🏗️ Architecture & Design Pattern
+
+```
+                       ┌─────────────────────────────────────────┐
+                       │               React 18 SPA              │
+                       │           (Vite + TypeScript)           │
+                       └───────────────────┬─────────────────────┘
+                                           │
+         ┌─────────────────────────────────┼─────────────────────────────────┐
+         │                                 │                                 │
+┌────────┴─────────┐              ┌────────┴─────────┐              ┌────────┴─────────┐
+│ Global Contexts  │              │ Domain Modules   │              │ Custom Hooks     │
+│  - AuthContext   │              │  - Medicines     │              │  - useGeolocation│
+│  - ThemeContext  │              │  - Timeline      │              │  - useSpeech     │
+│  - ChatContext   │              │  - Emergency     │              │  - useMedia      │
+└──────────────────┘              │  - AI Assistant  │              └──────────────────┘
+                                  └────────┬─────────┘
+                                           │
+                                  ┌────────┴─────────┐
+                                  │ Adapter Layer    │
+                                  │ - timelineAdapt  │
+                                  │ - exportUtils    │
+                                  └──────────────────┘
+```
+
+- **Feature-Driven Directory Structure**: Code is co-located by domain feature (`components/medicines`, `components/timeline`, etc.) for maximum maintainability.
+- **Adapter Pattern**: Normalizes diverse health domain schemas into unified models.
+- **Accessible UI Primitives**: Built on Radix UI accessible foundations with custom Tailwind styling.
+
+---
+
+## 🛠️ Tech Stack
+
+| Domain | Technology |
+| :--- | :--- |
+| **Core Framework** | React 18.3.1, TypeScript 5.8.3, Vite 8.0.10 |
+| **Routing** | React Router 6.30.1 (`HashRouter` strategy) |
+| **Styling & Icons** | Tailwind CSS 3.4.17, Lucide Icons (`lucide-react`), Framer Motion 12.29 |
+| **UI Components** | Radix UI primitives, Shadcn UI component suite, Embla Carousel |
+| **Data Fetching** | `@tanstack/react-query` 5.83.0 |
+| **AI Integration** | `@google/generative-ai` 0.24.1 |
+| **Mapping & Location** | Leaflet 1.9.4, React-Leaflet 4.2.1 |
+| **Testing** | Vitest 3.2.4, `@testing-library/react`, ESLint 9.32.0 |
+
+---
+
+## 📂 Folder Structure
+
+```
+HealthSphere/
+├── public/                     # Static assets & web manifest
+├── src/
+│   ├── assets/                 # SVGs, images, static media
+│   ├── components/             # Reusable UI & Domain Components
+│   │   ├── appointments/       # Appointment management UI
+│   │   ├── bloodDonation/      # Blood & Organ donation UI
+│   │   ├── chat/               # AI Assistant & Chat components
+│   │   ├── emergency/          # Emergency SOS & geolocation UI
+│   │   ├── layout/             # Navbar, Sidebar, Footer, Layout wrapper
+│   │   ├── medicines/          # Prescription & dose tracking UI
+│   │   ├── profile/            # Patient profile & Medical ID card
+│   │   ├── timeline/           # Longitudinal clinical timeline UI
+│   │   └── ui/                 # Shared Shadcn UI primitives & custom cards
+│   ├── contexts/               # React Context Providers (Auth, Theme, Chat)
+│   ├── hooks/                  # Custom hooks (Geolocation, Speech, Media, Toasts)
+│   ├── pages/                  # Page Containers (Dashboard, Medicines, Emergency, etc.)
+│   ├── services/               # API & WebSocket client definitions
+│   ├── types/                  # Global TypeScript type definitions
+│   └── utils/                  # Utility functions & helpers
+├── package.json                # Project dependencies & scripts
+├── tailwind.config.ts          # Tailwind styling tokens & dark mode configuration
+└── vite.config.ts              # Vite bundling configuration
 ```
 
 ---
 
-## 3. Install Dependencies
+## 🚀 Quick Start — Installation
 
+### Prerequisites
+- Node.js 18.x or higher
+- npm 9.x or yarn/bun
+
+### 1. Clone & Navigate
+```bash
+git clone https://github.com/Ashmita1206/HealthSphere.git
+cd HealthSphere
+```
+
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
----
+### 3. Configure Environment Variables
+Create a `.env` file in the root directory:
+```env
+VITE_GEMINI_API_KEY=your_google_gemini_api_key_here
+VITE_GOOGLE_MAPS_API_KEY=your_optional_maps_api_key
+```
 
-## 4. Configure Environment Variables
-
-Create a `.env` file and add the required keys.
-
----
-
-## 5. Start Development Server
-
+### 4. Start Development Server
 ```bash
 npm run dev
 ```
-
-Application will run at:
-
-```bash
-http://localhost:5173
-```
+Open `http://localhost:5173` in your browser.
 
 ---
 
-# 🧪 Testing
+## 🧪 Testing & Verification
 
-Run tests using:
-
+Run the automated Vitest unit test suite:
 ```bash
 npm run test
 ```
 
----
+Run TypeScript strict type checking:
+```bash
+npx tsc --noEmit
+```
 
-## 🔒 Security & Best Practices
-
-- Do not commit `.env` files or secret keys to the repository.
-- Keep JWT secrets, MongoDB credentials, and Cloudinary keys on the server-side only.
-- Use HTTPS in production and rotate keys regularly.
-
----
-
-## 📦 Build & Deployment
-
-- Build the frontend:
-
+Build for production:
 ```bash
 npm run build
 ```
 
-- Deploy the static frontend to Vercel, Netlify, or any static host that supports SPA routing.
-- Deploy Supabase resources (tables, storage bucket, Edge Functions) via the Supabase dashboard or CLI. Configure `LOVABLE_API_KEY` as an environment variable for the `health-chat` function if AI chat is needed.
+---
 
-Notes:
+## 📸 Screenshots Section
 
-- The project is a frontend SPA that relies on Supabase for backend services. Provisioning the Supabase project (tables, storage buckets, RLS policies, and Edge Functions) is required for full functionality.
+| Patient Dashboard | Health Timeline |
+| :---: | :---: |
+| ![Dashboard Preview](./screenshots/dashboard.png) | ![Timeline Preview](./screenshots/timeline.png) |
+
+| Emergency SOS Locator | Smart Medication Tracker |
+| :---: | :---: |
+| ![Emergency SOS Preview](./screenshots/emergency.png) | ![Medicines Preview](./screenshots/medicines.png) |
+
+*(Refer to [`screenshots/README.md`](./screenshots/README.md) for adding screenshot assets).*
 
 ---
 
-## Folder Structure (high level)
+## 🔮 Future Scope & Roadmap
 
-- `src/pages/` — route pages (Landing, Dashboard, Reminders, Medicines, Reports, Appointments, Profile, Settings, Emergency, etc.)
-- `src/components/` — UI building blocks and the chat widget
-- `src/contexts/` — global providers (`AuthContext`, `ThemeContext`)
-- `src/hooks/` — custom hooks: `useGeolocation`, `useSpeechRecognition`, `useMediaPermissions`, `use-toast`, etc.
-- `src/integrations/supabase/` — Supabase client and generated types
-- `supabase/functions/` — Edge Functions (AI chat)
+- 📱 **Progressive Web App (PWA)**: Full offline support for Emergency Medical ID & offline prescription access.
+- 🔒 **HIPAA & GDPR Compliance**: End-to-end client-side encryption for health document vaults.
+- ⌚ **Wearable Integration**: Sync real-time Apple HealthKit / Google Fit vital data via Web Bluetooth API.
+- 🌐 **Multi-Language Support**: i18n localization in 10+ regional languages.
 
 ---
 
-## Database tables (referenced in source code)
+## 👥 Team & Authors
 
-Create these tables in your Supabase project (names used in client queries):
-
-- `profiles`
-- `medicines`
-- `appointments`
-- `reminders`
-- `reports`
-- `chat_messages`
-
-The application expects a `reports` storage bucket for report uploads.
+- **Ashmita Goyal** — Lead Frontend Architect — [GitHub](https://github.com/Ashmita1206)
+- **Neeraj Mishra** — Full Stack & System Engineer — [GitHub](https://github.com/Neeraj-code-beep)
 
 ---
 
-## API / Endpoints (in this repo)
+## 📄 License
 
-- Supabase Edge Function: `/functions/v1/health-chat` (implemented at `supabase/functions/health-chat/index.ts`). The frontend calls:
-  - `${VITE_SUPABASE_URL}/functions/v1/health-chat` with `Authorization: Bearer ${VITE_SUPABASE_PUBLISHABLE_KEY}`
-
-  The function forwards messages to an external AI gateway using the `LOVABLE_API_KEY` environment variable (set on Supabase function/config).
-
-- Supabase Storage: bucket `reports` used by `src/pages/Reports.tsx` to upload files and create signed URLs.
-
-Client-side API interactions use `@supabase/supabase-js` via `src/integrations/supabase/client.ts`.
-
----
-
-## Environment Variables
-
-Create a `.env` file at the project root based on [.env.example](./.env.example).
-
-Frontend (Vite) variables used in code:
-
-- `VITE_SUPABASE_URL` — your Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase publishable / anon key used by the client
-- `VITE_GOOGLE_MAPS_API_KEY` — (optional) used by `getGoogleMapsEmbedUrl` in `src/services/locationsService.ts`
-
-Supabase Edge Function (server-side) variables:
-
-- `LOVABLE_API_KEY` — API key for the external AI gateway used by `health-chat` function
-
-Important: Do not store service-role secrets in the frontend environment.
-
-For detailed setup instructions, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
-
----
-
-## Screenshots
-
-Add screenshots of the app here (dashboard, reports upload, reminders, chat). Example placeholders:
-
-![Dashboard screenshot](./screenshots/dashboard.png)
-![Reports upload](./screenshots/reports.png)
-![Chat assistant](./screenshots/chat.png)
-
-See [screenshots/README.md](./screenshots/README.md) for guidance on adding application screenshots.
-
----
-
-## Future Enhancements / Roadmap
-
-- Replace the mock `locationsService` with a real Places API or Supabase-stored locations.
-- Add server-side validation and tighten RLS policies for production.
-- Add CI/CD to automate frontend builds and Supabase migrations.
-- Add end-to-end tests and visual regression tests for UI flows.
-
----
-
-## Contributing
-
-1. Fork the repository and create a feature branch.
-2. Run tests and linters locally.
-3. Open a pull request with a clear description and necessary migration notes (if database changes are required).
-
-Please open issues for bugs and feature requests.
-
----
-
-## License
-
-This project is available under the MIT License.
-
----
-
-## Contact / Authors
-
-- Ashmita Goyal — https://github.com/Ashmita1206
-- Neeraj Mishra — https://github.com/Neeraj-code-beep
-
----
-
-## Getting Started Resources
-
-- [.env.example](./.env.example) — Environment variables reference
-- [screenshots/README.md](./screenshots/README.md) — Guide for adding and optimizing application screenshots
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.

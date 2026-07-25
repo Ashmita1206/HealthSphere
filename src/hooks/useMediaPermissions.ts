@@ -20,32 +20,45 @@ export function useMediaPermissions(): UseMediaPermissionsReturn {
 
   // Check initial permission status
   useEffect(() => {
+    let active = true;
+    let removeListeners = () => {};
+
     const checkPermissions = async () => {
       try {
         const micStatus = await navigator.permissions.query({ name: "microphone" as any });
-        setMicPermission(micStatus.state as PermissionStatus);
-
         const cameraStatus = await navigator.permissions.query({ name: "camera" as any });
+        if (!active) return;
+
+        setMicPermission(micStatus.state as PermissionStatus);
         setCameraPermission(cameraStatus.state as PermissionStatus);
 
-        micStatus.addEventListener("change", () => {
+        const handleMicChange = () => {
           setMicPermission(micStatus.state as PermissionStatus);
-        });
-
-        cameraStatus.addEventListener("change", () => {
-          setCameraPermission(cameraStatus.state as PermissionStatus);
-        });
-
-        return () => {
-          micStatus.removeEventListener("change", () => {});
-          cameraStatus.removeEventListener("change", () => {});
         };
-      } catch (err) {
-        console.warn("Permission API not supported:", err);
+        const handleCameraChange = () => {
+          setCameraPermission(cameraStatus.state as PermissionStatus);
+        };
+
+        micStatus.addEventListener("change", handleMicChange);
+        cameraStatus.addEventListener("change", handleCameraChange);
+        removeListeners = () => {
+          micStatus.removeEventListener("change", handleMicChange);
+          cameraStatus.removeEventListener("change", handleCameraChange);
+        };
+      } catch {
+        if (active) {
+          setMicPermission("unknown");
+          setCameraPermission("unknown");
+        }
       }
     };
 
-    checkPermissions();
+    void checkPermissions();
+
+    return () => {
+      active = false;
+      removeListeners();
+    };
   }, []);
 
   const requestMicPermission = useCallback(async (): Promise<boolean> => {
@@ -59,7 +72,7 @@ export function useMediaPermissions(): UseMediaPermissionsReturn {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         setMicPermission("denied");
       } else if (err.name === "NotFoundError") {
-        console.error("No microphone found");
+        setMicPermission("unknown");
       }
       return false;
     }
@@ -76,7 +89,7 @@ export function useMediaPermissions(): UseMediaPermissionsReturn {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         setCameraPermission("denied");
       } else if (err.name === "NotFoundError") {
-        console.error("No camera found");
+        setCameraPermission("unknown");
       }
       return false;
     }

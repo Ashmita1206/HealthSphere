@@ -187,6 +187,12 @@
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+    min-width: 320px;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 
   h1,
@@ -196,6 +202,38 @@
   h5,
   h6 {
     @apply font-semibold tracking-tight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  header,
+  aside,
+  .chat-fab,
+  [data-print-hidden='true'] {
+    display: none !important;
+  }
+
+  body,
+  main {
+    background: white !important;
+    color: black !important;
+  }
+
+  main {
+    margin: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
   }
 }
 
@@ -474,3 +512,36 @@
     opacity: 0.7;
   }
 }
+
+/* ========== Landing Page Utilities ========== */
+
+/* Gradient border hover effect for feature cards */
+.gradient-border-card {
+  position: relative;
+  overflow: hidden;
+}
+.gradient-border-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, #0F766E, #14B8A6, #3B82F6);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.gradient-border-card:hover::before {
+  opacity: 1;
+}
+
+/* Staggered float animation delays */
+.float-delay-1 { animation-delay: 0s; }
+.float-delay-2 { animation-delay: 0.8s; }
+.float-delay-3 { animation-delay: 1.6s; }
+.float-delay-4 { animation-delay: 2.4s; }

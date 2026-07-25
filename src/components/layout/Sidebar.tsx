@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,7 +17,8 @@ import {
   MessageSquareText,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,10 +31,11 @@ interface SidebarProps {
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", badge: null },
-  { icon: MessageSquareText, label: "AI Consultation", href: "/dashboard", isChatTrigger: true, badge: "AI" },
+  { icon: MessageSquareText, label: "AI Consultation", href: "/ai-assistant", badge: "AI" },
   { icon: FileText, label: "Medical Reports", href: "/reports", badge: "New" },
   { icon: Pill, label: "Medicines", href: "/medicines", badge: null },
   { icon: Calendar, label: "Appointments", href: "/appointments", badge: null },
+  { icon: History, label: "Health Timeline", href: "/timeline", badge: null },
   { icon: Droplets, label: "Blood & Organ", href: "/blood-organ", badge: null },
   { icon: Bell, label: "Reminders", href: "/reminders", badge: "2" },
   { icon: AlertTriangle, label: "Emergency", href: "/emergency", badge: "24/7", alert: true },
@@ -46,6 +48,54 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const mobilePanelRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const panel = mobilePanelRef.current;
+    const focusableSelector =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    panel?.focus();
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !panel) return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(focusableSelector),
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+      previouslyFocused?.focus();
+    };
+  }, [isOpen, onClose]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -64,7 +114,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <span className="font-extrabold text-slate-900 font-heading">HealthSphere AI</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl text-slate-500">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="rounded-xl text-slate-500"
+            aria-label="Close navigation"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -77,12 +133,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </p>
           )}
 
-          <nav className="space-y-1">
-            {menuItems.map((item, idx) => {
-              const isActive = location.pathname === item.href && !item.isChatTrigger;
+          <nav className="space-y-1" aria-label="Primary navigation">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.href;
               return (
                 <Link
-                  key={idx}
+                  key={item.href}
                   to={item.href}
                   onClick={() => {
                     onClose();
@@ -96,6 +152,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   )}
                   title={collapsed && !isMobile ? item.label : undefined}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <item.icon
                     className={cn(
@@ -167,6 +224,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     <>
       {/* Desktop Sidebar */}
       <aside
+        aria-label="Primary navigation"
         className={cn(
           "hidden lg:flex flex-col fixed inset-y-0 left-0 pt-16 z-30 bg-white border-r border-slate-200/80 transition-all duration-300",
           collapsed ? "w-20" : "w-64"
@@ -176,7 +234,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-teal-700 hover:bg-teal-50 transition-colors z-40"
-          aria-label="Collapse sidebar"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
         >
           {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
         </button>
@@ -188,7 +247,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <AnimatePresence>
         {isOpen && (
           <>
-            <motion.div
+            <motion.button
+              type="button"
+              aria-label="Close navigation"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -196,6 +257,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={onClose}
             />
             <motion.aside
+              ref={mobilePanelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mobile navigation"
+              tabIndex={-1}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}

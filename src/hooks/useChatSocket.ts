@@ -31,10 +31,8 @@ export function useChatSocket() {
   };
 
   const sendMessage = (message: string) => {
-    console.log('conversationId =', conversationId);
-
     if (!conversationId) {
-      console.error('No conversationId found');
+      setError('Start a conversation before sending a message.');
       return;
     }
 
@@ -51,17 +49,7 @@ export function useChatSocket() {
 
     socket.connect();
 
-    socket.on('connect', () => {
-      console.log('🟢 Socket Connected', socket.id);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('🔴 Socket Disconnected');
-    });
-
     socket.on('connect_error', (err) => {
-      console.error(err);
-
       setError(err.message);
     });
 
@@ -70,19 +58,10 @@ export function useChatSocket() {
     });
 
     socket.on('conversation_started', (data) => {
-      console.log('✅ Conversation Started');
-
-      console.log(data);
-
       setConversationId(data.data.conversationId);
-      console.log('Conversation ID received:', data.data.conversationId);
     });
 
     socket.on('receive_message', (response) => {
-      console.log('🤖 AI Response');
-
-      console.log(response);
-
       setAiResponse(response.data);
     });
 
