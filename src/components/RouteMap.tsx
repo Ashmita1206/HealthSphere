@@ -43,7 +43,7 @@ function Routing({
   onRouteFound,
 }: RouteMapProps) {
   const map = useMap();
-  const routingRef = useRef<L.Routing.Control | null>(null);
+  const routingRef = useRef<L.Control | null>(null);
 
   useEffect(() => {
     if (routingRef.current) {

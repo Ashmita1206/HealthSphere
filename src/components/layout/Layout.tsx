@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
@@ -14,21 +14,27 @@ export function Layout({ showSidebar = false }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   const isPublicPage = ["/", "/about", "/contact", "/privacy", "/terms"].includes(location.pathname);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-800 antialiased selection:bg-teal-500 selection:text-white">
-      <Navbar onMenuClick={() => setSidebarOpen(true)} />
+    <div className="min-h-screen overflow-x-hidden flex flex-col bg-slate-50 font-sans text-slate-800 antialiased selection:bg-teal-500 selection:text-white">
+      <Navbar onMenuClick={openSidebar} />
 
       <div className="flex flex-1 relative">
         {showSidebar && user && (
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
         )}
 
         <main
-          className={`flex-1 w-full transition-all duration-300 ${
-            showSidebar && user ? 'lg:ml-64 p-4 sm:p-6 lg:p-8 max-w-7xl' : ''
+          id="main-content"
+          tabIndex={-1}
+          className={`min-w-0 flex-1 w-full transition-[margin,width] duration-300 ${
+            showSidebar ? 'p-4 sm:p-6 lg:p-8' : ''
+          } ${
+            showSidebar && user ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
           }`}
         >
           <Outlet />

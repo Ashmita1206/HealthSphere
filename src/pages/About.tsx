@@ -23,10 +23,10 @@ export default function AboutPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Active Patients" value="50,000+" trend="Verified Clinical Accounts" trendDirection="up" icon={Users} />
-        <StatCard title="Triage Consultations" value="1.2M+" trend="AI Interactions Analyzed" trendDirection="up" icon={Activity} />
-        <StatCard title="Emergency Response" value="< 3 mins" trend="Average SOS Dispatch Time" trendDirection="neutral" icon={Clock} />
-        <StatCard title="Compliance Score" value="100%" trend="HIPAA & GDPR Encrypted" trendDirection="up" icon={ShieldCheck} />
+        <StatCard label="Active Patients" value="50,000+" description="Verified Clinical Accounts" icon={Users} />
+        <StatCard label="Triage Consultations" value="1.2M+" description="AI Interactions Analyzed" icon={Activity} color="blue" />
+        <StatCard label="Emergency Response" value="< 3 mins" description="Average SOS Dispatch Time" icon={Clock} color="rose" />
+        <StatCard label="Compliance Score" value="100%" description="HIPAA & GDPR Encrypted" icon={ShieldCheck} color="emerald" />
       </div>
 
       {/* Core Values */}
