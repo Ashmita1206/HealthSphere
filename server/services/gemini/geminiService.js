@@ -26,7 +26,7 @@ function safeParseJSON(text = '', fallback = null) {
 /**
  * Generate text content using Gemini
  */
-async function generateGeminiText({ prompt, systemInstruction = '', model = 'gemini-2.5-flash', temperature = 0.2 }) {
+async function generateGeminiText({ prompt, systemInstruction = '', model = 'gemini-flash-latest', temperature = 0.2 }) {
   try {
     const contents = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
     const response = await genAI.models.generateContent({
