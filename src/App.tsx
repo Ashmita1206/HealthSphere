@@ -11,16 +11,19 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Landing from './pages/Landing';
 import LoginPage from './pages/auth/Login';
 import RegisterPage from './pages/auth/Register';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import Medicines from './pages/Medicines';
+import Dashboard from './pages/dashboard';
+import Profile from './pages/profile';
+import Medicines from './pages/medicines';
 import Reports from './pages/Reports';
-import Appointments from './pages/Appointments';
+import Appointments from './pages/appointments';
 import BloodOrgan from './pages/BloodOrgan';
 import BloodOrganInfo from './pages/BloodOrganInfo';
 import Reminders from './pages/Reminders';
-import Emergency from './pages/Emergency';
+import Timeline from './pages/timeline';
+import BloodDonation from './pages/blood-donation';
+import Emergency from './pages/emergency';
 import Settings from './pages/Settings';
+import AIAssistantPage from './pages/ai-assistant';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
@@ -74,8 +77,11 @@ const App = () => (
                     element={<BloodOrganInfo />}
                   />
                   <Route path="/reminders" element={<Reminders />} />
+                  <Route path="/timeline" element={<Timeline />} />
+                  <Route path="/blood-donation" element={<BloodDonation />} />
                   <Route path="/emergency" element={<Emergency />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/ai-assistant" element={<AIAssistantPage />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

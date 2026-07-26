@@ -107,9 +107,8 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
 
     try {
       recognitionRef.current.start();
-    } catch (err: any) {
-      // Already listening
-      console.warn("Recognition already started:", err);
+    } catch {
+      setError("Speech recognition is already active.");
     }
   }, [isSupported]);
 
@@ -119,8 +118,8 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     try {
       recognitionRef.current.stop();
       setIsListening(false);
-    } catch (err: any) {
-      console.warn("Error stopping recognition:", err);
+    } catch {
+      setError("Speech recognition could not be stopped cleanly.");
     }
   }, [isSupported]);
 

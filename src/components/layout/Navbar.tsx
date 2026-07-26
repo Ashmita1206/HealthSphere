@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { 
-  Menu, User, LogOut, Activity, Search, Bell, ShieldAlert, Sparkles, X, ChevronDown, CheckCircle2
+  Menu, User, LogOut, Activity, Search, Bell, ShieldAlert, Sparkles, ChevronDown, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/input";
+
+const globalDestinations = [
+  { path: "/profile", keywords: ["profile", "medical history", "allergy"] },
+  { path: "/medicines", keywords: ["medicine", "medication", "dose", "pill"] },
+  { path: "/appointments", keywords: ["appointment", "doctor", "visit"] },
+  { path: "/reports", keywords: ["report", "lab", "document"] },
+  { path: "/timeline", keywords: ["timeline", "activity", "vital", "weight", "bmi"] },
+  { path: "/blood-donation", keywords: ["blood", "donation", "donor"] },
+  { path: "/emergency", keywords: ["emergency", "sos", "hospital", "ambulance"] },
+  { path: "/reminders", keywords: ["reminder", "notification"] },
+  { path: "/ai-assistant", keywords: ["ai", "assistant", "consultation"] },
+];
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -38,8 +49,33 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
   const isPublicPage = ["/", "/about", "/contact", "/privacy", "/terms"].includes(location.pathname);
 
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return;
+
+    const destination = globalDestinations.find((item) =>
+      item.keywords.some(
+        (keyword) =>
+          normalizedQuery.includes(keyword) || keyword.includes(normalizedQuery),
+      ),
+    );
+
+    navigate(
+      destination?.path ??
+        `/timeline?search=${encodeURIComponent(searchQuery.trim())}`,
+    );
+    setSearchQuery("");
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200/80 transition-all">
+      <a
+        href="#main-content"
+        className="sr-only z-50 rounded-lg bg-white px-4 py-2 font-bold text-teal-800 focus:not-sr-only focus:absolute focus:left-4 focus:top-3"
+      >
+        Skip to main content
+      </a>
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         
         {/* Left section: Logo & Mobile Toggle */}
@@ -87,16 +123,24 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
         {/* Dashboard Search Bar for Logged in User */}
         {user && !isPublicPage && (
-          <div className="hidden md:flex items-center relative max-w-sm w-full mx-4">
+          <form
+            role="search"
+            onSubmit={handleSearch}
+            className="hidden md:flex items-center relative max-w-sm w-full mx-4"
+          >
+            <label htmlFor="global-health-search" className="sr-only">
+              Search HealthSphere
+            </label>
             <Search className="w-4 h-4 absolute left-3 text-slate-400" />
             <input
+              id="global-health-search"
               type="text"
-              placeholder="Search reports, vitals, medicines... (Ctrl+K)"
+              placeholder="Search reports, vitals, medicines..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl bg-slate-100/80 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-700/20 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 font-medium"
             />
-          </div>
+          </form>
         )}
 
         {/* Right Section: CTAs / Notifications / Profile */}
@@ -112,7 +156,13 @@ export function Navbar({ onMenuClick }: NavbarProps) {
               {/* Notification Popover */}
               <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative text-slate-600 hover:bg-slate-100 rounded-xl">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative text-slate-600 hover:bg-slate-100 rounded-xl"
+                    aria-label="Open notifications"
+                    aria-expanded={notificationsOpen}
+                  >
                     <Bell className="w-5 h-5" />
                     <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-teal-600 ring-2 ring-white animate-pulse" />
                   </Button>
@@ -123,7 +173,10 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                     <span className="text-xs text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-full">2 New</span>
                   </div>
                   <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                    <div className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3">
+                    <DropdownMenuItem
+                      onSelect={() => navigate("/reports")}
+                      className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none"
+                    >
                       <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-700 shrink-0">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
@@ -132,8 +185,11 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                         <p className="text-[11px] text-slate-500 mt-0.5">Your Blood Panel CBC report has been analyzed by AI.</p>
                         <span className="text-[10px] text-slate-400 mt-1 block">10 mins ago</span>
                       </div>
-                    </div>
-                    <div className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3">
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => navigate("/medicines")}
+                      className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none"
+                    >
                       <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
                         <Bell className="w-4 h-4" />
                       </div>
@@ -142,7 +198,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                         <p className="text-[11px] text-slate-500 mt-0.5">Time for Metformin 500mg (Post Lunch).</p>
                         <span className="text-[10px] text-slate-400 mt-1 block">1 hour ago</span>
                       </div>
-                    </div>
+                    </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -150,7 +206,11 @@ export function Navbar({ onMenuClick }: NavbarProps) {
               {/* User Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 px-2 py-1 h-auto rounded-xl hover:bg-slate-100 transition-colors">
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 px-2 py-1 h-auto rounded-xl hover:bg-slate-100 transition-colors"
+                    aria-label="Open account menu"
+                  >
                     <Avatar className="h-8 w-8 border border-teal-200">
                       <AvatarImage src="" alt="Profile" />
                       <AvatarFallback className="bg-teal-700 text-white font-bold text-xs">
