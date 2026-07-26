@@ -125,17 +125,17 @@ export default function AIHealthScore() {
 
                     <div className="space-y-1 text-xs">
                       <p className="text-slate-600 dark:text-slate-400">
-                        <span className="font-bold text-slate-900 dark:text-white">Why:</span> {val.why}
+                        <span className="font-bold text-slate-900 dark:text-white">Why:</span> {typeof val.why === 'object' ? JSON.stringify(val.why) : String(val.why || '')}
                       </p>
                       <p className="text-slate-600 dark:text-slate-400">
                         <span className="font-bold text-slate-900 dark:text-white">Trend:</span>{' '}
-                        <span className="text-emerald-600 font-semibold">{val.trend}</span>
+                        <span className="text-emerald-600 font-semibold">{typeof val.trend === 'object' ? JSON.stringify(val.trend) : String(val.trend || '')}</span>
                       </p>
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-start gap-1.5 text-[11px] text-teal-800 dark:text-teal-300 font-medium">
                       <TrendingUp className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
-                      <span>{val.recommendation}</span>
+                      <span>{typeof val.recommendation === 'object' ? JSON.stringify(val.recommendation) : String(val.recommendation || '')}</span>
                     </div>
                   </div>
                 ))}
@@ -167,7 +167,7 @@ export default function AIHealthScore() {
                             : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                         }`}
                       >
-                        {pred.level} ({pred.probability}%)
+                        {typeof pred.level === 'object' ? JSON.stringify(pred.level) : String(pred.level || '')} ({typeof pred.probability === 'object' ? JSON.stringify(pred.probability) : String(pred.probability || 0)}%)
                       </span>
                     </div>
 
@@ -175,13 +175,14 @@ export default function AIHealthScore() {
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Preventive Action</p>
                       <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium">
                         <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                        <span>{pred.preventiveAction}</span>
+                        <span>{typeof pred.preventiveAction === 'object' ? JSON.stringify(pred.preventiveAction) : String(pred.preventiveAction || '')}</span>
                       </div>
                     </div>
                   </div>
                 ))}
             </div>
           </div>
+
         </>
       )}
     </div>

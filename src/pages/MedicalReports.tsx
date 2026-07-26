@@ -148,7 +148,7 @@ export default function MedicalReports() {
           </div>
 
           {/* Highlight Abnormal Values */}
-          {reportResult.abnormalValues && reportResult.abnormalValues.length > 0 && (
+          {Array.isArray(reportResult.abnormalValues) && reportResult.abnormalValues.length > 0 && (
             <div className="p-6 rounded-3xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 space-y-4">
               <div className="flex items-center gap-2 text-rose-900 dark:text-rose-200 font-extrabold text-sm">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
@@ -162,11 +162,11 @@ export default function MedicalReports() {
                     className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 shadow-sm space-y-1"
                   >
                     <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-slate-900 dark:text-white">{ab.parameter}</span>
-                      <span className="text-rose-600">{ab.value}</span>
+                      <span className="text-slate-900 dark:text-white">{typeof ab.parameter === 'object' ? JSON.stringify(ab.parameter) : String(ab.parameter || '')}</span>
+                      <span className="text-rose-600">{typeof ab.value === 'object' ? JSON.stringify(ab.value) : String(ab.value || '')}</span>
                     </div>
-                    <p className="text-[11px] text-slate-500">Normal Range: {ab.normalRange}</p>
-                    <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium">{ab.clinicalNote}</p>
+                    <p className="text-[11px] text-slate-500">Normal Range: {typeof ab.normalRange === 'object' ? JSON.stringify(ab.normalRange) : String(ab.normalRange || '')}</p>
+                    <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium">{typeof ab.clinicalNote === 'object' ? JSON.stringify(ab.clinicalNote) : String(ab.clinicalNote || '')}</p>
                   </div>
                 ))}
               </div>
@@ -180,7 +180,8 @@ export default function MedicalReports() {
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {biomarkerKeys.map(({ key, label }) => {
-                const val = reportResult.biomarkers?.[key] || 'N/A';
+                const rawVal = reportResult.biomarkers?.[key];
+                const val = typeof rawVal === 'object' ? JSON.stringify(rawVal) : String(rawVal || 'N/A');
                 return (
                   <div
                     key={key}
@@ -195,7 +196,7 @@ export default function MedicalReports() {
           </div>
 
           {/* AI Recommendations */}
-          {reportResult.recommendations && reportResult.recommendations.length > 0 && (
+          {Array.isArray(reportResult.recommendations) && reportResult.recommendations.length > 0 && (
             <div className="p-6 rounded-3xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 space-y-3">
               <h3 className="font-extrabold text-sm text-teal-900 dark:text-teal-200 uppercase tracking-wider">
                 AI Clinical Recommendations
@@ -204,12 +205,13 @@ export default function MedicalReports() {
                 {reportResult.recommendations.map((rec, i) => (
                   <div key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
                     <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                    <span>{rec}</span>
+                    <span>{typeof rec === 'object' ? JSON.stringify(rec) : String(rec)}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
         </div>
       )}
 

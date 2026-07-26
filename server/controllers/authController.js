@@ -2,7 +2,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-const signToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const JWT_SECRET = process.env.JWT_SECRET || "healthsphere_default_secret_key_2026";
+const signToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: "7d" });
+
 
 async function signup(req, res, next) {
   try {
