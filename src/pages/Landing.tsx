@@ -879,7 +879,8 @@ export default function LandingPage() {
               <Button
                 onClick={handleNavigate('/about')}
                 variant="outline"
-                className="w-full sm:w-auto h-13 px-8 text-base font-semibold border-white/40 text-white hover:bg-white/10 rounded-xl transition-all"
+                className="w-full sm:w-auto h-13 px-8 text-base font-semibold border-white/40 text-white rounded-xl
+                !bg-transparent hover:!bg-transparent hover:!text-white hover:!border-white/40 focus:!bg-transparent active:!bg-transparent"
                 aria-label="Learn more about HealthSphere"
               >
                 Learn More
