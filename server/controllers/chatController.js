@@ -161,7 +161,7 @@ async function sendMessage(req, res, next) {
 
       res.write(`data: ${JSON.stringify({ type: 'start', userMessage: userMsg })}\n\n`);
 
-      const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history });
+      const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history, sessionId: activeSessionId });
 
       // Stream text chunks
       const chunkSize = 15;
@@ -171,14 +171,20 @@ async function sendMessage(req, res, next) {
         await new Promise((r) => setTimeout(r, 20));
       }
 
-      // Save assistant message
+      // Save assistant message with upgraded intelligence fields
       const assistantMsg = await ChatMessage.create({
         sessionId: activeSessionId,
         userId,
         sender: 'assistant',
         content: aiResult.text,
         suggestedFollowUps: aiResult.suggestedFollowUps,
+        mode: aiResult.mode,
+        confidenceScore: aiResult.confidenceScore,
+        isEmergency: aiResult.isEmergency,
+        emergencyData: aiResult.emergencyData,
+        smartRecommendations: aiResult.smartRecommendations,
         tokensUsed: aiResult.tokensUsed,
+        latencyMs: aiResult.latencyMs,
       });
 
       // Update session last activity & title
@@ -191,7 +197,7 @@ async function sendMessage(req, res, next) {
       return res.end();
     } else {
       // Standard JSON response
-      const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history });
+      const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history, sessionId: activeSessionId });
 
       const assistantMsg = await ChatMessage.create({
         sessionId: activeSessionId,
@@ -199,7 +205,13 @@ async function sendMessage(req, res, next) {
         sender: 'assistant',
         content: aiResult.text,
         suggestedFollowUps: aiResult.suggestedFollowUps,
+        mode: aiResult.mode,
+        confidenceScore: aiResult.confidenceScore,
+        isEmergency: aiResult.isEmergency,
+        emergencyData: aiResult.emergencyData,
+        smartRecommendations: aiResult.smartRecommendations,
         tokensUsed: aiResult.tokensUsed,
+        latencyMs: aiResult.latencyMs,
       });
 
       await ChatSession.findByIdAndUpdate(activeSessionId, {
@@ -216,6 +228,7 @@ async function sendMessage(req, res, next) {
         },
       });
     }
+
   } catch (error) {
     next(error);
   }

@@ -16,8 +16,25 @@ export interface ChatMessageItem {
   attachments?: Array<{ url: string; fileType: string; name: string }>;
   feedback?: 'like' | 'dislike' | null;
   suggestedFollowUps?: string[];
+  mode?: string;
+  confidenceScore?: number;
+  isEmergency?: boolean;
+  emergencyData?: {
+    warning?: string;
+    hospitalsApiRecommended?: boolean;
+    numbers?: string[];
+  };
+  smartRecommendations?: {
+    relatedQuestions?: string[];
+    lifestyleTips?: string[];
+    medicineReminder?: string;
+    waterReminder?: string;
+    exerciseSuggestion?: string;
+    dietSuggestion?: string;
+  };
   createdAt: string;
 }
+
 
 export const chatService = {
   getSessions: () =>

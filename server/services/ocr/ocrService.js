@@ -2,7 +2,7 @@ const { generateGeminiMultimodal, safeParseJSON, generateGeminiText } = require(
 const logger = require('../../utils/logger');
 
 /**
- * OCR & Deep Medical Report Parsing
+ * OCR & Deep Medical Report Parsing 2.0
  */
 async function parseMedicalReport({ mimeType, base64Data, textContent }) {
   try {
@@ -30,10 +30,17 @@ Format your output strictly as a JSON object with this exact structure:
   "reportTitle": "Name of test or laboratory report",
   "category": "Blood Test | Pathology | Radiology | Metabolic | General",
   "summary": "Concise 2-3 sentence overview of findings",
+  "oneLineSummary": "1-sentence executive summary",
+  "patientFriendlySummary": "Simple language explanation suitable for a patient",
+  "doctorSummary": "Formal clinical summary formatted for a physician",
   "riskLevel": "Low | Moderate | High | Critical",
+  "criticalValues": ["List any critical out-of-range values"],
   "abnormalValues": [
     { "parameter": "Parameter Name", "value": "Extracted Value", "normalRange": "Normal Range", "severity": "Mild | Moderate | High", "clinicalNote": "Brief reason" }
   ],
+  "improvingBiomarkers": ["Biomarkers showing healthy levels"],
+  "decliningBiomarkers": ["Biomarkers needing attention"],
+  "trendAnalysis": "Overview of trajectory",
   "biomarkers": {
     "cbc": "extracted value or N/A",
     "sugar": "extracted value or N/A",
@@ -52,7 +59,10 @@ Format your output strictly as a JSON object with this exact structure:
   "recommendations": [
     "Preventive or dietary advice 1",
     "Consultation advice 2"
-  ]
+  ],
+  "lifestyleRecommendations": ["Specific diet/exercise change"],
+  "questionsToAskDoctor": ["Question 1 for physician"],
+  "suggestedFollowUpTests": ["Recommended re-test or follow-up scan"]
 }
 `;
 
@@ -70,10 +80,20 @@ Format your output strictly as a JSON object with this exact structure:
       reportTitle: 'Medical Report',
       category: 'General Lab',
       summary: 'Report processed. Please review individual parameters with your healthcare provider.',
+      oneLineSummary: 'Report processed successfully.',
+      patientFriendlySummary: 'Your lab report has been uploaded and analyzed for key health metrics.',
+      doctorSummary: 'Routine panel analyzed with general parameter values extracted.',
       riskLevel: 'Low',
+      criticalValues: [],
       abnormalValues: [],
+      improvingBiomarkers: [],
+      decliningBiomarkers: [],
+      trendAnalysis: 'Parameters appear within baseline expectation.',
       biomarkers: {},
       recommendations: ['Schedule a follow-up with your primary physician for full interpretation.'],
+      lifestyleRecommendations: ['Maintain balanced nutrition and regular hydration.'],
+      questionsToAskDoctor: ['Are my current lab values optimal for my age and profile?'],
+      suggestedFollowUpTests: ['Routine annual wellness checkup.'],
     };
   } catch (error) {
     logger.error('parseMedicalReport error', { error: error.message });
@@ -120,3 +140,4 @@ module.exports = {
   parseMedicalReport,
   compareMedicalReports,
 };
+

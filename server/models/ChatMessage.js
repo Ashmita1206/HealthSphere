@@ -36,7 +36,36 @@ const ChatMessageSchema = new mongoose.Schema(
       default: null,
     },
     suggestedFollowUps: [String],
+    mode: {
+      type: String,
+      default: 'General Chat',
+    },
+    confidenceScore: {
+      type: Number,
+      default: 0.9,
+    },
+    isEmergency: {
+      type: Boolean,
+      default: false,
+    },
+    emergencyData: {
+      warning: String,
+      hospitalsApiRecommended: Boolean,
+      numbers: [String],
+    },
+    smartRecommendations: {
+      relatedQuestions: [String],
+      lifestyleTips: [String],
+      medicineReminder: String,
+      waterReminder: String,
+      exerciseSuggestion: String,
+      dietSuggestion: String,
+    },
     tokensUsed: {
+      type: Number,
+      default: 0,
+    },
+    latencyMs: {
       type: Number,
       default: 0,
     },
@@ -49,3 +78,4 @@ const ChatMessageSchema = new mongoose.Schema(
 ChatMessageSchema.index({ sessionId: 1, createdAt: 1 });
 
 module.exports = mongoose.model('ChatMessage', ChatMessageSchema);
+

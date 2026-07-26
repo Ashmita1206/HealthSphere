@@ -31,6 +31,14 @@ const ChatSessionSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    summary: {
+      text: String,
+      importantSymptoms: [String],
+      medicinesMentioned: [String],
+      reportsDiscussed: [String],
+      suggestedNextSteps: [String],
+      updatedAt: Date,
+    },
   },
   {
     timestamps: true,
@@ -40,3 +48,4 @@ const ChatSessionSchema = new mongoose.Schema(
 ChatSessionSchema.index({ userId: 1, lastActivityAt: -1 });
 
 module.exports = mongoose.model('ChatSession', ChatSessionSchema);
+

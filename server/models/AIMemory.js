@@ -22,6 +22,16 @@ const AIMemorySchema = new mongoose.Schema(
       medications: [String],
       familyHistory: [String],
       dietaryPreferences: [String],
+      recurringSymptoms: [String],
+      preferredLanguage: { type: String, default: 'en' },
+      foodPreferences: [String],
+      lifestyle: {
+        activityLevel: String,
+        sleepHours: Number,
+        smokingStatus: String,
+        alcoholUse: String,
+      },
+      doctorSuggestions: [String],
       vitalBaselines: {
         bloodPressure: String,
         sugarLevel: String,
@@ -33,6 +43,10 @@ const AIMemorySchema = new mongoose.Schema(
       {
         sessionId: mongoose.Schema.Types.ObjectId,
         summary: String,
+        importantSymptoms: [String],
+        medicinesMentioned: [String],
+        reportsDiscussed: [String],
+        suggestedNextSteps: [String],
         date: { type: Date, default: Date.now },
       },
     ],
@@ -43,3 +57,4 @@ const AIMemorySchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model('AIMemory', AIMemorySchema);
+

@@ -15,21 +15,27 @@ const HealthScoreSchema = new mongoose.Schema(
       max: 100,
     },
     scores: {
-      riskScore: { score: Number, why: String, trend: String, recommendation: String },
-      lifestyleScore: { score: Number, why: String, trend: String, recommendation: String },
-      recoveryScore: { score: Number, why: String, trend: String, recommendation: String },
-      sleepScore: { score: Number, why: String, trend: String, recommendation: String },
-      nutritionScore: { score: Number, why: String, trend: String, recommendation: String },
-      hydrationScore: { score: Number, why: String, trend: String, recommendation: String },
-      medicationScore: { score: Number, why: String, trend: String, recommendation: String },
+      riskScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      lifestyleScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      recoveryScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      sleepScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      nutritionScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      hydrationScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      medicationScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      stressScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
+      activityScore: { score: Number, why: String, trend: String, recommendation: String, target: String, improvementPlan: String, estimatedRecoveryTime: String },
     },
     predictions: {
-      diabetesRisk: { level: String, probability: Number, preventiveAction: String },
-      hypertensionRisk: { level: String, probability: Number, preventiveAction: String },
-      heartDiseaseRisk: { level: String, probability: Number, preventiveAction: String },
-      vitaminDeficiencyRisk: { level: String, probability: Number, preventiveAction: String },
-      lifestyleRisk: { level: String, probability: Number, preventiveAction: String },
-      medicationNonAdherence: { level: String, probability: Number, preventiveAction: String },
+      diabetesRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      hypertensionRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      heartDiseaseRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      kidneyDiseaseRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      liverDiseaseRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      vitaminDeficiencyRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      lifestyleRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      medicationNonAdherence: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      stressRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
+      sleepRisk: { level: String, probability: Number, riskFactors: [String], supportingEvidence: String, confidence: Number, preventiveAction: String, lifestyleChanges: [String], expectedTimeline: String },
     },
     calculatedAt: {
       type: Date,
@@ -44,3 +50,4 @@ const HealthScoreSchema = new mongoose.Schema(
 HealthScoreSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('HealthScore', HealthScoreSchema);
+

@@ -313,6 +313,29 @@ export default function AIChat() {
                         <span className="underline font-mono">{m.attachments[0].name}</span>
                       </div>
                     )}
+
+                    {/* Mode & Confidence Score Badges for AI Assistant */}
+                    {!isUser && (m.mode || m.confidenceScore) && (
+                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[10px]">
+                        {m.mode && (
+                          <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-bold uppercase tracking-wider">
+                            Mode: {m.mode}
+                          </span>
+                        )}
+                        {m.confidenceScore && (
+                          <span
+                            className={`font-mono font-semibold ${
+                              m.confidenceScore >= 0.85
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-amber-600 dark:text-amber-400 font-bold'
+                            }`}
+                          >
+                            Confidence: {Math.round(m.confidenceScore * 100)}%
+                            {m.confidenceScore < 0.85 && ' (Doctor Consult Advised)'}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions for Assistant Message */}
@@ -352,6 +375,7 @@ export default function AIChat() {
                       </button>
                     </div>
                   )}
+
                 </div>
 
                 {isUser && (
