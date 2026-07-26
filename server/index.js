@@ -18,6 +18,8 @@ const reminderRoutes = require('./routes/reminderRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const emergencyRoutes = require('./routes/emergencyRoutes');
 const chatRoutes = require('./routes/chat.Routes');
+const newChatRoutes = require('./routes/chatRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -94,7 +96,9 @@ app.use('/api/health', healthRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/emergency', emergencyRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', newChatRoutes);
+app.use('/api/legacy-chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
 /*
 ====================================================
 Socket.IO

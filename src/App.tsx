@@ -26,6 +26,10 @@ import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
+import AIChat from './pages/AIChat';
+import MedicalReports from './pages/MedicalReports';
+import AIVision from './pages/AIVision';
+import AIHealthScore from './pages/AIHealthScore';
 
 const queryClient = new QueryClient();
 
@@ -55,6 +59,11 @@ const App = () => (
                 {/* Protected routes */}
                 <Route element={<Layout showSidebar />}>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/ai-chat" element={<AIChat />} />
+                  <Route path="/chat" element={<AIChat />} />
+                  <Route path="/medical-reports" element={<MedicalReports />} />
+                  <Route path="/ai-vision" element={<AIVision />} />
+                  <Route path="/ai-health-score" element={<AIHealthScore />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/medicines" element={<Medicines />} />
                   <Route path="/reports" element={<Reports />} />

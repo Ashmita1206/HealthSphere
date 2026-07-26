@@ -17,7 +17,10 @@ import {
   MessageSquareText,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Eye,
+  Sparkles,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,8 +33,10 @@ interface SidebarProps {
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", badge: null },
-  { icon: MessageSquareText, label: "AI Consultation", href: "/dashboard", isChatTrigger: true, badge: "AI" },
-  { icon: FileText, label: "Medical Reports", href: "/reports", badge: "New" },
+  { icon: MessageSquareText, label: "AI Consultation", href: "/ai-chat", badge: "AI" },
+  { icon: FileText, label: "Medical Reports OCR", href: "/medical-reports", badge: "AI" },
+  { icon: Eye, label: "AI Vision", href: "/ai-vision", badge: "New" },
+  { icon: Heart, label: "AI Health Score", href: "/ai-health-score", badge: "Live" },
   { icon: Pill, label: "Medicines", href: "/medicines", badge: null },
   { icon: Calendar, label: "Appointments", href: "/appointments", badge: null },
   { icon: Droplets, label: "Blood & Organ", href: "/blood-organ", badge: null },
