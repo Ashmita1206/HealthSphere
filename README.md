@@ -151,9 +151,9 @@ npm install
 ```
 
 ### 3. Configure Environment Variables
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (or `server/.env` for backend configuration):
 ```env
-VITE_GEMINI_API_KEY=your_google_gemini_api_key_here
+GEMINI_API_KEY=your_google_gemini_api_key_here
 VITE_GOOGLE_MAPS_API_KEY=your_optional_maps_api_key
 ```
 

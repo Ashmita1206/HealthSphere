@@ -159,42 +159,58 @@ async function sendMessage(req, res, next) {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      res.write(`data: ${JSON.stringify({ type: 'start', userMessage: userMsg })}\n\n`);
+      let clientDisconnected = false;
+      req.on('close', () => {
+        clientDisconnected = true;
+      });
 
-      const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history, sessionId: activeSessionId });
+      try {
+        res.write(`data: ${JSON.stringify({ type: 'start', userMessage: userMsg })}\n\n`);
 
-      // Stream text chunks
-      const chunkSize = 15;
-      for (let i = 0; i < aiResult.text.length; i += chunkSize) {
-        const chunk = aiResult.text.slice(i, i + chunkSize);
-        res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
-        await new Promise((r) => setTimeout(r, 20));
+        const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history, sessionId: activeSessionId });
+
+        // Stream text chunks
+        const chunkSize = 15;
+        for (let i = 0; i < aiResult.text.length; i += chunkSize) {
+          if (clientDisconnected) break;
+          const chunk = aiResult.text.slice(i, i + chunkSize);
+          res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
+          await new Promise((r) => setTimeout(r, 20));
+        }
+
+        if (!clientDisconnected) {
+          // Save assistant message with upgraded intelligence fields
+          const assistantMsg = await ChatMessage.create({
+            sessionId: activeSessionId,
+            userId,
+            sender: 'assistant',
+            content: aiResult.text,
+            suggestedFollowUps: aiResult.suggestedFollowUps,
+            mode: aiResult.mode,
+            confidenceScore: aiResult.confidenceScore,
+            isEmergency: aiResult.isEmergency,
+            emergencyData: aiResult.emergencyData,
+            smartRecommendations: aiResult.smartRecommendations,
+            tokensUsed: aiResult.tokensUsed,
+            latencyMs: aiResult.latencyMs,
+          });
+
+          // Update session last activity & title
+          await ChatSession.findByIdAndUpdate(activeSessionId, {
+            lastMessageText: aiResult.text.substring(0, 60),
+            lastActivityAt: Date.now(),
+          });
+
+          res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage: assistantMsg })}\n\n`);
+          return res.end();
+        }
+      } catch (streamError) {
+        logger.error('Streaming response failed', { error: streamError.message });
+        if (!clientDisconnected) {
+          res.write(`data: ${JSON.stringify({ type: 'error', message: streamError.message || 'AI streaming interrupted' })}\n\n`);
+          return res.end();
+        }
       }
-
-      // Save assistant message with upgraded intelligence fields
-      const assistantMsg = await ChatMessage.create({
-        sessionId: activeSessionId,
-        userId,
-        sender: 'assistant',
-        content: aiResult.text,
-        suggestedFollowUps: aiResult.suggestedFollowUps,
-        mode: aiResult.mode,
-        confidenceScore: aiResult.confidenceScore,
-        isEmergency: aiResult.isEmergency,
-        emergencyData: aiResult.emergencyData,
-        smartRecommendations: aiResult.smartRecommendations,
-        tokensUsed: aiResult.tokensUsed,
-        latencyMs: aiResult.latencyMs,
-      });
-
-      // Update session last activity & title
-      await ChatSession.findByIdAndUpdate(activeSessionId, {
-        lastMessageText: aiResult.text.substring(0, 60),
-        lastActivityAt: Date.now(),
-      });
-
-      res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage: assistantMsg })}\n\n`);
-      return res.end();
     } else {
       // Standard JSON response
       const aiResult = await processAIRequest({ userId, userPrompt: content, chatHistory: history, sessionId: activeSessionId });

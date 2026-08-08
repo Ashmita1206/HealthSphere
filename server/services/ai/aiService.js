@@ -1,4 +1,4 @@
-const { generateGeminiText, safeParseJSON } = require('../gemini/geminiService');
+const { generateGeminiText, safeParseJSON, sanitizeError } = require('../gemini/geminiService');
 const AIMemory = require('../../models/AIMemory');
 const User = require('../../models/User');
 const Report = require('../../models/Report');
@@ -379,7 +379,7 @@ async function processAIRequest({ userId, userPrompt, chatHistory = [], sessionI
       latencyMs: duration,
     };
   } catch (error) {
-    logger.error('AI Observability: Request Failed', { error: error.message, userId });
+    logger.error('AI Observability: Request Failed', sanitizeError(error));
     return {
       text: "I'm experiencing a temporary clinical processing hiccup. If this is urgent, please consult your primary physician or nearest emergency clinic immediately.",
       mode: 'General Chat',
