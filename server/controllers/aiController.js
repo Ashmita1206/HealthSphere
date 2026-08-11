@@ -161,7 +161,8 @@ async function globalAISearch(req, res, next) {
       return res.status(200).json({ success: true, data: [] });
     }
 
-    const regex = new RegExp(query, 'i');
+    const safeQuery = String(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(safeQuery, 'i');
 
     const [medicines, reports, sessions, appointments] = await Promise.all([
       Medicine.find({ userId, name: regex }).lean().catch(() => []),
