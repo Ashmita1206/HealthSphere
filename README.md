@@ -1,90 +1,95 @@
-# 🏥 HealthSphere — Next-Generation Personal Health & Emergency Platform
+# 🏥 HealthSphere — Personal Health & Emergency Platform
 
 [![React](https://img.shields.io/badge/React-18.3.1-blue.svg?logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8.0.10-646CFF.svg?logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.17-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com/)
+[![Express](https://img.shields.io/badge/Express-4.19.2-000000.svg?logo=express)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-4EA94B.svg?logo=mongodb)](https://www.mongodb.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**HealthSphere** is a production-grade, AI-powered longitudinal healthcare platform designed to seamlessly integrate personal health management, interactive clinical timeline analytics, automated prescription tracking, instant Emergency SOS dispatch routing, digital medical ID cards, and real-time AI medical consultations.
+**HealthSphere** is a full-stack longitudinal healthcare platform integrating personal health tracking, interactive clinical timelines, prescription management, emergency SOS routing with nearby hospital locator, medical report storage, and server-side AI medical consultations powered by Google Gemini.
 
 ---
 
 ## 🌟 Overview
 
-HealthSphere bridges the gap between disparate health records and actionable patient insights. Built with a modern responsive frontend using **React 18**, **TypeScript**, and **Tailwind CSS**, HealthSphere delivers an intuitive, accessible, and fast patient portal.
+HealthSphere bridges the gap between disparate health records and actionable patient insights. Built with a modern responsive frontend (**React 18**, **TypeScript**, **Tailwind CSS**) and an **Express / Node.js / MongoDB** REST backend, HealthSphere provides a secure and accessible patient portal.
 
 ### Key Highlights
-- 🧠 **AI Health Consultations**: Interactive AI assistant powered by Google Gemini with speech-to-text input, medical document attachments, and clinical summaries.
-- ⚡ **One-Touch Emergency SOS**: Instant geolocation tracking, automated SOS trigger, nearby hospital locator with Leaflet maps, and 24/7 emergency contact dispatch.
-- 📅 **Longitudinal Health Timeline**: Unified chronological view aggregating prescriptions, lab reports, appointments, vital logs, and blood donations into a filterable timeline.
-- 💊 **Smart Prescription Tracking**: Dosage schedules, adherence stats, timing badges, calendar views, and CSV/PDF export options.
-- 🪪 **Digital Medical ID & Vault**: Instant Medical ID card generator, BMI calculator, emergency details, and encrypted medical document storage.
+- 🧠 **Server-Side AI Consultations**: Context-aware AI assistant leveraging Google Gemini for medical advice, document analysis, and SSE streaming.
+- ⚡ **One-Touch Emergency SOS**: Geolocation tracking, automated SOS triggers, OpenStreetMap Overpass hospital locator, and emergency notification dispatch.
+- 📅 **Longitudinal Health Timeline**: Unified chronological view aggregating prescriptions, lab reports, appointments, vital logs, and blood donations.
+- 💊 **Smart Prescription Tracking**: Dosage schedules, adherence progress tracking, timing badges, calendar views, and CSV export options.
+- 🪪 **Digital Medical ID & Vault**: Instant Medical ID card display, profile health vitals, emergency contacts, and report storage.
 
 ---
 
-## ✨ Features
+## ✨ Implemented Features
 
-### 1. Interactive Patient Dashboard
-- Comprehensive health overview with real-time vitals summary cards.
-- Embedded clinical timeline preview, care network map, and adherence progress widgets.
-- One-click navigation to all core health tools.
+### 1. Interactive Patient Dashboard (`/dashboard`)
+- Comprehensive health overview with real-time vitals and adherence summary widgets.
+- Clinical snapshot previews and quick access to core healthcare tools.
 
 ### 2. Longitudinal Health Timeline (`/timeline`)
-- Adapter pattern (`timelineAdapters.ts`) aggregating all patient records.
-- Filter by date range (Today, This Week, Last Month, Custom), record type, and priority level.
-- Interactive event drawer with full diagnostic notes and attachments.
+- Adapter pattern (`timelineAdapters.ts`) normalizing all patient data types into a unified view.
+- Filter by date range (Today, This Week, Last Month, Custom), record category, and priority level.
+- Interactive detail drawer with full notes and record metadata.
 
 ### 3. Emergency SOS System (`/emergency`)
-- One-tap SOS trigger with animated countdown and browser `useGeolocation` tracking.
-- Interactive Leaflet map displaying nearby hospitals and ambulance services.
-- Digital Medical ID display and instant emergency contact caller.
+- SOS activation with browser `navigator.geolocation` tracking.
+- Nearby hospital locator powered by OpenStreetMap Overpass API endpoints.
+- Emergency alert registration and hospital contact access.
 
 ### 4. Smart Medication Tracker (`/medicines`)
-- Add and manage prescription schedules with timing badges (Before Meal, After Meal, Bedtime).
-- Dose adherence progress tracker, calendar view, and refill reminders.
-- Data export in CSV format for physician reviews.
+- Add and manage prescription schedules with timing indicators (Before Meal, After Meal, Bedtime).
+- Adherence tracking, active/inactive medicine filtering, and CSV export for physician review.
 
-### 5. AI Assistant & Health Advisor (`/ai-assistant`)
-- Generative AI consultation leveraging `@google/generative-ai`.
-- Speech-to-text input via `useSpeechRecognition` hook.
-- Pre-configured prompt templates for quick health questions.
+### 5. AI Consultation & Report Intelligence (`/ai-chat`, `/medical-reports`)
+- Server-side Google Gemini integration (`@google/genai`) for medical query processing and Server-Sent Events (SSE) streaming.
+- Contextual patient memory (`AIMemory`) automatically incorporating allergies and chronic conditions into AI prompts.
+- Diagnostic report parsing with Cloudinary report storage and extracted biomarker summaries.
 
-### 6. Profile & Medical Document Vault (`/profile`)
-- Complete patient demographics, blood group, allergies, and chronic conditions.
-- Automatic profile completion percentage calculator.
-- Digital Medical ID card exportable for offline emergency use.
+### 6. Profile & Medical Document Vault (`/profile`, `/reports`)
+- Complete patient demographics, blood group, allergies, and emergency contact details.
+- Secure report file uploads (PDF/Images) stored via Cloudinary.
 
 ---
 
-## 🏗️ Architecture & Design Pattern
+## 🛠️ My Technical Contributions (Neeraj Mishra)
+
+As Full Stack & System Engineer on HealthSphere, key technical deliverables authored include:
+
+- 🔒 **Security & Authentication Hardening**: Implemented strict `req.user._id` authorization scoping across chat and health record endpoints; configured production JWT secret validation (`server/config/jwt.config.js`) throwing fatal startup errors if unconfigured in production.
+- 🧠 **Server-Side AI Memory Engine**: Engineered `AIMemory` schema and dynamic patient context builder (`server/services/ai/aiService.js`), combining allergies, chronic conditions, and active prescriptions into prompt context.
+- 📡 **SSE Response Streaming**: Built Server-Sent Events (SSE) streaming pipeline in `chatController.js` with client disconnect handling and error normalization (`GeminiError`).
+- 📄 **Medical Report OCR Pipeline**: Developed report processing pipeline in `server/controllers/reportController.js` using Multer buffer streaming to Cloudinary and Gemini multimodal text extraction.
+- 🛡️ **ReDoS & Search Security**: Escaped regex special characters across chat and global AI search queries (`replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`).
+
+---
+
+## 🏗️ System Architecture
 
 ```
-                       ┌─────────────────────────────────────────┐
-                       │               React 18 SPA              │
-                       │           (Vite + TypeScript)           │
-                       └───────────────────┬─────────────────────┘
-                                           │
-         ┌─────────────────────────────────┼─────────────────────────────────┐
-         │                                 │                                 │
-┌────────┴─────────┐              ┌────────┴─────────┐              ┌────────┴─────────┐
-│ Global Contexts  │              │ Domain Modules   │              │ Custom Hooks     │
-│  - AuthContext   │              │  - Medicines     │              │  - useGeolocation│
-│  - ThemeContext  │              │  - Timeline      │              │  - useSpeech     │
-│  - ChatContext   │              │  - Emergency     │              │  - useMedia      │
-└──────────────────┘              │  - AI Assistant  │              └──────────────────┘
-                                  └────────┬─────────┘
-                                           │
-                                  ┌────────┴─────────┐
-                                  │ Adapter Layer    │
-                                  │ - timelineAdapt  │
-                                  │ - exportUtils    │
-                                  └──────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                     React 18 SPA                        │
+│                 (Vite + TypeScript)                     │
+└────────────────────────────┬────────────────────────────┘
+                             │ REST API / SSE (JWT Auth)
+┌────────────────────────────▼────────────────────────────┐
+│                    Express REST API                     │
+│                 (Node.js + Middlewares)                 │
+└──────┬──────────────────────┬────────────────────┬──────┘
+       │                      │                    │
+┌──────▼──────┐        ┌──────▼──────┐      ┌──────▼──────┐
+│  MongoDB    │        │  Cloudinary │      │  Google     │
+│ (Mongoose)  │        │ (Storage)   │      │  Gemini AI  │
+└─────────────┘        └─────────────┘      └─────────────┘
 ```
 
-- **Feature-Driven Directory Structure**: Code is co-located by domain feature (`components/medicines`, `components/timeline`, etc.) for maximum maintainability.
-- **Adapter Pattern**: Normalizes diverse health domain schemas into unified models.
-- **Accessible UI Primitives**: Built on Radix UI accessible foundations with custom Tailwind styling.
+- **Server-Side AI Execution**: Gemini API key and prompt orchestration run exclusively on the backend (`server/services/gemini/geminiService.js`).
+- **Data Isolation**: Database queries enforce user isolation using authenticated JWT context (`req.user._id`).
+- **Adapter Pattern**: Frontend adapters (`timelineAdapters.ts`) normalize backend schemas into unified UI models.
 
 ---
 
@@ -92,118 +97,116 @@ HealthSphere bridges the gap between disparate health records and actionable pat
 
 | Domain | Technology |
 | :--- | :--- |
-| **Core Framework** | React 18.3.1, TypeScript 5.8.3, Vite 8.0.10 |
-| **Routing** | React Router 6.30.1 (`HashRouter` strategy) |
-| **Styling & Icons** | Tailwind CSS 3.4.17, Lucide Icons (`lucide-react`), Framer Motion 12.29 |
-| **UI Components** | Radix UI primitives, Shadcn UI component suite, Embla Carousel |
-| **Data Fetching** | `@tanstack/react-query` 5.83.0 |
-| **AI Integration** | `@google/generative-ai` 0.24.1 |
-| **Mapping & Location** | Leaflet 1.9.4, React-Leaflet 4.2.1 |
-| **Testing** | Vitest 3.2.4, `@testing-library/react`, ESLint 9.32.0 |
+| **Frontend** | React 18.3.1, TypeScript 5.8.3, Vite 8.0.10, Tailwind CSS 3.4.17 |
+| **UI Components** | Radix UI primitives, Shadcn UI suite, Lucide Icons, Framer Motion |
+| **Routing & Querying** | React Router 6.30.1 (`HashRouter`), `@tanstack/react-query` 5.83.0 |
+| **Backend & Database** | Node.js, Express 4.19.2, MongoDB / Mongoose |
+| **AI & Storage** | Google Gemini (`@google/genai`), Cloudinary SDK, Multer |
+| **Maps & Location** | Leaflet 1.9.4, React-Leaflet 4.2.1, OpenStreetMap Overpass API |
+| **Testing** | Vitest 3.2.4, `@testing-library/react` |
 
 ---
 
-## 📂 Folder Structure
+## 📂 Project Structure
 
 ```
 HealthSphere/
-├── public/                     # Static assets & web manifest
-├── src/
-│   ├── assets/                 # SVGs, images, static media
-│   ├── components/             # Reusable UI & Domain Components
-│   │   ├── appointments/       # Appointment management UI
-│   │   ├── bloodDonation/      # Blood & Organ donation UI
-│   │   ├── chat/               # AI Assistant & Chat components
-│   │   ├── emergency/          # Emergency SOS & geolocation UI
-│   │   ├── layout/             # Navbar, Sidebar, Footer, Layout wrapper
-│   │   ├── medicines/          # Prescription & dose tracking UI
-│   │   ├── profile/            # Patient profile & Medical ID card
-│   │   ├── timeline/           # Longitudinal clinical timeline UI
-│   │   └── ui/                 # Shared Shadcn UI primitives & custom cards
-│   ├── contexts/               # React Context Providers (Auth, Theme, Chat)
-│   ├── hooks/                  # Custom hooks (Geolocation, Speech, Media, Toasts)
-│   ├── pages/                  # Page Containers (Dashboard, Medicines, Emergency, etc.)
-│   ├── services/               # API & WebSocket client definitions
-│   ├── types/                  # Global TypeScript type definitions
-│   └── utils/                  # Utility functions & helpers
-├── package.json                # Project dependencies & scripts
-├── tailwind.config.ts          # Tailwind styling tokens & dark mode configuration
-└── vite.config.ts              # Vite bundling configuration
+├── server/                     # Express Backend Application
+│   ├── config/                 # DB, Gemini, and JWT configurations
+│   ├── controllers/            # API request handlers (AI, Auth, Health, Reports)
+│   ├── middlewares/            # Auth middleware, rate limiters, error handlers
+│   ├── models/                 # Mongoose schemas (User, AIMemory, Report, Medicine)
+│   ├── routes/                 # Express API routes (/api/auth, /api/chat, /api/ai)
+│   └── services/               # Gemini AI engine, OCR, and context builders
+├── src/                        # React Frontend Application
+│   ├── components/             # UI primitives and feature modules
+│   ├── contexts/               # React Context Providers (AuthContext, ThemeContext)
+│   ├── pages/                  # Page routes (Dashboard, AIChat, Emergency, Timeline)
+│   ├── services/               # Frontend API client (`api.ts`)
+│   └── utils/                  # Utility helpers and timeline adapters
+└── README.md                   # Project documentation
 ```
 
 ---
 
-## 🚀 Quick Start — Installation
+## 🚀 Quick Start — Setup & Installation
 
 ### Prerequisites
 - Node.js 18.x or higher
-- npm 9.x or yarn/bun
+- MongoDB instance (local or MongoDB Atlas)
+- Google Gemini API Key
 
-### 1. Clone & Navigate
+### 1. Clone Repository
 ```bash
 git clone https://github.com/Ashmita1206/HealthSphere.git
 cd HealthSphere
 ```
 
-### 2. Install Dependencies
-```bash
-npm install
-```
+### 2. Environment Configuration
 
-### 3. Configure Environment Variables
-Create a `.env` file in the root directory (or `server/.env` for backend configuration):
+#### Backend Environment (`server/.env`)
+Create a file named `server/.env`:
 ```env
-GEMINI_API_KEY=your_google_gemini_api_key_here
-VITE_GOOGLE_MAPS_API_KEY=your_optional_maps_api_key
+PORT=4000
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_secure_jwt_secret_key
+GEMINI_API_KEY=your_google_gemini_api_key
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+CLIENT_URL=http://localhost:8081
 ```
 
-### 4. Start Development Server
+#### Frontend Environment (`src/.env.local` or `.env`)
+Create a file named `src/.env.local`:
+```env
+VITE_API_URL=http://localhost:4000/api
+VITE_SOCKET_URL=http://localhost:4000
+```
+
+### 3. Install & Run
+
+#### Start Backend Server
 ```bash
+cd server
+npm install
+node index.js
+```
+
+#### Start Frontend Client (New Terminal)
+```bash
+# In project root
+npm install
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Verification & Testing
 
-Run the automated Vitest unit test suite:
+Run Vitest unit tests:
 ```bash
 npm run test
 ```
 
-Run TypeScript strict type checking:
+Run TypeScript compilation check:
 ```bash
 npx tsc --noEmit
 ```
 
-Build for production:
+Build production client:
 ```bash
 npm run build
 ```
 
 ---
 
-## 📸 Screenshots Section
+## 🔮 Future Scope
 
-| Patient Dashboard | Health Timeline |
-| :---: | :---: |
-| ![Dashboard Preview](./screenshots/dashboard.png) | ![Timeline Preview](./screenshots/timeline.png) |
-
-| Emergency SOS Locator | Smart Medication Tracker |
-| :---: | :---: |
-| ![Emergency SOS Preview](./screenshots/emergency.png) | ![Medicines Preview](./screenshots/medicines.png) |
-
-*(Refer to [`screenshots/README.md`](./screenshots/README.md) for adding screenshot assets).*
-
----
-
-## 🔮 Future Scope & Roadmap
-
-- 📱 **Progressive Web App (PWA)**: Full offline support for Emergency Medical ID & offline prescription access.
-- 🔒 **HIPAA & GDPR Compliance**: End-to-end client-side encryption for health document vaults.
-- ⌚ **Wearable Integration**: Sync real-time Apple HealthKit / Google Fit vital data via Web Bluetooth API.
-- 🌐 **Multi-Language Support**: i18n localization in 10+ regional languages.
+- 📱 **Progressive Web App (PWA)**: Offline caching for Emergency Medical ID and prescription schedules.
+- 🔒 **End-to-End Vault Encryption**: Client-side document encryption for health records.
+- ⌚ **Wearable Data Sync**: Integration with Apple HealthKit and Google Fit APIs.
+- 🌐 **Localization**: Multi-language support for regional clinical terms.
 
 ---
 
