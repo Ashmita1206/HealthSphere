@@ -1,3 +1,4 @@
+const { getJwtSecret } = require('../config/jwt.config');
 const logger = require('../utils/logger');
 const events = require('../utils/chatEvents');
 
@@ -30,7 +31,7 @@ function registerChatSocket(io) {
         return next(new Error("Authentication error"));
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       socket.user = decoded;
       next();
     } catch (err) {

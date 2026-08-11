@@ -19,11 +19,7 @@ POST /api/chat/conversation
 
 async function createChat(req, res) {
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json(failure('User ID is required.'));
-    }
+    const userId = req.user._id;
 
     const conversation = await createConversation(userId);
 
@@ -50,7 +46,7 @@ GET /api/chat/conversations/:userId
 
 async function getChats(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.user._id;
 
     const conversations = await getUserConversations(userId);
 
@@ -77,7 +73,7 @@ async function getChat(req, res) {
 
     const conversation = await getConversation(conversationId);
 
-    if (!conversation) {
+    if (!conversation || String(conversation.user) !== String(req.user._id)) {
       return res.status(404).json(failure('Conversation not found.'));
     }
 
@@ -107,6 +103,11 @@ async function renameChat(req, res) {
       return res.status(400).json(failure('Title is required.'));
     }
 
+    const existing = await getConversation(conversationId);
+    if (!existing || String(existing.user) !== String(req.user._id)) {
+      return res.status(404).json(failure('Conversation not found.'));
+    }
+
     const conversation = await renameConversation(conversationId, title);
 
     return res.status(200).json(success(conversation));
@@ -130,6 +131,11 @@ async function archiveChat(req, res) {
   try {
     const { conversationId } = req.params;
 
+    const existing = await getConversation(conversationId);
+    if (!existing || String(existing.user) !== String(req.user._id)) {
+      return res.status(404).json(failure('Conversation not found.'));
+    }
+
     const conversation = await archiveConversation(conversationId);
 
     return res.status(200).json(success(conversation));
@@ -152,6 +158,11 @@ DELETE /api/chat/conversation/:conversationId
 async function deleteChat(req, res) {
   try {
     const { conversationId } = req.params;
+
+    const existing = await getConversation(conversationId);
+    if (!existing || String(existing.user) !== String(req.user._id)) {
+      return res.status(404).json(failure('Conversation not found.'));
+    }
 
     await deleteConversation(conversationId);
 

@@ -96,7 +96,8 @@ async function searchChats(req, res, next) {
       return res.status(200).json({ success: true, data: [] });
     }
 
-    const regex = new RegExp(query, 'i');
+    const safeQuery = String(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(safeQuery, 'i');
     const messages = await ChatMessage.find({ userId, content: regex }).populate('sessionId', 'title').limit(20);
 
     res.status(200).json({
@@ -114,7 +115,11 @@ async function searchChats(req, res, next) {
 async function getMessages(req, res, next) {
   try {
     const { sessionId } = req.params;
-    const messages = await ChatMessage.find({ sessionId }).sort({ createdAt: 1 });
+    const session = await ChatSession.findOne({ _id: sessionId, userId: req.user._id });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Chat session not found' });
+    }
+    const messages = await ChatMessage.find({ sessionId, userId: req.user._id }).sort({ createdAt: 1 });
     res.status(200).json({
       success: true,
       data: messages,
@@ -258,7 +263,10 @@ async function feedbackMessage(req, res, next) {
     const { messageId } = req.params;
     const { feedback } = req.body; // 'like' | 'dislike' | null
 
-    const updated = await ChatMessage.findByIdAndUpdate(messageId, { feedback }, { new: true });
+    const updated = await ChatMessage.findOneAndUpdate({ _id: messageId, userId: req.user._id }, { feedback }, { new: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
     res.status(200).json({
       success: true,
       data: updated,
