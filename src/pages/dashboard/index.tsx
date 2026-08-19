@@ -20,11 +20,11 @@ import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
 
 const weightData = [
-  { date: "Jan 1", weight: 75 },
-  { date: "Jan 8", weight: 74.5 },
-  { date: "Jan 15", weight: 74 },
-  { date: "Jan 22", weight: 73.8 },
-  { date: "Jan 29", weight: 73.5 },
+  { date: "2026-01-01", weight: 75 },
+  { date: "2026-01-08", weight: 74.5 },
+  { date: "2026-01-15", weight: 74 },
+  { date: "2026-01-22", weight: 73.8 },
+  { date: "2026-01-29", weight: 73.5 },
 ];
 
 interface DashboardAppointment {
@@ -167,7 +167,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Right Column (35% Supporting Context & Today's Care) */}
-        <motion.div variants={motionVariants.contentReveal} className="space-y-6">
+        <motion.div variants={motionVariants.contentReveal} className="space-y-4">
           {/* Today's Care Schedule */}
           <Card variant="base" padding="md" className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">

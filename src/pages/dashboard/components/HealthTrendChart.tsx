@@ -90,9 +90,18 @@ export const HealthTrendChart = memo(function HealthTrendChart({
                   stroke="#64748B" 
                   fontSize={11} 
                   tickLine={false}
-                  tickFormatter={(value) => {
-                    const date = new Date(value);
-                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  tickFormatter={(value: string) => {
+                    if (!value) return "";
+                    const d = new Date(value);
+                    if (isNaN(d.getTime())) {
+                      const currentYear = new Date().getFullYear();
+                      const dWithYear = new Date(`${value}, ${currentYear}`);
+                      if (!isNaN(dWithYear.getTime())) {
+                        return dWithYear.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      }
+                      return String(value);
+                    }
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                   }}
                 />
                 <YAxis 
@@ -109,9 +118,18 @@ export const HealthTrendChart = memo(function HealthTrendChart({
                     boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                     fontSize: "12px",
                   }}
-                  labelFormatter={(value) => {
-                    const date = new Date(value);
-                    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  labelFormatter={(value: string) => {
+                    if (!value) return "";
+                    const d = new Date(value);
+                    if (isNaN(d.getTime())) {
+                      const currentYear = new Date().getFullYear();
+                      const dWithYear = new Date(`${value}, ${currentYear}`);
+                      if (!isNaN(dWithYear.getTime())) {
+                        return dWithYear.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                      }
+                      return String(value);
+                    }
+                    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                   }}
                   formatter={(value: number) => [`${value}${unit}`, title]}
                 />
