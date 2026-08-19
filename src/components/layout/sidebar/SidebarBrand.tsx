@@ -26,7 +26,7 @@ export function SidebarBrand({ collapsed }: SidebarBrandProps) {
   return (
     <div className="h-16 flex items-center px-4 border-b border-[#E5E7EB] shrink-0 overflow-hidden">
       {collapsed ? (
-        <BrandLogo variant="icon" size="sm" to="/dashboard" />
+        <BrandLogo variant="icon" size="md" to="/dashboard" />
       ) : (
         <BrandLogo variant="full" size="md" to="/dashboard" />
       )}

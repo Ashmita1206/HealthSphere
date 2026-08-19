@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -420,20 +420,32 @@ export function ChatBot() {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button (FAB) */}
+      {/* Floating Action Button (FAB) — Fixed Bottom-Right Compact Floating Control */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.94 }}
+            initial={{ scale: 0, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: 20 }}
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setIsOpen(true)}
-            className="chat-fab bg-teal-700 hover:bg-teal-800 text-white shadow-xl flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-teal-600/40 rounded-full border border-teal-500/30"
-            aria-label="Open HealthSphere AI Chatbot"
+            className={cn(
+              "fixed z-50 flex items-center justify-center gap-2.5 font-bold shadow-2xl transition-all duration-200 cursor-pointer select-none",
+              "bg-gradient-to-r from-teal-700 to-teal-800 hover:from-teal-800 hover:to-teal-900 text-white",
+              "border border-teal-500/40 hover:border-teal-300/80 shadow-teal-950/40",
+              "bottom-6 right-6 px-4 py-3 rounded-full text-xs sm:text-sm tracking-wide",
+              "max-sm:bottom-4 max-sm:right-4 max-sm:px-3.5 max-sm:py-3 max-sm:rounded-full"
+            )}
+            aria-label="Ask HealthSphere AI Assistant"
           >
-            <MessageCircle className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+            <Sparkles className="h-5 w-5 text-teal-300 animate-pulse shrink-0" />
+            <span className="hidden sm:inline font-heading font-extrabold tracking-tight">
+              Ask HealthSphere
+            </span>
+            <span className="inline sm:hidden font-heading font-bold text-xs">
+              AI
+            </span>
           </motion.button>
         )}
       </AnimatePresence>

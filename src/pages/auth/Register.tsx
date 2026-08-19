@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -120,13 +121,8 @@ export default function RegisterPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Logo Header */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center text-slate-900 font-bold shadow-md">
-            <Activity className="h-6 w-6 stroke-[2.5]" />
-          </div>
-          <span className="text-2xl font-extrabold font-heading tracking-tight">
-            HealthSphere <span className="text-teal-400">AI</span>
-          </span>
+        <div className="relative z-10">
+          <BrandLogo isDark variant="full" size="xl" to="/" />
         </div>
 
         {/* Middle Copy */}
@@ -180,12 +176,9 @@ export default function RegisterPage() {
           className="w-full max-w-md bg-white border border-slate-200/80 shadow-xl rounded-3xl p-8 sm:p-10 space-y-7"
         >
           <div className="text-center space-y-2">
-            <Link to="/" className="inline-flex lg:hidden items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center text-white font-bold">
-                <Activity className="h-5 w-5 stroke-[2.5]" />
-              </div>
-              <span className="text-xl font-extrabold text-slate-900 font-heading">HealthSphere AI</span>
-            </Link>
+            <div className="lg:hidden flex justify-center mb-2">
+              <BrandLogo variant="full" size="lg" to="/" />
+            </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading tracking-tight">
               Create Account

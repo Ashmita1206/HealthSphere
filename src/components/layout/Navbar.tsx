@@ -109,7 +109,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
           <BrandLogo
             variant="full"
-            size="md"
+            size={isPublicPage ? "lg" : "md"}
             to={user ? "/dashboard" : "/"}
           />
         </div>
@@ -229,7 +229,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                     className="flex items-center gap-2 px-2 py-1 h-auto rounded-xl hover:bg-slate-100 transition-colors"
                     aria-label="Open account menu"
                   >
-                    <Avatar className="h-8 w-8 border border-teal-200">
+                    <Avatar className="h-10 w-10 border border-teal-200">
                       <AvatarImage src="" alt="Profile" />
                       <AvatarFallback className="bg-teal-700 text-white font-bold text-xs">
                         {getInitials()}
