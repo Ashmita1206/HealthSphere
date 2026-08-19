@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
-import { Sidebar } from './Sidebar';
+import { Sidebar } from './sidebar/index';
 import { Footer } from './Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatBot } from '@/components/chat/ChatBot';
@@ -12,10 +12,20 @@ interface LayoutProps {
 
 export function Layout({ showSidebar = false }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("healthsphere-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
   const { user, loading } = useAuth();
   const location = useLocation();
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const handleCollapsedChange = useCallback((collapsed: boolean) => {
+    setSidebarCollapsed(collapsed);
+  }, []);
 
   const isPublicPage = ["/", "/about", "/contact", "/privacy", "/terms"].includes(location.pathname);
 
@@ -29,19 +39,27 @@ export function Layout({ showSidebar = false }: LayoutProps) {
 
       <div className="flex flex-1 relative">
         {showSidebar && user && (
-          <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={closeSidebar}
+            onCollapsedChange={handleCollapsedChange}
+          />
         )}
 
         <main
           id="main-content"
           tabIndex={-1}
-          className={`min-w-0 flex-1 w-full transition-[margin,width] duration-250 ease-out ${
-            showSidebar ? 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto' : ''
-          } ${
-            showSidebar && user ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
+          className={`min-w-0 flex-1 w-full transition-[margin] duration-300 ease-in-out ${
+            showSidebar && user
+              ? sidebarCollapsed
+                ? 'lg:ml-[72px]'
+                : 'lg:ml-64'
+              : ''
           }`}
         >
-          <Outlet />
+          <div className={showSidebar ? 'p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto' : ''}>
+            <Outlet />
+          </div>
         </main>
       </div>
 

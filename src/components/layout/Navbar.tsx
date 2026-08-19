@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { 
-  Menu, User, LogOut, Activity, Search, Bell, ShieldAlert, Sparkles, ChevronDown, CheckCircle2
+  Menu, User, LogOut, Search, Bell, ShieldAlert, Sparkles, ChevronDown, CheckCircle2, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 const globalDestinations = [
   { path: "/profile", keywords: ["profile", "medical history", "allergy"] },
@@ -36,6 +37,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [publicMenuOpen, setPublicMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -69,44 +71,47 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200/80 transition-all">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all duration-200">
       <a
         href="#main-content"
         className="sr-only z-50 rounded-lg bg-white px-4 py-2 font-bold text-teal-800 focus:not-sr-only focus:absolute focus:left-4 focus:top-3"
       >
         Skip to main content
       </a>
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+      <div className={`flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 w-full ${isPublicPage ? 'max-w-7xl mx-auto' : ''}`}>
         
         {/* Left section: Logo & Mobile Toggle */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {user && !isPublicPage && (
             <Button
               variant="ghost"
               size="icon"
               onClick={onMenuClick}
               className="lg:hidden text-slate-700 hover:bg-slate-100 rounded-xl"
-              aria-label="Toggle menu"
+              aria-label="Toggle navigation menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
           )}
 
-          <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-teal-700 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-300">
-              <Activity className="h-5 w-5 stroke-[2.5]" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xl font-extrabold tracking-tight text-slate-900 font-heading">
-                  HealthSphere
-                </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200">
-                  AI
-                </span>
-              </div>
-            </div>
-          </Link>
+          {/* Public Page Mobile Menu Toggle */}
+          {isPublicPage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setPublicMenuOpen(!publicMenuOpen)}
+              className="md:hidden text-slate-700 hover:bg-slate-100 rounded-xl"
+              aria-label="Toggle public navigation"
+            >
+              {publicMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
+
+          <BrandLogo
+            variant="full"
+            size="md"
+            to={user ? "/dashboard" : "/"}
+          />
         </div>
 
         {/* Middle Navigation - Public Landing Nav */}
@@ -138,18 +143,31 @@ export function Navbar({ onMenuClick }: NavbarProps) {
               placeholder="Search reports, vitals, medicines..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl bg-slate-100/80 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-700/20 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+              className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl bg-slate-100/90 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-teal-700/20 focus:bg-white focus:border-teal-600 transition-all text-slate-800 placeholder:text-slate-400 font-medium"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 text-slate-400 hover:text-slate-600 text-xs font-semibold p-0.5"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
           </form>
         )}
 
         {/* Right Section: CTAs / Notifications / Profile */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           {user ? (
             <>
               {/* Emergency Quick Badge */}
-              <Link to="/emergency" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200/80 transition-colors">
-                <ShieldAlert className="w-4 h-4 animate-pulse" />
+              <Link
+                to="/emergency"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200/80 transition-colors shrink-0"
+              >
+                <ShieldAlert className="w-4 h-4 animate-pulse text-rose-600" />
                 <span>Emergency SOS</span>
               </Link>
 
@@ -170,12 +188,12 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                 <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl border border-slate-200 shadow-xl bg-white">
                   <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                     <h4 className="font-bold text-sm text-slate-900 font-heading">Notifications</h4>
-                    <span className="text-xs text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-full">2 New</span>
+                    <span className="text-xs text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200/60">2 New</span>
                   </div>
                   <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
                     <DropdownMenuItem
                       onSelect={() => navigate("/reports")}
-                      className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none"
+                      className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none focus:bg-slate-50"
                     >
                       <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-700 shrink-0">
                         <CheckCircle2 className="w-4 h-4" />
@@ -188,7 +206,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => navigate("/medicines")}
-                      className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none"
+                      className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none focus:bg-slate-50"
                     >
                       <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
                         <Bell className="w-4 h-4" />
@@ -223,7 +241,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-60 p-2 rounded-2xl border border-slate-200 shadow-xl" align="end">
+                <DropdownMenuContent className="w-60 p-2 rounded-2xl border border-slate-200 shadow-xl bg-white" align="end">
                   <div className="px-3 py-2 bg-slate-50 rounded-xl mb-1">
                     <p className="text-xs font-bold text-slate-900 truncate">{user.email}</p>
                     <p className="text-[11px] text-teal-700 font-medium flex items-center gap-1 mt-0.5">
@@ -231,7 +249,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                     </p>
                   </div>
                   <DropdownMenuSeparator className="my-1" />
-                  <DropdownMenuItem onClick={() => navigate("/profile")} className="rounded-xl text-xs font-medium py-2">
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="rounded-xl text-xs font-medium py-2 focus:bg-teal-50 focus:text-teal-800">
                     <User className="mr-2 h-4 w-4 text-slate-500" />
                     Profile & Medical History
                   </DropdownMenuItem>
@@ -254,7 +272,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
               </Button>
               <Button
                 onClick={() => navigate("/auth/register")}
-                className="bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm px-5 py-2 rounded-xl shadow-sm hover:shadow-md transition-all"
+                className="bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm px-4 sm:px-5 py-2 rounded-xl shadow-xs hover:shadow-md transition-all"
               >
                 Get Started
               </Button>
@@ -262,7 +280,56 @@ export function Navbar({ onMenuClick }: NavbarProps) {
           )}
         </div>
       </div>
+
+      {/* Responsive Mobile Navigation Drawer for Landing / Public Pages */}
+      {isPublicPage && publicMenuOpen && (
+        <div className="md:hidden border-t border-slate-200/80 bg-white/95 backdrop-blur-lg px-4 py-4 space-y-3">
+          <nav className="flex flex-col space-y-2.5 text-sm font-semibold text-slate-700">
+            <a
+              href="#hero"
+              onClick={() => setPublicMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-teal-50 hover:text-teal-700 transition-colors"
+            >
+              Home
+            </a>
+            <a
+              href="#features"
+              onClick={() => setPublicMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-teal-50 hover:text-teal-700 transition-colors"
+            >
+              Features
+            </a>
+            <Link
+              to="/about"
+              onClick={() => setPublicMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-teal-50 hover:text-teal-700 transition-colors"
+            >
+              About
+            </Link>
+            <a
+              href="#how-it-works"
+              onClick={() => setPublicMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-teal-50 hover:text-teal-700 transition-colors"
+            >
+              Services
+            </a>
+            <a
+              href="#testimonials"
+              onClick={() => setPublicMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-teal-50 hover:text-teal-700 transition-colors"
+            >
+              Testimonials
+            </a>
+            <Link
+              to="/contact"
+              onClick={() => setPublicMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-teal-50 hover:text-teal-700 transition-colors"
+            >
+              Contact
+            </Link>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
-
