@@ -150,21 +150,46 @@ export function Navbar({ onMenuClick }: NavbarProps) {
     return () => unsubscribe();
   }, []);
 
-  /* ---------- Mobile Drawer Body Scroll Lock & Escape Key ---------- */
+  /* ---------- Mobile Drawer Body Scroll Lock & Focus Management ---------- */
   useEffect(() => {
     if (!publicMenuOpen) return;
 
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    const drawer = drawerRef.current;
+    drawer?.focus();
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPublicMenuOpen(false);
+      if (e.key === "Escape") {
+        setPublicMenuOpen(false);
+        return;
+      }
+
+      if (e.key === "Tab" && drawer) {
+        const focusables = drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus();
     };
   }, [publicMenuOpen]);
 
@@ -247,7 +272,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
               variant="ghost"
               size="icon"
               onClick={onMenuClick}
-              className="lg:hidden text-slate-700 hover:bg-slate-100 rounded-xl shrink-0"
+              className="lg:hidden text-slate-700 hover:bg-slate-100 rounded-xl shrink-0 w-11 h-11 flex items-center justify-center"
               aria-label="Toggle navigation menu"
             >
               <Menu className="h-5 w-5" />
@@ -558,11 +583,12 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             <motion.div
               id="public-mobile-drawer"
               ref={drawerRef}
+              tabIndex={-1}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[340px] max-w-[calc(100vw-24px)] bg-white shadow-2xl md:hidden flex flex-col"
+              className="fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[340px] max-w-[calc(100vw-24px)] bg-white shadow-2xl md:hidden flex flex-col focus:outline-none"
               role="dialog"
               aria-modal="true"
               aria-label="Mobile navigation"

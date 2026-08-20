@@ -94,13 +94,38 @@ interface HealthTrendChartProps {
   unit?: string;
 }
 
-export const HealthTrendChart = memo(function HealthTrendChart({}: HealthTrendChartProps) {
+export const HealthTrendChart = memo(function HealthTrendChart({
+  title,
+  description,
+  data: propData,
+  unit: propUnit,
+}: HealthTrendChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<"weight" | "glucose" | "heartRate">("glucose");
   const [dateFilter, setDateFilter] = useState<"7d" | "30d" | "90d">("30d");
 
+  const effectiveDatasets = useMemo(() => {
+    if (!propData || !Array.isArray(propData) || propData.length === 0) {
+      return metricDatasets;
+    }
+    // Override weight dataset if custom weight propData is supplied
+    return metricDatasets.map((ds) => {
+      if (ds.id === "weight") {
+        return {
+          ...ds,
+          unit: propUnit || ds.unit,
+          data: propData.map((d: any) => ({
+            date: d.date || d.day || "2026-08-01",
+            value: d.weight ?? d.value ?? 74,
+          })),
+        };
+      }
+      return ds;
+    });
+  }, [propData, propUnit]);
+
   const currentDataset = useMemo(
-    () => metricDatasets.find((m) => m.id === selectedMetric) || metricDatasets[0],
-    [selectedMetric],
+    () => effectiveDatasets.find((m) => m.id === selectedMetric) || effectiveDatasets[0],
+    [effectiveDatasets, selectedMetric],
   );
 
   const filteredData = useMemo(() => {
@@ -120,10 +145,10 @@ export const HealthTrendChart = memo(function HealthTrendChart({}: HealthTrendCh
             <div>
               <CardTitle className="text-base font-bold text-slate-900 font-heading flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-[#0F766E]" />
-                <span>Clinical Telemetry & Health Trend</span>
+                <span>{title || "Clinical Telemetry & Health Trend"}</span>
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 font-normal mt-0.5">
-                {currentDataset.description} · Normal Ref: {currentDataset.refLow}–{currentDataset.refHigh} {currentDataset.unit}
+                {description || currentDataset.description} · Normal Ref: {currentDataset.refLow}–{currentDataset.refHigh} {currentDataset.unit}
               </CardDescription>
             </div>
 

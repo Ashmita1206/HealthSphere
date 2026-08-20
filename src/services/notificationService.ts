@@ -1,4 +1,4 @@
-import { socket } from './socket';
+import { notificationSocket } from './socket';
 
 export interface AppNotification {
   id: string;
@@ -61,17 +61,21 @@ class NotificationService {
   }
 
   private initSocketListeners() {
-    socket.on('connect', () => {
+    notificationSocket.off('connect');
+    notificationSocket.off('disconnect');
+    notificationSocket.off('notification:new');
+
+    notificationSocket.on('connect', () => {
       this.isConnected = true;
       this.notifyConnectionState(true);
     });
 
-    socket.on('disconnect', () => {
+    notificationSocket.on('disconnect', () => {
       this.isConnected = false;
       this.notifyConnectionState(false);
     });
 
-    socket.on('notification:new', (newNotif: AppNotification) => {
+    notificationSocket.on('notification:new', (newNotif: AppNotification) => {
       this.addNotification(newNotif);
       this.triggerBrowserNotification(newNotif.title, newNotif.message, newNotif.route);
     });
@@ -152,6 +156,7 @@ class NotificationService {
   }
 
   public addNotification(notif: AppNotification) {
+    if (this.notifications.some((n) => n.id === notif.id)) return;
     this.notifications = [notif, ...this.notifications];
     this.notifyListeners();
   }
@@ -173,11 +178,12 @@ class NotificationService {
   }
 
   public connectSocket(token?: string) {
-    if (token) {
-      socket.auth = { token };
+    const activeToken = token || localStorage.getItem('healthsphere_token');
+    if (activeToken) {
+      notificationSocket.auth = { token: activeToken };
     }
-    if (!socket.connected) {
-      socket.connect();
+    if (!notificationSocket.connected) {
+      notificationSocket.connect();
     }
   }
 

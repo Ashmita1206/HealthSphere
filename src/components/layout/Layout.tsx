@@ -34,7 +34,7 @@ export function Layout({ showSidebar = false }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden flex flex-col bg-[#FAF9F6] font-sans text-slate-900 antialiased selection:bg-teal-800 selection:text-white">
+    <div className="min-h-screen overflow-x-clip flex flex-col bg-[#FAF9F6] font-sans text-slate-900 antialiased selection:bg-teal-800 selection:text-white">
       <Navbar onMenuClick={openSidebar} />
 
       <div className="flex flex-1 relative">

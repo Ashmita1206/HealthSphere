@@ -71,12 +71,17 @@ export default function SettingsPage() {
       setSocketConnected(connected);
     });
 
-    // Load saved preferences from localStorage if available
+    // Load saved preferences & localization from localStorage
     const saved = localStorage.getItem('healthsphere_user_settings');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setPreferences((prev) => ({ ...prev, ...parsed }));
+        if (parsed.preferences) setPreferences((prev) => ({ ...prev, ...parsed.preferences }));
+        else setPreferences((prev) => ({ ...prev, ...parsed }));
+
+        if (parsed.emailSettings) {
+          setEmailSettings((prev) => ({ ...prev, ...parsed.emailSettings }));
+        }
       } catch (_e) {
         // ignore parse error
       }
@@ -88,8 +93,9 @@ export default function SettingsPage() {
   const handleSavePreferences = async () => {
     setLoading(true);
     try {
-      // Save locally
-      localStorage.setItem('healthsphere_user_settings', JSON.stringify(preferences));
+      // Save locally (both preferences and emailSettings)
+      const dataToSave = { preferences, emailSettings };
+      localStorage.setItem('healthsphere_user_settings', JSON.stringify(dataToSave));
 
       // Sync to API
       await api.put('/user/preferences', {
@@ -100,20 +106,33 @@ export default function SettingsPage() {
         emergency_alert_sms: preferences.emergencyAlerts,
         share_location_on_sos: preferences.dataSync,
         auto_contact_emergency: preferences.twoFactorAuth,
+        language: emailSettings.language,
+        timezone: emailSettings.timezone,
       });
 
       toast({
         title: 'Settings Saved',
-        description: 'Your notification and platform preferences have been updated.',
+        description: 'Your notification, localization, and system preferences have been updated.',
       });
-    } catch (err: any) {
+    } catch (_err: any) {
       toast({
         title: 'Preferences Saved Locally',
-        description: 'Settings saved on this device. (API endpoint synced)',
+        description: 'Settings saved on this device.',
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePingSocket = () => {
+    notificationService.connectSocket();
+    const isConn = notificationService.getNotifications();
+    toast({
+      title: 'Socket.IO Connection Check',
+      description: socketConnected
+        ? 'Relay connection active on authenticated user channel.'
+        : 'Connecting to Socket.IO relay background service...',
+    });
   };
 
   const handleRequestNotificationPermission = async () => {
@@ -339,7 +358,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => notificationService.connectSocket()}
+                  onClick={handlePingSocket}
                   className="text-xs font-bold h-8 px-3 rounded-lg border-slate-200 shrink-0"
                 >
                   Ping Socket

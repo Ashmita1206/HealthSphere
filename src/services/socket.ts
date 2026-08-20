@@ -10,3 +10,12 @@ export const socket = io(URL, {
     cb({ token });
   }
 });
+
+export const notificationSocket = io(`${URL}/notifications`, {
+  autoConnect: false,
+  withCredentials: true,
+  auth: (cb) => {
+    const token = localStorage.getItem('healthsphere_token');
+    cb({ token });
+  }
+});
