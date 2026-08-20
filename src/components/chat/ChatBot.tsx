@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatSocket } from '@/hooks/useChatSocket';
@@ -43,6 +43,8 @@ export function ChatBot() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isChatPage = ['/ai-chat', '/chat', '/ai-assistant'].includes(location.pathname);
 
   // Custom Hooks
   const {
@@ -422,7 +424,7 @@ export function ChatBot() {
 
       {/* Floating Action Button (FAB) — Fixed Bottom-Right Compact Floating Control */}
       <AnimatePresence>
-        {!isOpen && (
+        {!isOpen && !isChatPage && (
           <motion.button
             initial={{ scale: 0, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}

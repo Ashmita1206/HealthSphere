@@ -48,11 +48,11 @@ export default function AIHealthScore() {
             <div className="p-2 rounded-xl bg-teal-700 text-white">
               <Heart className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+            <h1 className="text-2xl font-extrabold text-slate-900 font-heading">
               AI Health Intelligence & Predictive Analytics
             </h1>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Real-time Health Scoring (8 Categories) & Predictive Risk Engine (6 Health Conditions)
           </p>
         </div>
@@ -61,15 +61,21 @@ export default function AIHealthScore() {
           onClick={refetch}
           variant="outline"
           size="sm"
-          className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-semibold gap-1.5"
+          className="rounded-xl border-slate-200 text-xs font-semibold gap-1.5"
         >
           <RefreshCw className="w-4 h-4 text-teal-600" /> Recalculate Scores
         </Button>
       </div>
 
       {loading && (
-        <div className="text-center py-16 text-xs text-slate-400 animate-pulse">
-          Computing AI health intelligence scores & predictive risk models...
+        <div className="text-center py-12 space-y-4">
+          <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center mx-auto animate-pulse">
+            <Heart className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-semibold text-slate-700 animate-pulse">
+            Computing AI health intelligence scores & predictive risk models...
+          </p>
+          <p className="text-xs text-slate-500">This may take a few seconds</p>
         </div>
       )}
 
@@ -101,7 +107,7 @@ export default function AIHealthScore() {
 
           {/* Module 5: 7 Sub-Scores Grid */}
           <div className="space-y-3">
-            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+            <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
               Categorized AI Health Scores (7 Metrics)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -109,14 +115,14 @@ export default function AIHealthScore() {
                 Object.entries(healthScores.scores).map(([key, val]) => (
                   <div
                     key={key}
-                    className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3"
+                    className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                        <div className="p-2 rounded-xl bg-slate-100">
                           {scoreIcons[key] || <Activity className="w-5 h-5 text-teal-600" />}
                         </div>
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                        <h4 className="font-bold text-xs text-slate-900">
                           {scoreTitles[key] || key}
                         </h4>
                       </div>
@@ -124,16 +130,16 @@ export default function AIHealthScore() {
                     </div>
 
                     <div className="space-y-1 text-xs">
-                      <p className="text-slate-600 dark:text-slate-400">
-                        <span className="font-bold text-slate-900 dark:text-white">Why:</span> {typeof val.why === 'object' ? JSON.stringify(val.why) : String(val.why || '')}
+                      <p className="text-slate-600">
+                        <span className="font-bold text-slate-900">Why:</span> {typeof val.why === 'object' ? JSON.stringify(val.why) : String(val.why || '')}
                       </p>
-                      <p className="text-slate-600 dark:text-slate-400">
-                        <span className="font-bold text-slate-900 dark:text-white">Trend:</span>{' '}
+                      <p className="text-slate-600">
+                        <span className="font-bold text-slate-900">Trend:</span>{' '}
                         <span className="text-emerald-600 font-semibold">{typeof val.trend === 'object' ? JSON.stringify(val.trend) : String(val.trend || '')}</span>
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-start gap-1.5 text-[11px] text-teal-800 dark:text-teal-300 font-medium">
+                    <div className="pt-2 border-t border-slate-100 flex items-start gap-1.5 text-[11px] text-teal-800 font-medium">
                       <TrendingUp className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
                       <span>{typeof val.recommendation === 'object' ? JSON.stringify(val.recommendation) : String(val.recommendation || '')}</span>
                     </div>
@@ -144,7 +150,7 @@ export default function AIHealthScore() {
 
           {/* Module 7: Predictive Analytics */}
           <div className="space-y-3">
-            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+            <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
               Predictive Health Analytics (6 Risk Predictions)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -152,19 +158,19 @@ export default function AIHealthScore() {
                 Object.entries(predictions).map(([conditionKey, pred]) => (
                   <div
                     key={conditionKey}
-                    className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3"
+                    className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wide">
+                      <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wide">
                         {conditionKey.replace('Risk', '').replace('NonAdherence', '')} Risk
                       </span>
                       <span
                         className={`px-2.5 py-0.5 text-[10px] font-extrabold rounded-full ${
                           pred.level === 'High'
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                            ? 'bg-rose-100 text-rose-800'
                             : pred.level === 'Moderate'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
                         }`}
                       >
                         {typeof pred.level === 'object' ? JSON.stringify(pred.level) : String(pred.level || '')} ({typeof pred.probability === 'object' ? JSON.stringify(pred.probability) : String(pred.probability || 0)}%)
@@ -173,7 +179,7 @@ export default function AIHealthScore() {
 
                     <div className="space-y-1">
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Preventive Action</p>
-                      <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                      <div className="flex items-start gap-2 text-xs text-slate-700 font-medium">
                         <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
                         <span>{typeof pred.preventiveAction === 'object' ? JSON.stringify(pred.preventiveAction) : String(pred.preventiveAction || '')}</span>
                       </div>

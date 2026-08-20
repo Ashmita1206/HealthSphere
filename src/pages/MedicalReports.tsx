@@ -54,11 +54,11 @@ export default function MedicalReports() {
             <div className="p-2 rounded-xl bg-teal-700 text-white">
               <FileText className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+            <h1 className="text-2xl font-extrabold text-slate-900 font-heading">
               Medical Report Intelligence
             </h1>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             OCR Document Parsing, 13 Biomarker Extraction, Risk Highlighting & Report Comparison
           </p>
         </div>
@@ -77,20 +77,48 @@ export default function MedicalReports() {
 
       {/* Main Upload Dropzone Banner if no result */}
       {!reportResult && !analyzing && (
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="p-12 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-teal-500 bg-white dark:bg-slate-900 text-center cursor-pointer transition-all space-y-4"
-        >
-          <div className="w-16 h-16 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center mx-auto">
-            <Sparkles className="w-8 h-8" />
+        <div className="space-y-6">
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="p-10 sm:p-14 rounded-3xl border-2 border-dashed border-teal-600/30 hover:border-teal-600 bg-white hover:bg-teal-50/30 text-center cursor-pointer transition-all space-y-4 shadow-sm"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center mx-auto shadow-xs">
+              <Sparkles className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5 max-w-lg mx-auto">
+              <h3 className="font-extrabold text-base text-slate-900 font-heading">
+                Drop your Lab Report or Prescription Here
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                HealthSphere OCR instantly extracts CBC, Sugar, HbA1c, Cholesterol, Liver, Kidney, Thyroid, Vitamins, Iron, Calcium, Platelets, and Hemoglobin values.
+              </p>
+            </div>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-6 py-2"
+            >
+              <Upload className="w-4 h-4 mr-2" /> Browse File from Device
+            </Button>
           </div>
-          <div>
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white font-heading">
-              Drop your Lab Report or Prescription Here
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
-              HealthSphere OCR instantly extracts CBC, Sugar, HbA1c, Cholesterol, Liver, Kidney, Thyroid, Vitamins, Iron, Calcium, Platelets, and Hemoglobin values.
-            </p>
+
+          {/* Supported Biomarkers Preview Pills */}
+          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+            <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider font-heading">
+              Automated Extraction Targets (13 Biomarkers)
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {biomarkerKeys.map((item) => (
+                <span
+                  key={item.key}
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700"
+                >
+                  {item.label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}
