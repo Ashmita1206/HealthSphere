@@ -13,6 +13,7 @@ import { ClinicalInsight } from "@/design-system/healthcare/ClinicalInsight";
 import { CareAction } from "@/design-system/healthcare/CareAction";
 import { HealthTrendChart } from "./components/HealthTrendChart";
 import { TimelinePreviewWidget } from "./components/TimelinePreviewWidget";
+import { AdherenceTrendChart } from "@/components/charts/AdherenceTrendChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/design-system/primitives/Card";
 import { Button } from "@/design-system/primitives/Button";
@@ -25,6 +26,16 @@ const weightData = [
   { date: "2026-01-15", weight: 74 },
   { date: "2026-01-22", weight: 73.8 },
   { date: "2026-01-29", weight: 73.5 },
+];
+
+const adherenceData = [
+  { day: "Mon", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
+  { day: "Tue", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
+  { day: "Wed", adherence: 50, dosesTaken: 1, dosesTotal: 2 },
+  { day: "Thu", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
+  { day: "Fri", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
+  { day: "Sat", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
+  { day: "Sun", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
 ];
 
 interface DashboardAppointment {
@@ -199,6 +210,9 @@ export default function DashboardPage() {
               />
             </div>
           </Card>
+
+          {/* Medication Adherence Chart */}
+          <AdherenceTrendChart data={adherenceData} height={160} />
 
           {/* AI Contextual Intelligence Prompt Tile */}
           <Card variant="ai" padding="md" className="space-y-3">

@@ -20,9 +20,11 @@ const emergencyRoutes = require('./routes/emergencyRoutes');
 const chatRoutes = require('./routes/chat.Routes');
 const newChatRoutes = require('./routes/chatRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
+const registerNotificationSocket = require('./sockets/notification.socket');
 
 const app = express();
 const httpServer = createServer(app);
@@ -99,6 +101,7 @@ app.use('/api/emergency', emergencyRoutes);
 app.use('/api/chat', newChatRoutes);
 app.use('/api/legacy-chat', chatRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
 /*
 ====================================================
 Socket.IO
@@ -114,6 +117,7 @@ const io = new Server(httpServer, {
 });
 
 registerChatSocket(io);
+registerNotificationSocket(io);
 
 /*
 ====================================================

@@ -23,6 +23,7 @@ import { SidebarCollapseButton } from "./SidebarCollapseButton";
 import { SidebarNavGroup } from "./SidebarNavGroup";
 import { SidebarProfile } from "./SidebarProfile";
 import { SidebarFooter } from "./SidebarFooter";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import type { LucideIcon } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -278,7 +279,7 @@ export function Sidebar({ isOpen, onClose, onCollapsedChange }: SidebarProps) {
                 <BrandLogo variant="full" size="md" to="/dashboard" onClick={onClose} />
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-xl text-[#64748B] hover:bg-[#FAF9F6] hover:text-[#0F766E] transition-colors duration-150"
+                  className="w-11 h-11 flex items-center justify-center rounded-xl text-[#64748B] hover:bg-[#FAF9F6] hover:text-[#0F766E] transition-colors duration-150 shrink-0"
                   aria-label="Close navigation"
                 >
                   <X className="h-5 w-5" />
