@@ -182,15 +182,27 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Column (65% Primary Narrative) */}
         <motion.div variants={motionVariants.contentReveal} className="lg:col-span-2 space-y-6">
-          {/* Clinical Insight Banner */}
-          <ClinicalInsight
-            category="OCR LAB INSIGHT"
-            insightTitle="Biomarker Panel Baseline Verified"
-            insightBody="Comprehensive analysis of your Aug 4 lab extractions shows healthy lipid, glucose, and renal function baselines with zero critical out-of-range parameters."
-            sourceLabel="Verified OCR Baseline · Aug 4"
-            onAction={() => navigate("/reports")}
-            actionLabel="Review Detailed Lab Findings"
-          />
+          {/* Clinical Insight Banner (Render only if real report insight exists) */}
+          {dashboardData?.clinicalInsight ? (
+            <ClinicalInsight
+              category={dashboardData.clinicalInsight.category}
+              insightTitle={dashboardData.clinicalInsight.insightTitle}
+              insightBody={dashboardData.clinicalInsight.insightBody}
+              sourceLabel={dashboardData.clinicalInsight.sourceLabel}
+              onAction={() => navigate("/reports")}
+              actionLabel="Review Detailed Lab Findings"
+            />
+          ) : (
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Clinical Insight
+              </span>
+              <h3 className="text-xs font-bold text-slate-800">No Clinical Report Findings Yet</h3>
+              <p className="text-xs text-slate-500">
+                Upload your medical lab reports to extract biomarker baselines and clinical insights.
+              </p>
+            </div>
+          )}
 
           {/* Health Trends Visualization */}
           <HealthTrendChart
@@ -216,7 +228,7 @@ export default function DashboardPage() {
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
-            <TimelinePreviewWidget />
+            <TimelinePreviewWidget events={dashboardData?.timelineEvents} />
           </div>
         </motion.div>
 

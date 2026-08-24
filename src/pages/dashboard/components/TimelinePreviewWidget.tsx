@@ -1,15 +1,29 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, ArrowRight, Activity, Calendar, Pill, FileText, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createPlaceholderTimelineEvents } from '@/components/timeline/timelineData';
 import { formatTimelineDate } from '@/components/timeline/timelineHelpers';
 
-export const TimelinePreviewWidget = memo(function TimelinePreviewWidget() {
+interface TimelinePreviewWidgetProps {
+  events?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    timestamp: string;
+    type: string;
+  }>;
+}
+
+export const TimelinePreviewWidget = memo(function TimelinePreviewWidget({ events }: TimelinePreviewWidgetProps) {
   const navigate = useNavigate();
-  const sampleEvents = createPlaceholderTimelineEvents().slice(0, 4);
+  const sampleEvents = useMemo(() => {
+    if (events && Array.isArray(events) && events.length > 0) {
+      return events.slice(0, 4);
+    }
+    return [];
+  }, [events]);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -53,31 +67,37 @@ export const TimelinePreviewWidget = memo(function TimelinePreviewWidget() {
       </CardHeader>
 
       <CardContent className="p-4 space-y-3">
-        {sampleEvents.map((evt) => (
-          <div
-            key={evt.id}
-            onClick={() => navigate('/timeline')}
-            className="group flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 transition-all hover:bg-teal-50/50 hover:border-teal-200 cursor-pointer"
-          >
-            <div className="flex items-start gap-2.5 min-w-0">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white shadow-2xs border border-slate-200/60 mt-0.5">
-                {getIcon(evt.type)}
+        {sampleEvents.length > 0 ? (
+          sampleEvents.map((evt) => (
+            <div
+              key={evt.id}
+              onClick={() => navigate('/timeline')}
+              className="group flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 transition-all hover:bg-teal-50/50 hover:border-teal-200 cursor-pointer"
+            >
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white shadow-2xs border border-slate-200/60 mt-0.5">
+                  {getIcon(evt.type)}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-extrabold text-xs text-slate-900 truncate group-hover:text-teal-800 transition-colors">
+                    {evt.title}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                    {evt.description}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="font-extrabold text-xs text-slate-900 truncate group-hover:text-teal-800 transition-colors">
-                  {evt.title}
-                </p>
-                <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                  {evt.description}
-                </p>
-              </div>
-            </div>
 
-            <Badge className="bg-slate-200/70 text-slate-700 border-none text-[9px] font-semibold shrink-0">
-              {formatTimelineDate(evt.timestamp)}
-            </Badge>
+              <Badge className="bg-slate-200/70 text-slate-700 border-none text-[9px] font-semibold shrink-0">
+                {formatTimelineDate(evt.timestamp)}
+              </Badge>
+            </div>
+          ))
+        ) : (
+          <div className="py-6 text-center text-xs text-slate-500 font-medium">
+            No recorded patient events yet. Appointments, lab uploads, and prescriptions will appear here.
           </div>
-        ))}
+        )}
       </CardContent>
     </Card>
   );

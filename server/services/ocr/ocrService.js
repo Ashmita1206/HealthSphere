@@ -74,30 +74,36 @@ Format your output strictly as a JSON object with this exact structure:
     }
 
     const parsed = safeParseJSON(rawText, null);
-    if (parsed) return parsed;
+    if (parsed) {
+      return {
+        ...parsed,
+        ocrStatus: 'completed',
+      };
+    }
 
     return {
       reportTitle: 'Medical Report',
-      category: 'General Lab',
-      summary: 'Report processed. Please review individual parameters with your healthcare provider.',
-      oneLineSummary: 'Report processed successfully.',
-      patientFriendlySummary: 'Your lab report has been uploaded and analyzed for key health metrics.',
-      doctorSummary: 'Routine panel analyzed with general parameter values extracted.',
-      riskLevel: 'Low',
-      criticalValues: [],
+      category: 'General',
+      summary: '',
+      riskLevel: null,
       abnormalValues: [],
-      improvingBiomarkers: [],
-      decliningBiomarkers: [],
-      trendAnalysis: 'Parameters appear within baseline expectation.',
       biomarkers: {},
-      recommendations: ['Schedule a follow-up with your primary physician for full interpretation.'],
-      lifestyleRecommendations: ['Maintain balanced nutrition and regular hydration.'],
-      questionsToAskDoctor: ['Are my current lab values optimal for my age and profile?'],
-      suggestedFollowUpTests: ['Routine annual wellness checkup.'],
+      recommendations: [],
+      ocrStatus: 'failed',
     };
   } catch (error) {
     logger.error('parseMedicalReport error', { error: error.message });
-    throw error;
+    return {
+      reportTitle: 'Medical Report',
+      category: 'General',
+      summary: '',
+      riskLevel: null,
+      abnormalValues: [],
+      biomarkers: {},
+      recommendations: [],
+      ocrStatus: 'failed',
+      error: error.message,
+    };
   }
 }
 

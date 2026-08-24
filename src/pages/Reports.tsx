@@ -17,10 +17,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 interface Report {
   id: string;
   title: string;
+  category?: string;
   file_type: string;
   file_size: number;
   created_at: string;
   file_url?: string;
+  summary?: string;
+  risk_level?: string;
+  ocr_status?: string;
 }
 
 export default function ReportsPage() {

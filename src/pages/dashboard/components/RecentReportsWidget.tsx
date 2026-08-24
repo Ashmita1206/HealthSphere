@@ -7,11 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { api } from "@/services/api";
 
-interface Report {
+export interface Report {
   id: string;
-  name: string;
-  upload_date: string;
-  status: string;
+  title: string;
+  category?: string;
+  file_type?: string;
+  file_size?: number;
+  created_at: string;
+  file_url?: string;
+  summary?: string;
+  risk_level?: string;
+  ocr_status?: string;
 }
 
 interface RecentReportsWidgetProps {
@@ -24,23 +30,31 @@ export function RecentReportsWidget({ limit = 3 }: RecentReportsWidgetProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     async function fetchReports() {
       try {
-        // TODO: Backend Integration - Verify if /api/reports endpoint exists and returns report data
-        // Currently this endpoint may not be fully implemented
         const data = await api.get<Report[]>("/reports");
-        setReports((data || []).slice(0, limit));
+        if (active) {
+          setReports((data || []).slice(0, limit));
+        }
       } catch (err) {
-        // TODO: Backend Integration - Remove this fallback when reports API is ready
-        // For now, show empty state if API fails
-        setError("Failed to load reports");
-        setReports([]);
+        if (active) {
+          setError("Failed to load reports");
+          setReports([]);
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
-    fetchReports();
+    void fetchReports();
+
+    return () => {
+      active = false;
+    };
   }, [limit]);
 
   if (loading) {
@@ -134,25 +148,41 @@ export function RecentReportsWidget({ limit = 3 }: RecentReportsWidgetProps) {
               className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors"
             >
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 text-xs truncate">{report.name}</p>
+                <p className="font-bold text-slate-900 text-xs truncate">{report.title}</p>
                 <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                  {new Date(report.upload_date).toLocaleDateString()}
+                  {new Date(report.created_at).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-3">
                 <Badge 
                   variant="outline" 
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full border-slate-200 text-slate-600"
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                    report.ocr_status === "failed"
+                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                      : report.risk_level === "high" || report.risk_level === "critical"
+                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                      : "bg-teal-50 text-teal-700 border-teal-200"
+                  }`}
                 >
-                  {report.status}
+                  {report.ocr_status === "failed" ? "OCR Failed" : report.risk_level ? `${report.risk_level} Risk` : "Processed"}
                 </Badge>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg">
-                    <Eye className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg">
-                    <Download className="w-3.5 h-3.5" />
-                  </Button>
+                  <Link to="/medical-reports">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg" title="View Analysis">
+                      <Eye className="w-3.5 h-3.5" />
+                    </Button>
+                  </Link>
+                  {report.file_url && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => window.open(report.file_url, "_blank")}
+                      className="h-7 w-7 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg"
+                      title="Download File"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </motion.div>

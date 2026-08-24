@@ -124,7 +124,19 @@ export default function MedicalReports() {
       )}
 
       {/* Analysis Result Output */}
-      {reportResult && (
+      {reportResult && reportResult.ocrStatus === 'failed' && (
+        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 space-y-2">
+          <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <span>OCR Processing Unavailable</span>
+          </div>
+          <p className="text-xs text-amber-800 leading-relaxed">
+            The document was stored safely, but text/biomarker extraction could not be completed for this file format. Please review the document manually or try uploading a clearer image/PDF scan.
+          </p>
+        </div>
+      )}
+
+      {reportResult && reportResult.ocrStatus !== 'failed' && (
         <div className="space-y-6">
           {/* Summary & Risk Banner */}
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-4">
