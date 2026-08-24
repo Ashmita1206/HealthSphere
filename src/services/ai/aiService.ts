@@ -53,13 +53,63 @@ export interface PredictionsData {
 }
 
 export interface DashboardLogicData {
-  todaysSummary: string;
-  weeklySummary: string;
-  aiInsights: string[];
-  riskAlerts: Array<{ title: string; detail: string }>;
-  recommendations: string[];
-  wellnessTrends: { labels: string[]; scores: number[] };
-  dailyGoals: Array<{ title: string; completed: boolean; current?: string }>;
+  userName?: string;
+  healthScore?: number;
+  oneThingToKnow?: {
+    title: string;
+    subtitle: string;
+    category?: string;
+  };
+  oneThingToDo?: {
+    title: string;
+    subtitle: string;
+  };
+  oneThingToExplore?: {
+    title: string;
+    subtitle: string;
+    actionLabel: string;
+  };
+  clinicalInsight?: {
+    category: string;
+    insightTitle: string;
+    insightBody: string;
+    sourceLabel: string;
+  };
+  careActions?: Array<{
+    id: string;
+    title: string;
+    timeText: string;
+    contextNote?: string;
+    type?: string;
+    isCompleted?: boolean;
+    medicineName?: string;
+  }>;
+  adherenceRate?: number | null;
+  adherenceData?: Array<{
+    day: string;
+    adherence: number | null;
+    dosesTaken: number;
+    dosesTotal: number;
+  }>;
+  vitalsData?: {
+    weight?: any[];
+    glucose?: any[];
+    heartRate?: any[];
+  };
+  timelineEvents?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    timestamp: string;
+    type: string;
+  }>;
+  todaysSummary?: string;
+  weeklySummary?: string;
+  aiInsights?: string[];
+  riskAlerts?: Array<{ title: string; detail: string }>;
+  recommendations?: string[];
+  wellnessTrends?: { labels: string[]; scores: number[] };
+  dailyGoals?: Array<{ title: string; completed: boolean; current?: string }>;
 }
 
 export interface GlobalSearchResult {
@@ -98,6 +148,9 @@ export const aiService = {
 
   getDashboardLogic: () =>
     api.get<{ success: boolean; data: DashboardLogicData }>('/ai/dashboard'),
+
+  toggleDose: (payload: { careActionId: string; scheduledDate?: string; completed: boolean; medicineName?: string }) =>
+    api.post<{ success: boolean; careActionId: string; completed: boolean }>('/health/doses/toggle', payload),
 
   searchGlobal: (query: string) =>
     api.get<{ success: boolean; data: GlobalSearchResult[] }>(`/ai/search?query=${encodeURIComponent(query)}`),

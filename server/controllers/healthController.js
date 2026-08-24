@@ -2,6 +2,7 @@ const HealthLog = require('../models/HealthLog');
 const Medicine = require('../models/Medicine');
 const Appointment = require('../models/Appointment');
 const Reminder = require('../models/Reminder');
+const DoseLog = require('../models/DoseLog');
 const { Donor, DonationRequest } = require('../models/Donation');
 const { getAIHealthResponse } = require('../services/ai.service');
 const { computeRiskFromText } = require('../services/riskEngine');
@@ -39,21 +40,21 @@ async function listLogs(req, res, next) {
 }
 async function createLog(req, res, next) {
   try {
-    const { symptoms, notes, date } = req.body;
+    const { symptoms, notes, date, weight, glucose, heartRate, systolic, diastolic } = req.body;
     res
       .status(201)
-      .json(await HealthLog.create({ userId: req.user._id, symptoms, notes, date }));
+      .json(await HealthLog.create({ userId: req.user._id, symptoms, notes, date: date || Date.now(), weight, glucose, heartRate, systolic, diastolic }));
   } catch (e) {
     next(e);
   }
 }
 async function updateLog(req, res, next) {
   try {
-    const { symptoms, notes, date } = req.body;
+    const { symptoms, notes, date, weight, glucose, heartRate, systolic, diastolic } = req.body;
     res.json(
       await HealthLog.findOneAndUpdate(
         { _id: req.params.id, userId: req.user._id },
-        { $set: { symptoms, notes, date } },
+        { $set: { symptoms, notes, date, weight, glucose, heartRate, systolic, diastolic } },
         { new: true },
       ),
     );
@@ -214,6 +215,81 @@ async function getInsights(req, res, next) {
   }
 }
 
+function getLocalDateStr(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function toggleDose(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { careActionId, scheduledDate, completed, medicineName, medicineId, reminderId } = req.body;
+
+    if (!careActionId) {
+      return res.status(400).json({ error: "careActionId is required" });
+    }
+
+    // Verify ownership: careActionId must correspond to an active Medicine or Reminder belonging to req.user._id
+    const [medicine, reminder] = await Promise.all([
+      Medicine.findOne({ _id: careActionId, userId }).lean().catch(() => null),
+      Reminder.findOne({ _id: careActionId, userId }).lean().catch(() => null),
+    ]);
+
+    if (!medicine && !reminder) {
+      return res.status(404).json({ error: "Care action or prescription not found for user" });
+    }
+
+    const dateStr = scheduledDate || getLocalDateStr();
+    const isCompleted = typeof completed === 'boolean' ? completed : true;
+
+    if (!isCompleted) {
+      await DoseLog.deleteOne({ userId, careActionId, scheduledDate: dateStr });
+      return res.json({ success: true, careActionId, scheduledDate: dateStr, completed: false });
+    }
+
+    const resolvedMedId = medicine ? medicine._id : (medicineId || null);
+    const resolvedRemId = reminder ? reminder._id : (reminderId || null);
+    const resolvedMedName = medicineName || (medicine ? medicine.name : (reminder ? reminder.medicineName : 'Medication'));
+
+    const updated = await DoseLog.findOneAndUpdate(
+      { userId, careActionId, scheduledDate: dateStr },
+      {
+        $set: {
+          completed: true,
+          completedAt: new Date(),
+          medicineName: resolvedMedName,
+          medicineId: resolvedMedId,
+          reminderId: resolvedRemId,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      careActionId: updated.careActionId,
+      scheduledDate: updated.scheduledDate,
+      completed: updated.completed,
+      completedAt: updated.completedAt,
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function getTodayDoses(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const dateStr = req.query.date || getLocalDateStr();
+    const logs = await DoseLog.find({ userId, scheduledDate: dateStr, completed: true }).lean();
+    res.json({ success: true, date: dateStr, doses: logs });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   listLogs,
   createLog,
@@ -229,4 +305,6 @@ module.exports = {
   createDonationRequest,
   chat,
   getInsights,
+  toggleDose,
+  getTodayDoses,
 };

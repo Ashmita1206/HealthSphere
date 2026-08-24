@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { api } from "@/services/api";
+import { aiService, DashboardLogicData } from "@/services/ai/aiService";
 import {
   createDefaultProfile,
   normalizeProfileData,
@@ -20,37 +21,13 @@ import { Button } from "@/design-system/primitives/Button";
 import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
 
-const weightData = [
-  { date: "2026-01-01", weight: 75 },
-  { date: "2026-01-08", weight: 74.5 },
-  { date: "2026-01-15", weight: 74 },
-  { date: "2026-01-22", weight: 73.8 },
-  { date: "2026-01-29", weight: 73.5 },
-];
-
-const adherenceData = [
-  { day: "Mon", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
-  { day: "Tue", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
-  { day: "Wed", adherence: 50, dosesTaken: 1, dosesTotal: 2 },
-  { day: "Thu", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
-  { day: "Fri", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
-  { day: "Sat", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
-  { day: "Sun", adherence: 100, dosesTaken: 2, dosesTotal: 2 },
-];
-
-interface DashboardAppointment {
-  id: string;
-  appointment_date: string;
-  status?: string;
-  doctor_name?: string;
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
-  const [appointments, setAppointments] = useState<DashboardAppointment[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardLogicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [taskCompleted, setTaskCompleted] = useState(false);
+  const [careCompletedMap, setCareCompletedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let active = true;
@@ -58,24 +35,36 @@ export default function DashboardPage() {
     async function fetchData() {
       setLoading(true);
 
-      const [profileResult, appointmentsResult] = await Promise.allSettled([
+      const [profileResult, dashboardResult] = await Promise.allSettled([
         api.get<unknown>("/user/profile"),
-        api.get<DashboardAppointment[]>("/health/appointments?status=scheduled"),
+        aiService.getDashboardLogic(),
       ]);
 
       if (!active) return;
 
-      setProfile(
-        profileResult.status === "fulfilled"
-          ? normalizeProfileData(profileResult.value)
-          : createDefaultProfile(),
-      );
+      if (profileResult.status === "fulfilled") {
+        setProfile(normalizeProfileData(profileResult.value));
+      }
 
-      setAppointments(
-        appointmentsResult.status === "fulfilled" && Array.isArray(appointmentsResult.value)
-          ? appointmentsResult.value.slice(0, 3)
-          : [],
-      );
+      if (
+        dashboardResult.status === "fulfilled" &&
+        dashboardResult.value?.success &&
+        dashboardResult.value.data
+      ) {
+        const data = dashboardResult.value.data;
+        setDashboardData(data);
+
+        if (data.careActions && data.careActions.length > 0) {
+          const initialMap: Record<string, boolean> = {};
+          data.careActions.forEach((action) => {
+            initialMap[action.id] = !!action.isCompleted;
+          });
+          setCareCompletedMap(initialMap);
+          if (data.careActions[0]) {
+            setTaskCompleted(!!data.careActions[0].isCompleted);
+          }
+        }
+      }
 
       setLoading(false);
     }
@@ -87,8 +76,40 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const healthScore = profile.health_score || 82;
-  const userName = profile.full_name || "Alex";
+  const handleToggleCareAction = async (actionId: string, medicineName?: string) => {
+    const currentCompleted = !!careCompletedMap[actionId];
+    const nextCompleted = !currentCompleted;
+
+    // Optimistically update UI
+    setCareCompletedMap((prev) => ({ ...prev, [actionId]: nextCompleted }));
+
+    try {
+      await aiService.toggleDose({
+        careActionId: actionId,
+        completed: nextCompleted,
+        medicineName: medicineName || "Medication",
+      });
+
+      // Refresh dashboard logic to sync 7-day adherence calculations dynamically
+      const refreshed = await aiService.getDashboardLogic();
+      if (refreshed.success && refreshed.data) {
+        setDashboardData(refreshed.data);
+      }
+    } catch (err) {
+      console.error("Failed to persist dose completion:", err);
+      // Revert state on API failure
+      setCareCompletedMap((prev) => ({ ...prev, [actionId]: currentCompleted }));
+    }
+  };
+
+  const healthScore =
+    typeof dashboardData?.healthScore === "number"
+      ? dashboardData.healthScore
+      : typeof profile.health_score === "number"
+      ? profile.health_score
+      : undefined;
+
+  const userName = dashboardData?.userName || profile.full_name || undefined;
 
   if (loading) {
     return (
@@ -103,6 +124,14 @@ export default function DashboardPage() {
     );
   }
 
+  const careActionsList = dashboardData?.careActions || [];
+  const adherenceRate =
+    typeof dashboardData?.adherenceRate === "number"
+      ? dashboardData.adherenceRate
+      : typeof profile.medicine_adherence_rate === "number"
+      ? profile.medicine_adherence_rate
+      : null;
+
   return (
     <motion.div
       initial="hidden"
@@ -115,23 +144,37 @@ export default function DashboardPage() {
         <HealthDailyBrief
           userName={userName}
           overallScore={healthScore}
-          statusLabel="Optimal Standing"
-          oneThingToKnow={{
-            title: "Fasting Glucose Baseline Normal",
-            subtitle: "Your latest OCR blood report indicates fasting glucose at 98 mg/dL (Reference range < 100 mg/dL).",
-          }}
+          statusLabel={healthScore !== undefined ? "Active Standing" : "Pending Data"}
+          oneThingToKnow={
+            dashboardData?.oneThingToKnow || {
+              title: "No Clinical Data Recorded Yet",
+              subtitle: "Log daily vitals or upload lab reports to generate personalized health insights.",
+            }
+          }
           oneThingToDo={{
-            title: "Morning Dose: Metformin 500mg",
-            subtitle: "Take 1 tablet with breakfast at 8:00 AM for optimal metabolic adherence.",
-            isCompleted: taskCompleted,
-            onComplete: () => setTaskCompleted(!taskCompleted),
+            title:
+              dashboardData?.oneThingToDo?.title || "No Care Actions Scheduled",
+            subtitle:
+              dashboardData?.oneThingToDo?.subtitle ||
+              "Add prescriptions or dose reminders to track daily care compliance.",
+            isCompleted: careActionsList.length > 0 ? !!careCompletedMap[careActionsList[0].id] : taskCompleted,
+            onComplete: () => {
+              if (careActionsList.length > 0) {
+                void handleToggleCareAction(careActionsList[0].id, careActionsList[0].medicineName);
+              } else {
+                setTaskCompleted(!taskCompleted);
+              }
+            },
           }}
-          oneThingToExplore={{
-            title: "AI Sleep Trend Synthesis",
-            subtitle: "Your rest consistency improved 14% this week. View synthesized contributing factors.",
-            actionLabel: "Explore AI Insights",
-            onExplore: () => navigate("/ai-chat"),
-          }}
+          oneThingToExplore={
+            dashboardData?.oneThingToExplore || {
+              title: "AI Health Intelligence",
+              subtitle:
+                "Synthesize lab reports, active prescriptions, and continuous telemetry.",
+              actionLabel: "Explore AI Insights",
+              onExplore: () => navigate("/ai-chat"),
+            }
+          }
         />
       </motion.div>
 
@@ -151,9 +194,9 @@ export default function DashboardPage() {
 
           {/* Health Trends Visualization */}
           <HealthTrendChart
-            title="Weight & Telemetry Baseline"
-            description="30-day continuous weight trend in kilograms"
-            data={weightData}
+            title="Vitals & Telemetry Baseline"
+            description="Continuous vitals trends logged by patient"
+            vitalsData={dashboardData?.vitalsData}
             dataKey="weight"
             color="#0F766E"
             unit="kg"
@@ -189,30 +232,36 @@ export default function DashboardPage() {
                 </h3>
               </div>
               <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full">
-                2 Items
+                {careActionsList.length} Items
               </span>
             </div>
 
-            <div className="space-y-2.5">
-              <CareAction
-                title="Metformin 500mg (Post Breakfast)"
-                timeText="8:00 AM"
-                contextNote="Take with 250ml water"
-                isCompleted={taskCompleted}
-                onToggle={() => setTaskCompleted(!taskCompleted)}
-              />
-
-              <CareAction
-                title="Log Evening Vitals (BP & Pulse)"
-                timeText="8:00 PM"
-                contextNote="Rest 5 mins before logging"
-                isCompleted={false}
-              />
-            </div>
+            {careActionsList.length > 0 ? (
+              <div className="space-y-2.5">
+                {careActionsList.map((action) => (
+                  <CareAction
+                    key={action.id}
+                    title={action.title}
+                    timeText={action.timeText}
+                    contextNote={action.contextNote}
+                    isCompleted={!!careCompletedMap[action.id]}
+                    onToggle={() => void handleToggleCareAction(action.id, action.medicineName)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-500 font-medium">
+                No care actions scheduled for today.
+              </div>
+            )}
           </Card>
 
           {/* Medication Adherence Chart */}
-          <AdherenceTrendChart data={adherenceData} height={160} />
+          <AdherenceTrendChart
+            data={dashboardData?.adherenceData || []}
+            adherenceRate={adherenceRate}
+            height={160}
+          />
 
           {/* AI Contextual Intelligence Prompt Tile */}
           <Card variant="ai" padding="md" className="space-y-3">
@@ -222,7 +271,15 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-xs text-slate-700 leading-relaxed">
-              "Your medication adherence rate is <strong>{profile.medicine_adherence_rate || 96}%</strong>. Would you like me to summarize potential drug-nutrient interactions for your active prescriptions?"
+              {adherenceRate !== null ? (
+                <>
+                  Your medication adherence rate is <strong>{adherenceRate}%</strong>. Would you like me to summarize potential drug-nutrient interactions for your active prescriptions?
+                </>
+              ) : (
+                <>
+                  Connect your prescriptions and log daily vitals to receive contextual AI guidance and interaction alerts.
+                </>
+              )}
             </p>
 
             <Button

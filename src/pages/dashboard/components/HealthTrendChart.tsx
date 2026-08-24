@@ -34,16 +34,7 @@ const metricDatasets: MetricDataset[] = [
     refHigh: 78,
     icon: Scale,
     description: "30-day continuous weight baseline",
-    data: [
-      { date: "2026-07-21", value: 75.2 },
-      { date: "2026-07-25", value: 75.0 },
-      { date: "2026-07-29", value: 74.8 },
-      { date: "2026-08-02", value: 74.5 },
-      { date: "2026-08-06", value: 74.2 },
-      { date: "2026-08-10", value: 73.9 },
-      { date: "2026-08-14", value: 73.7 },
-      { date: "2026-08-18", value: 73.5 },
-    ],
+    data: [],
   },
   {
     id: "glucose",
@@ -53,16 +44,7 @@ const metricDatasets: MetricDataset[] = [
     refHigh: 99,
     icon: Activity,
     description: "Fasting plasma glucose baseline with OCR lab points",
-    data: [
-      { date: "2026-07-21", value: 94 },
-      { date: "2026-07-25", value: 96 },
-      { date: "2026-07-29", value: 104 }, // Out of range (> 99)
-      { date: "2026-08-02", value: 98 },
-      { date: "2026-08-06", value: 95 },
-      { date: "2026-08-10", value: 93 },
-      { date: "2026-08-14", value: 97 },
-      { date: "2026-08-18", value: 98 },
-    ],
+    data: [],
   },
   {
     id: "heartRate",
@@ -72,16 +54,7 @@ const metricDatasets: MetricDataset[] = [
     refHigh: 80,
     icon: Heart,
     description: "Continuous resting heart rate telemetry",
-    data: [
-      { date: "2026-07-21", value: 72 },
-      { date: "2026-07-25", value: 70 },
-      { date: "2026-07-29", value: 74 },
-      { date: "2026-08-02", value: 71 },
-      { date: "2026-08-06", value: 69 },
-      { date: "2026-08-10", value: 73 },
-      { date: "2026-08-14", value: 68 },
-      { date: "2026-08-18", value: 72 },
-    ],
+    data: [],
   },
 ];
 
@@ -92,6 +65,11 @@ interface HealthTrendChartProps {
   dataKey?: string;
   color?: string;
   unit?: string;
+  vitalsData?: {
+    weight?: any[];
+    glucose?: any[];
+    heartRate?: any[];
+  };
 }
 
 export const HealthTrendChart = memo(function HealthTrendChart({
@@ -99,21 +77,32 @@ export const HealthTrendChart = memo(function HealthTrendChart({
   description,
   data: propData,
   unit: propUnit,
+  vitalsData,
 }: HealthTrendChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<"weight" | "glucose" | "heartRate">("glucose");
   const [dateFilter, setDateFilter] = useState<"7d" | "30d" | "90d">("30d");
 
   const effectiveDatasets = useMemo(() => {
-    if (!propData || !Array.isArray(propData) || propData.length === 0) {
-      return metricDatasets;
-    }
-    // Override weight dataset if custom weight propData is supplied
     return metricDatasets.map((ds) => {
-      if (ds.id === "weight") {
+      let customSeries: any[] | undefined = undefined;
+
+      if (vitalsData) {
+        if (ds.id === "weight" && Array.isArray(vitalsData.weight) && vitalsData.weight.length > 0) {
+          customSeries = vitalsData.weight;
+        } else if (ds.id === "glucose" && Array.isArray(vitalsData.glucose) && vitalsData.glucose.length > 0) {
+          customSeries = vitalsData.glucose;
+        } else if (ds.id === "heartRate" && Array.isArray(vitalsData.heartRate) && vitalsData.heartRate.length > 0) {
+          customSeries = vitalsData.heartRate;
+        }
+      } else if (ds.id === "weight" && propData && Array.isArray(propData) && propData.length > 0) {
+        customSeries = propData;
+      }
+
+      if (customSeries) {
         return {
           ...ds,
           unit: propUnit || ds.unit,
-          data: propData.map((d: any) => ({
+          data: customSeries.map((d: any) => ({
             date: d.date || d.day || "2026-08-01",
             value: d.weight ?? d.value ?? 74,
           })),
@@ -121,7 +110,7 @@ export const HealthTrendChart = memo(function HealthTrendChart({
       }
       return ds;
     });
-  }, [propData, propUnit]);
+  }, [propData, propUnit, vitalsData]);
 
   const currentDataset = useMemo(
     () => effectiveDatasets.find((m) => m.id === selectedMetric) || effectiveDatasets[0],
@@ -180,7 +169,7 @@ export const HealthTrendChart = memo(function HealthTrendChart({
           {/* Subheader Date Range Controls */}
           <div className="flex items-center justify-between mb-4 px-1">
             <span className="text-[11px] font-bold text-[#0F766E] bg-[#F0FDFA] px-2.5 py-0.5 rounded-full border border-[#CCFBF1]">
-              Latest: {currentDataset.data[currentDataset.data.length - 1].value} {currentDataset.unit}
+              Latest: {currentDataset.data.length > 0 ? `${currentDataset.data[currentDataset.data.length - 1].value} ${currentDataset.unit}` : 'No entries'}
             </span>
 
             <div className="flex items-center gap-1" aria-label="Date range selector">
@@ -202,53 +191,54 @@ export const HealthTrendChart = memo(function HealthTrendChart({
             </div>
           </div>
 
-          {/* Recharts Line Chart */}
+          {/* Recharts Line Chart / Neutral Empty State */}
           <div
             className="h-60 w-full"
             role="img"
             aria-label={`${currentDataset.label} trend chart`}
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filteredData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+            {filteredData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={filteredData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
 
-                {/* Soft Mint Reference Band */}
-                <ReferenceArea
-                  y1={currentDataset.refLow}
-                  y2={currentDataset.refHigh}
-                  fill="#F0FDFA"
-                  stroke="#14B8A6"
-                  strokeDasharray="2 2"
-                  strokeOpacity={0.4}
-                />
+                  {/* Soft Mint Reference Band */}
+                  <ReferenceArea
+                    y1={currentDataset.refLow}
+                    y2={currentDataset.refHigh}
+                    fill="#F0FDFA"
+                    stroke="#14B8A6"
+                    strokeDasharray="2 2"
+                    strokeOpacity={0.4}
+                  />
 
-                <XAxis
-                  dataKey="date"
-                  stroke="#64748B"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: "#E5E7EB" }}
-                  tickFormatter={(val: string) => {
-                    if (!val) return "";
-                    const d = new Date(val);
-                    return isNaN(d.getTime())
-                      ? val
-                      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                  }}
-                />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#64748B"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={{ stroke: "#E5E7EB" }}
+                    tickFormatter={(val: string) => {
+                      if (!val) return "";
+                      const d = new Date(val);
+                      return isNaN(d.getTime())
+                        ? val
+                        : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    }}
+                  />
 
-                <YAxis
-                  stroke="#64748B"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={["dataMin - 5", "dataMax + 5"]}
-                  tickFormatter={(val) => `${val}`}
-                />
+                  <YAxis
+                    stroke="#64748B"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={["dataMin - 5", "dataMax + 5"]}
+                    tickFormatter={(val) => `${val}`}
+                  />
 
-                {/* Custom Healthcare Tooltip */}
-                <Tooltip
-                  content={({ active, payload, label }) => {
+                  {/* Custom Healthcare Tooltip */}
+                  <Tooltip
+                    content={({ active, payload, label }) => {
                     if (!active || !payload || !payload.length) return null;
                     const val = payload[0].value as number;
                     const isAbnormal = val < currentDataset.refLow || val > currentDataset.refHigh;
@@ -312,6 +302,11 @@ export const HealthTrendChart = memo(function HealthTrendChart({
                 />
               </LineChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-xs text-slate-500 font-medium bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                No {currentDataset.label.toLowerCase()} vitals logged yet. Record entries in your health log to build telemetry trends.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -55,9 +55,9 @@ export const AchievementsSection = memo(function AchievementsSection({ profile }
               <Award className="h-4 w-4 text-teal-600" />
             </div>
             <p className="text-3xl font-extrabold font-heading text-slate-900">
-              {profile.medicine_adherence_rate || 96}<span className="text-xs font-normal text-slate-600">%</span>
+              {typeof profile.medicine_adherence_rate === 'number' ? profile.medicine_adherence_rate : '—'}<span className="text-xs font-normal text-slate-600">{typeof profile.medicine_adherence_rate === 'number' ? '%' : ''}</span>
             </p>
-            <p className="text-[10px] text-teal-800 font-medium">28 of 29 doses taken on time</p>
+            <p className="text-[10px] text-teal-800 font-medium">{typeof profile.medicine_adherence_rate === 'number' ? 'Based on recorded dose completions' : 'No adherence data recorded yet'}</p>
           </div>
 
           {/* Appointment Completion */}
@@ -69,9 +69,9 @@ export const AchievementsSection = memo(function AchievementsSection({ profile }
               <Award className="h-4 w-4 text-blue-600" />
             </div>
             <p className="text-3xl font-extrabold font-heading text-slate-900">
-              {profile.appointment_completion_rate || 100}<span className="text-xs font-normal text-slate-600">%</span>
+              {typeof profile.appointment_completion_rate === 'number' ? profile.appointment_completion_rate : '—'}<span className="text-xs font-normal text-slate-600">{typeof profile.appointment_completion_rate === 'number' ? '%' : ''}</span>
             </p>
-            <p className="text-[10px] text-blue-800 font-medium">Zero missed clinical consultations</p>
+            <p className="text-[10px] text-blue-800 font-medium">{typeof profile.appointment_completion_rate === 'number' ? 'Based on scheduled appointments' : 'No appointment data recorded yet'}</p>
           </div>
         </div>
       </CardContent>

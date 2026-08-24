@@ -13,13 +13,16 @@ export interface HealthDailyBriefProps {
 }
 
 export const HealthDailyBrief: React.FC<HealthDailyBriefProps> = ({
-  userName = 'Alex',
-  overallScore = 82,
-  statusLabel = 'Optimal Standing',
+  userName,
+  overallScore,
+  statusLabel,
   oneThingToKnow,
   oneThingToDo,
   oneThingToExplore,
 }) => {
+  const displayName = userName && userName.trim() ? userName : 'there';
+  const hasScore = typeof overallScore === 'number' && !isNaN(overallScore);
+
   return (
     <motion.div
       initial="hidden"
@@ -37,10 +40,10 @@ export const HealthDailyBrief: React.FC<HealthDailyBriefProps> = ({
             <span className="text-xs text-[#64748B] font-medium">• Updated today at 8:00 AM</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-normal text-[#0F172A] font-heading leading-tight">
-            Good morning, <span className="font-serif italic text-[#0F766E]">{userName}</span>.
+            Good morning, <span className="font-serif italic text-[#0F766E]">{displayName}</span>.
           </h1>
           <p className="text-xs sm:text-sm text-[#475569]">
-            Your health indicators have remained stable this week. Here is your daily summary.
+            Unified summary of your clinical records, prescription schedule, and telemetry.
           </p>
         </div>
 
@@ -52,11 +55,17 @@ export const HealthDailyBrief: React.FC<HealthDailyBriefProps> = ({
           <div>
             <div className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest">Health Standing</div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-extrabold text-[#0F172A] tabular-nums font-numeric">{overallScore}</span>
-              <span className="text-xs text-[#64748B] font-semibold">/ 100</span>
-              <span className="text-xs font-bold text-[#047857] uppercase tracking-wider">STABLE</span>
+              <span className="text-2xl font-extrabold text-[#0F172A] tabular-nums font-numeric">
+                {hasScore ? overallScore : '—'}
+              </span>
+              {hasScore && <span className="text-xs text-[#64748B] font-semibold">/ 100</span>}
+              <span className={`text-xs font-bold uppercase tracking-wider ${hasScore ? 'text-[#047857]' : 'text-slate-400'}`}>
+                {hasScore ? (statusLabel || 'ACTIVE') : 'PENDING'}
+              </span>
             </div>
-            <p className="text-[10px] text-[#059669] font-medium">+4 points over last 14 days</p>
+            <p className="text-[10px] text-[#059669] font-medium">
+              {hasScore ? 'Calculated from telemetry & prescriptions' : 'Not calculated yet'}
+            </p>
           </div>
         </motion.div>
       </motion.div>

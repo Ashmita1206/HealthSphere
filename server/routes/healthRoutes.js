@@ -19,6 +19,8 @@ router.delete("/appointments/:id", c.deleteAppointment);
 router.post("/donors", c.registerDonor);
 router.post("/donation-requests", c.createDonationRequest);
 router.get("/insights", c.getInsights);
+router.post("/doses/toggle", c.toggleDose);
+router.get("/doses/today", c.getTodayDoses);
 router.post(
   "/chat",
   chatLimiter,
