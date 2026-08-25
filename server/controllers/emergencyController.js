@@ -1,5 +1,6 @@
 const EmergencyAlert = require("../models/EmergencyAlert");
 const EmergencyNotification = require("../models/EmergencyNotification");
+const EmergencyContact = require("../models/EmergencyContact");
 const logger = require("../utils/logger");
 
 const hospitals = [
@@ -158,4 +159,65 @@ async function resolveSos(req, res, next) {
   }
 }
 
-module.exports = { triggerSos, resolveSos, nearbyHospitals };
+async function listContacts(req, res, next) {
+  try {
+    const contacts = await EmergencyContact.find({ userId: req.user._id }).sort({ createdAt: 1 });
+    res.status(200).json(contacts);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createContact(req, res, next) {
+  try {
+    const { name, phone, relation } = req.body;
+    const contact = await EmergencyContact.create({
+      userId: req.user._id,
+      name,
+      phone,
+      relation,
+    });
+    res.status(201).json(contact);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateContact(req, res, next) {
+  try {
+    const { name, phone, relation } = req.body;
+    const contact = await EmergencyContact.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { name, phone, relation },
+      { new: true }
+    );
+    if (!contact) {
+      return res.status(404).json({ message: "Emergency contact not found" });
+    }
+    res.status(200).json(contact);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteContact(req, res, next) {
+  try {
+    const deleted = await EmergencyContact.deleteOne({ _id: req.params.id, userId: req.user._id });
+    if (deleted.deletedCount === 0) {
+      return res.status(404).json({ message: "Emergency contact not found" });
+    }
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  triggerSos,
+  resolveSos,
+  nearbyHospitals,
+  listContacts,
+  createContact,
+  updateContact,
+  deleteContact,
+};
