@@ -71,9 +71,15 @@ async function renameSession(req, res, next) {
 async function deleteSession(req, res, next) {
   try {
     const { sessionId } = req.params;
+    const userId = req.user._id;
+    const session = await ChatSession.findOne({ _id: sessionId, userId });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Chat session not found' });
+    }
+
     await Promise.all([
-      ChatSession.deleteOne({ _id: sessionId, userId: req.user._id }),
-      ChatMessage.deleteMany({ sessionId }),
+      ChatSession.deleteOne({ _id: sessionId, userId }),
+      ChatMessage.deleteMany({ sessionId, userId }),
     ]);
 
     res.status(200).json({
@@ -138,10 +144,16 @@ async function sendMessage(req, res, next) {
     const { sessionId, content, attachments = [] } = req.body;
 
     let activeSessionId = sessionId;
-    if (!activeSessionId) {
+    if (activeSessionId) {
+      const existingSession = await ChatSession.findOne({ _id: activeSessionId, userId });
+      if (!existingSession) {
+        return res.status(404).json({ success: false, message: 'Chat session not found or access denied' });
+      }
+    } else {
+      const titleText = content ? (content.substring(0, 30) + (content.length > 30 ? '...' : '')) : 'New Medical Conversation';
       const newSession = await ChatSession.create({
         userId,
-        title: content.substring(0, 30) + '...',
+        title: titleText,
       });
       activeSessionId = newSession._id;
     }
@@ -155,8 +167,8 @@ async function sendMessage(req, res, next) {
       attachments,
     });
 
-    // Fetch previous history
-    const history = await ChatMessage.find({ sessionId: activeSessionId }).sort({ createdAt: 1 }).limit(10);
+    // Fetch previous history scoped by userId
+    const history = await ChatMessage.find({ sessionId: activeSessionId, userId }).sort({ createdAt: 1 }).limit(10);
 
     // Set SSE headers if client requested streaming response
     if (req.headers.accept === 'text/event-stream') {
