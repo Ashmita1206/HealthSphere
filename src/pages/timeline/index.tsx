@@ -17,6 +17,8 @@ import { TimelineSkeleton } from '@/components/timeline/TimelineSkeleton';
 import { TimelineStats } from '@/components/timeline/TimelineStats';
 import { TimelineSummary } from '@/components/timeline/TimelineSummary';
 import { TimelineViewToggle } from '@/components/timeline/TimelineViewToggle';
+import { api } from '@/services/api';
+import { adaptTimelineRecords, timelineAdapters } from '@/components/timeline/timelineAdapters';
 import { createPlaceholderTimelineEvents } from '@/components/timeline/timelineData';
 import {
   calculateTimelineStats,
@@ -61,9 +63,89 @@ export default function TimelinePage() {
   const debouncedQuery = useDebouncedValue(query, 250);
 
   useEffect(() => {
-    // TODO: Backend Integration — combine adapted module events here.
-    setEvents(createPlaceholderTimelineEvents());
-    setLoading(false);
+    let isMounted = true;
+    async function loadTimelineData() {
+      setLoading(true);
+      try {
+        const [medsRes, apptsRes, reportsRes, logsRes] = await Promise.allSettled([
+          api.get<any[]>('/health/medicines'),
+          api.get<any[]>('/health/appointments'),
+          api.get<any[]>('/reports'),
+          api.get<any[]>('/health/logs'),
+        ]);
+
+        const medicinesData = medsRes.status === 'fulfilled' && Array.isArray(medsRes.value.data) ? medsRes.value.data : [];
+        const appointmentsData = apptsRes.status === 'fulfilled' && Array.isArray(apptsRes.value.data) ? apptsRes.value.data : [];
+        const reportsData = reportsRes.status === 'fulfilled' && Array.isArray(reportsRes.value.data) ? reportsRes.value.data : [];
+        const logsData = logsRes.status === 'fulfilled' && Array.isArray(logsRes.value.data) ? logsRes.value.data : [];
+
+        const adaptedMeds = adaptTimelineRecords(
+          medicinesData.map((m: any) => ({
+            id: m.id || m._id,
+            title: `Medication: ${m.name || 'Prescription'}`,
+            description: `Dosage: ${m.dosage || 'As prescribed'} (${m.frequency || 'Daily'})`,
+            timestamp: m.created_at || m.createdAt || new Date().toISOString(),
+            status: m.is_active ?? m.isActive ? 'active' : 'completed',
+            priority: 'normal',
+          })),
+          timelineAdapters.medicines
+        );
+
+        const adaptedAppointments = adaptTimelineRecords(
+          appointmentsData.map((a: any) => ({
+            id: a.id || a._id,
+            title: `Appointment: Dr. ${a.doctor_name || a.doctorName || 'Specialist'}`,
+            description: `${a.specialty || 'General'} · ${a.hospital || 'Medical Center'}`,
+            timestamp: a.appointment_date || a.appointmentDate || new Date().toISOString(),
+            status: a.status === 'scheduled' ? 'upcoming' : 'completed',
+            priority: 'high',
+          })),
+          timelineAdapters.appointments
+        );
+
+        const adaptedReports = adaptTimelineRecords(
+          reportsData.map((r: any) => ({
+            id: r.id || r._id,
+            title: r.title || 'Medical Lab Report',
+            description: r.summary || `Category: ${r.category || 'Lab Report'}`,
+            timestamp: r.created_at || r.createdAt || new Date().toISOString(),
+            status: r.ocr_status === 'failed' ? 'overdue' : 'completed',
+            priority: r.risk_level === 'high' || r.risk_level === 'critical' ? 'critical' : 'normal',
+          })),
+          timelineAdapters.reports
+        );
+
+        const adaptedLogs = adaptTimelineRecords(
+          logsData.map((l: any) => ({
+            id: l._id || l.id,
+            title: 'Vitals & Telemetry Logged',
+            description: Array.isArray(l.symptoms) && l.symptoms.length ? `Symptoms: ${l.symptoms.join(', ')}` : l.notes || 'Recorded vitals telemetry',
+            timestamp: l.date || l.createdAt || new Date().toISOString(),
+            status: 'completed',
+            priority: 'normal',
+          })),
+          timelineAdapters.analytics
+        );
+
+        const combined = [...adaptedMeds, ...adaptedAppointments, ...adaptedReports, ...adaptedLogs];
+        if (isMounted) {
+          setEvents(combined);
+        }
+      } catch {
+        if (isMounted) {
+          setEvents([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadTimelineData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
