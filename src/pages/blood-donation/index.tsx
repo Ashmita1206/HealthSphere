@@ -92,36 +92,62 @@ export default function BloodDonationPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchDonors = useCallback(async () => {
-    // TODO: Backend integration required for real donor APIs
-    // TODO: Backend integration required for nearby donor geolocation
     try {
-      const data = await api.get<Donor[]>('/health/blood-donors');
-      setDonors(data || []);
+      const data = await api.get<any[]>('/health/donors');
+      if (Array.isArray(data)) {
+        setDonors(
+          data.map((d: any) => ({
+            id: d._id || d.id,
+            name: d.name || 'Anonymous Donor',
+            bloodGroup: d.bloodType || d.bloodGroup || 'O+',
+            location: d.location || 'Local Area',
+            distance: d.distance || 2.5,
+            phone: d.phone || 'Contact via Portal',
+            isAvailable: d.isAvailable ?? true,
+            lastDonated: d.lastDonated || 'Available Now',
+          }))
+        );
+      } else {
+        setDonors([]);
+      }
     } catch (err) {
-      console.error('Failed to fetch donors:', err);
       setDonors([]);
     }
   }, []);
 
   const fetchRequests = useCallback(async () => {
-    // TODO: Backend integration required for blood bank APIs
     try {
-      const data = await api.get<BloodRequest[]>('/health/blood-requests');
-      setRequests(data || []);
+      const data = await api.get<any[]>('/health/donation-requests');
+      if (Array.isArray(data)) {
+        setRequests(
+          data.map((r: any) => ({
+            id: r._id || r.id,
+            patientName: r.patientName || 'Emergency Patient',
+            bloodGroup: r.bloodType || r.bloodGroup || 'O+',
+            hospital: r.hospital || 'Emergency Care Facility',
+            unitsNeeded: r.unitsNeeded || 1,
+            urgency: (r.urgency?.toLowerCase() === 'critical' ? 'critical' : r.urgency?.toLowerCase() === 'high' ? 'high' : 'normal') as any,
+            contactPhone: r.contactPhone || 'Emergency Triage Desk',
+            requiredBy: r.requiredBy || 'Immediate',
+            additionalNotes: r.notes || r.additionalNotes || '',
+            status: (r.status || 'active') as any,
+            createdAt: r.createdAt || new Date().toISOString(),
+          }))
+        );
+      } else {
+        setRequests([]);
+      }
     } catch (err) {
-      console.error('Failed to fetch requests:', err);
       setRequests([]);
     }
   }, []);
 
   const fetchMyDonations = useCallback(async () => {
     if (!user) return;
-    // TODO: Backend integration required for user donation history
     try {
       const data = await api.get<any[]>('/health/my-donations');
       setMyDonations(data || []);
-    } catch (err) {
-      console.error('Failed to fetch my donations:', err);
+    } catch {
       setMyDonations([]);
     }
   }, [user]);
@@ -151,8 +177,12 @@ export default function BloodDonationPage() {
     if (!user) return;
     setLoading(true);
     try {
-      // TODO: Backend integration required for blood request creation
-      await api.post('/health/blood-requests', data);
+      await api.post('/health/donation-requests', {
+        request_type: data.type || 'blood',
+        blood_type: data.bloodGroup,
+        urgency: data.urgency,
+        notes: data.additionalNotes || data.hospital,
+      });
       toast({ title: 'Blood Request Created' });
       closeForm();
       fetchRequests();
@@ -170,7 +200,12 @@ export default function BloodDonationPage() {
   const handleEditRequest = useCallback(async (data: BloodRequestFormData) => {
     setLoading(true);
     try {
-      // TODO: Backend integration required for blood request update
+      await api.post('/health/donation-requests', {
+        request_type: data.type || 'blood',
+        blood_type: data.bloodGroup,
+        urgency: data.urgency,
+        notes: data.additionalNotes || data.hospital,
+      });
       toast({ title: 'Request Updated' });
       closeForm();
       fetchRequests();

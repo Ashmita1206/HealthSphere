@@ -159,6 +159,22 @@ async function updateAppointment(req, res, next) {
     next(e);
   }
 }
+async function listDonors(req, res, next) {
+  try {
+    const rows = await Donor.find({}).sort({ createdAt: -1 });
+    res.json(rows);
+  } catch (e) {
+    next(e);
+  }
+}
+async function listDonationRequests(req, res, next) {
+  try {
+    const rows = await DonationRequest.find({}).sort({ createdAt: -1 });
+    res.json(rows);
+  } catch (e) {
+    next(e);
+  }
+}
 async function registerDonor(req, res, next) {
   try {
     res
@@ -326,6 +342,8 @@ module.exports = {
   createAppointment,
   deleteAppointment,
   updateAppointment,
+  listDonors,
+  listDonationRequests,
   registerDonor,
   createDonationRequest,
   chat,
