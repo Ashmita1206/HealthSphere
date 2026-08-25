@@ -135,6 +135,30 @@ async function deleteAppointment(req, res, next) {
     next(e);
   }
 }
+async function updateAppointment(req, res, next) {
+  try {
+    const { doctor_name, specialty, hospital, appointment_date, status } = req.body;
+    const row = await Appointment.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      {
+        $set: {
+          ...(doctor_name && { doctorName: doctor_name }),
+          ...(specialty && { specialty }),
+          ...(hospital && { hospital }),
+          ...(appointment_date && { appointmentDate: appointment_date }),
+          ...(status && { status }),
+        },
+      },
+      { new: true }
+    );
+    if (!row) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    res.status(200).json(mapAppointment(row));
+  } catch (e) {
+    next(e);
+  }
+}
 async function registerDonor(req, res, next) {
   try {
     res
@@ -301,6 +325,7 @@ module.exports = {
   listAppointments,
   createAppointment,
   deleteAppointment,
+  updateAppointment,
   registerDonor,
   createDonationRequest,
   chat,

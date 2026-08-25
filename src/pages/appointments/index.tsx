@@ -122,7 +122,6 @@ export default function AppointmentsPage() {
     if (!user || !selectedAppointment) return;
     setLoading(true);
     try {
-      // TODO: Backend integration required for edit functionality
       await api.put(`/health/appointments/${selectedAppointment.id}`, data);
       toast({ title: 'Appointment Updated' });
       setDrawerOpen(false);

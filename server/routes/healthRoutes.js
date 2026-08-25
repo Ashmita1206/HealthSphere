@@ -15,6 +15,7 @@ router.post("/medicines", c.createMedicine);
 router.delete("/medicines/:id", c.deleteMedicine);
 router.get("/appointments", c.listAppointments);
 router.post("/appointments", c.createAppointment);
+router.put("/appointments/:id", c.updateAppointment);
 router.delete("/appointments/:id", c.deleteAppointment);
 router.post("/donors", c.registerDonor);
 router.post("/donation-requests", c.createDonationRequest);
