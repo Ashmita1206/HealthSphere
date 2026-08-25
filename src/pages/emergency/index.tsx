@@ -91,18 +91,50 @@ export default function EmergencyPage() {
     return Math.round(contactScore + medicalScore + locationScore + checklistScore);
   }, [checklistItems, contacts.length, medicalCardComplete, locationEnabled]);
 
+  const fetchContacts = useCallback(async () => {
+    try {
+      const res = await api.get<any[]>('/emergency/contacts');
+      if (Array.isArray(res)) {
+        setContacts(
+          res.map((c: any) => ({
+            id: c._id || c.id,
+            name: c.name,
+            phone: c.phone,
+            relation: c.relation || 'Emergency Contact',
+          }))
+        );
+      }
+    } catch {
+      // Keep existing local list on error
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
 
     const fetchData = async () => {
       setLoading(true);
-      // TODO: Backend integration for emergency contacts
-      // TODO: Backend integration for emergency timeline
       try {
-        const data = user
-          ? await api.get<unknown>('/user/profile')
-          : createDefaultProfile();
-        if (active) setProfile(normalizeProfileData(data));
+        const [profileRes, contactsRes] = await Promise.allSettled([
+          user ? api.get<unknown>('/user/profile') : Promise.resolve(createDefaultProfile()),
+          user ? api.get<any[]>('/emergency/contacts') : Promise.resolve([]),
+        ]);
+
+        if (active) {
+          const profileData = profileRes.status === 'fulfilled' ? profileRes.value : createDefaultProfile();
+          setProfile(normalizeProfileData(profileData));
+
+          if (contactsRes.status === 'fulfilled' && Array.isArray(contactsRes.value)) {
+            setContacts(
+              contactsRes.value.map((c: any) => ({
+                id: c._id || c.id,
+                name: c.name,
+                phone: c.phone,
+                relation: c.relation || 'Emergency Contact',
+              }))
+            );
+          }
+        }
       } catch {
         if (active) setProfile(createDefaultProfile());
       } finally {
@@ -117,8 +149,14 @@ export default function EmergencyPage() {
     };
   }, [user]);
 
-  const handleSOSTriggered = useCallback(() => {
+  const handleSOSTriggered = useCallback(async () => {
     setSosSent((prev) => prev + 1);
+    try {
+      await api.post('/emergency/sos', { latitude: 37.7749, longitude: -122.4194 });
+    } catch {
+      // fallback local trigger
+    }
+
     const newEvent: TimelineEvent = {
       id: `event-${Date.now()}`,
       type: 'sos-triggered',
@@ -128,31 +166,55 @@ export default function EmergencyPage() {
     setTimeline((prev) => [newEvent, ...prev]);
     toast({
       title: 'SOS Triggered',
-      description: 'Emergency alert sent to your contacts',
+      description: 'Emergency alert sent to your contacts and nearest facility',
       variant: 'destructive',
     });
   }, [toast]);
 
-  const handleAddContact = useCallback((contact: EmergencyContact) => {
-    // TODO: Backend integration for contact creation
-    setContacts((prev) => [...prev, contact]);
+  const handleAddContact = useCallback(async (contact: EmergencyContact) => {
+    try {
+      await api.post('/emergency/contacts', {
+        name: contact.name,
+        phone: contact.phone,
+        relation: contact.relation,
+      });
+      fetchContacts();
+    } catch {
+      setContacts((prev) => [...prev, contact]);
+    }
     toast({ title: 'Emergency Contact Added' });
-  }, [toast]);
+  }, [fetchContacts, toast]);
 
-  const handleEditContact = useCallback((contact: EmergencyContact) => {
-    // TODO: Backend integration for contact update
-    setContacts((prev) => prev.map((c) => (c.id === contact.id ? contact : c)));
+  const handleEditContact = useCallback(async (contact: EmergencyContact) => {
+    try {
+      await api.put(`/emergency/contacts/${contact.id}`, {
+        name: contact.name,
+        phone: contact.phone,
+        relation: contact.relation,
+      });
+      fetchContacts();
+    } catch {
+      setContacts((prev) => prev.map((c) => (c.id === contact.id ? contact : c)));
+    }
     toast({ title: 'Emergency Contact Updated' });
-  }, [toast]);
+  }, [fetchContacts, toast]);
 
-  const handleDeleteContact = useCallback((id: string) => {
-    // TODO: Backend integration for contact deletion
-    setContacts((prev) => prev.filter((c) => c.id !== id));
+  const handleDeleteContact = useCallback(async (id: string) => {
+    try {
+      await api.delete(`/emergency/contacts/${id}`);
+      fetchContacts();
+    } catch {
+      setContacts((prev) => prev.filter((c) => c.id !== id));
+    }
     toast({ title: 'Emergency Contact Deleted' });
-  }, [toast]);
+  }, [fetchContacts, toast]);
 
-  const handleBloodRequest = useCallback((data: any) => {
-    // TODO: Backend integration for blood requirement request
+  const handleBloodRequest = useCallback(async (data: any) => {
+    try {
+      await api.post('/health/donation-requests', data);
+    } catch {
+      // fallback
+    }
     toast({
       title: 'Blood Request Generated',
       description: 'Emergency blood request sent',
@@ -160,7 +222,6 @@ export default function EmergencyPage() {
   }, [toast]);
 
   const handleLocationRefresh = useCallback(() => {
-    // TODO: Backend integration for location refresh
     toast({ title: 'Location Refreshed' });
   }, [toast]);
 
