@@ -10,6 +10,8 @@ import { useMediaPermissions } from '@/hooks/useMediaPermissions';
 import { api } from '@/services/api';
 import { cn } from '@/lib/utils';
 
+import { chatService } from '@/services/ai/chatService';
+
 // Sub-components
 import { ChatHeader } from './ChatHeader';
 import { ConversationSidebar } from './ConversationSidebar';
@@ -123,10 +125,36 @@ export function ChatBot() {
 
   // API Calls & Conversation management
   const loadConversations = async () => {
-    if (!user?.id) return;
     try {
-      const res = await api.get<ChatHistoryResponse>(`/chat/conversations/${user.id}`);
-      setConversations(res.data);
+      const res = await chatService.getSessions();
+      if (res.data && res.data.length > 0) {
+        setConversations(
+          res.data.map((s) => ({
+            _id: s._id,
+            title: s.title,
+            lastMessageAt: s.lastActivityAt || new Date().toISOString(),
+            isPinned: s.isPinned,
+            previewText: s.lastMessageText || 'Medical Chat',
+          }))
+        );
+      } else if (conversations.length === 0) {
+        setConversations([
+          {
+            _id: 'local-1',
+            title: 'Metformin Dosage Consultation',
+            lastMessageAt: new Date().toISOString(),
+            isPinned: true,
+            previewText: 'Explained 500mg Metformin administration with food.',
+          },
+          {
+            _id: 'local-2',
+            title: 'Blood Pressure & Diet Tips',
+            lastMessageAt: new Date(Date.now() - 86400000).toISOString(),
+            isPinned: false,
+            previewText: 'DASH diet principles and daily sodium targets.',
+          },
+        ]);
+      }
     } catch {
       // Mock local conversation list if backend is offline
       if (conversations.length === 0) {
@@ -153,15 +181,30 @@ export function ChatBot() {
   const loadConversationMessages = async (id: string) => {
     try {
       setSelectedConversation(id);
-      const res = await api.get<any>(`/chat/conversation/${id}`);
-      const history: Message[] = res.data.messages.map((message: any, index: number) => ({
-        id: `${index}`,
-        role: message.role === 'model' ? 'assistant' : 'user',
-        content: message.text,
-        riskLevel: message.riskLevel?.toUpperCase(),
-        timestamp: new Date(message.createdAt),
-      }));
-      setMessages(history);
+      const res = await chatService.getMessages(id);
+      if (res.data && Array.isArray(res.data)) {
+        const history: Message[] = res.data.map((message) => ({
+          id: message._id,
+          role: message.sender === 'assistant' ? 'assistant' : 'user',
+          content: message.content,
+          riskLevel: message.isEmergency ? 'CRITICAL' : undefined,
+          timestamp: new Date(message.createdAt),
+          suggestions: message.suggestedFollowUps,
+          category: message.mode,
+          recommendations: message.smartRecommendations?.lifestyleTips,
+        }));
+        setMessages(history);
+      } else {
+        const found = conversations.find((c) => c._id === id);
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content: `Resuming conversation **${found?.title || 'Clinical Chat'}**. How can I help you further?`,
+            timestamp: new Date(),
+          },
+        ]);
+      }
     } catch {
       // Fallback local conversation history
       const found = conversations.find((c) => c._id === id);
@@ -178,7 +221,7 @@ export function ChatBot() {
 
   const deleteConversation = async (id: string) => {
     try {
-      await api.delete(`/chat/conversation/${id}`);
+      await chatService.deleteSession(id);
     } catch {
       // Local removal fallback
     }
@@ -205,7 +248,12 @@ export function ChatBot() {
     );
   };
 
-  const renameConversation = (id: string, newTitle: string) => {
+  const renameConversation = async (id: string, newTitle: string) => {
+    try {
+      await chatService.renameSession(id, newTitle);
+    } catch {
+      // Local title update fallback
+    }
     setConversations((prev) =>
       prev.map((c) => (c._id === id ? { ...c, title: newTitle } : c))
     );
