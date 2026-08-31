@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { api } from '@/services/api';
+import { type Location } from '@/services/locationsService';
 import {
   createDefaultProfile,
   normalizeProfileData,
@@ -21,6 +23,8 @@ import { EmergencyTimeline } from '@/components/emergency/EmergencyTimeline';
 import { EmergencyStats } from '@/components/emergency/EmergencyStats';
 import { EmergencySkeleton } from '@/components/emergency/EmergencySkeleton';
 import { downloadMedicalCard, printMedicalCard, exportEmergencyContactsToJSON, exportEmergencyContactsToCSV } from '@/components/emergency/emergencyExportUtils';
+
+const RouteMap = lazy(() => import('@/components/RouteMap'));
 
 interface TimelineEvent {
   id: string;
@@ -49,12 +53,18 @@ const calculateAge = (dateOfBirth: string): number | undefined => {
 export default function EmergencyPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { location: geoLocation, requestLocation } = useGeolocation();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [sosSent, setSosSent] = useState(0);
-  const [locationEnabled, setLocationEnabled] = useState(true);
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
+  const [nearbyHospitalCount, setNearbyHospitalCount] = useState(0);
+  const [selectedHospital, setSelectedHospital] = useState<Location | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const locationEnabled = geoLocation !== null;
   const [checklistItems, setChecklistItems] = useState([
     { id: 'medicines', label: 'Carry medicines', checked: false },
     { id: 'identity', label: 'Identity card', checked: false },
@@ -67,6 +77,19 @@ export default function EmergencyPage() {
     { id: 'firstaid', label: 'First aid kit', checked: false },
     { id: 'snacks', label: 'Emergency snacks', checked: false },
   ]);
+
+  // Request location on mount
+  useEffect(() => {
+    void requestLocation();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync geolocation to local state
+  useEffect(() => {
+    if (geoLocation) {
+      setUserLat(geoLocation.latitude);
+      setUserLng(geoLocation.longitude);
+    }
+  }, [geoLocation]);
 
   const sosReady = useMemo(() => {
     return contacts.length > 0 && locationEnabled;
@@ -152,7 +175,10 @@ export default function EmergencyPage() {
   const handleSOSTriggered = useCallback(async () => {
     setSosSent((prev) => prev + 1);
     try {
-      await api.post('/emergency/sos', { latitude: 37.7749, longitude: -122.4194 });
+      await api.post('/emergency/sos', {
+        latitude: userLat ?? 0,
+        longitude: userLng ?? 0,
+      });
     } catch {
       // fallback local trigger
     }
@@ -169,7 +195,7 @@ export default function EmergencyPage() {
       description: 'Emergency alert sent to your contacts and nearest facility',
       variant: 'destructive',
     });
-  }, [toast]);
+  }, [toast, userLat, userLng]);
 
   const handleAddContact = useCallback(async (contact: EmergencyContact) => {
     try {
@@ -222,8 +248,23 @@ export default function EmergencyPage() {
   }, [toast]);
 
   const handleLocationRefresh = useCallback(() => {
+    void requestLocation();
     toast({ title: 'Location Refreshed' });
-  }, [toast]);
+  }, [requestLocation, toast]);
+
+  const handleLocationChange = useCallback((lat: number, lng: number) => {
+    setUserLat(lat);
+    setUserLng(lng);
+  }, []);
+
+  const handleHospitalsLoaded = useCallback((count: number) => {
+    setNearbyHospitalCount(count);
+  }, []);
+
+  const handleHospitalSelect = useCallback((hospital: Location) => {
+    setSelectedHospital(hospital);
+    setShowMap(true);
+  }, []);
 
   const handleChecklistToggle = useCallback((id: string) => {
     setChecklistItems((prev) =>
@@ -309,7 +350,7 @@ export default function EmergencyPage() {
       <EmergencyStats
         sosSent={sosSent}
         emergencyContacts={contacts.length}
-        nearbyHospitals={3}
+        nearbyHospitals={nearbyHospitalCount}
         preparednessScore={preparednessScore}
       />
 
@@ -326,7 +367,44 @@ export default function EmergencyPage() {
           />
 
           {/* Nearby Hospitals */}
-          <NearbyHospitals />
+          <NearbyHospitals
+            userLat={userLat}
+            userLng={userLng}
+            onHospitalSelect={handleHospitalSelect}
+            onHospitalsLoaded={handleHospitalsLoaded}
+          />
+
+          {/* Route Map (shown after selecting a hospital) */}
+          {showMap && selectedHospital && userLat != null && userLng != null && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Route to {selectedHospital.name}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowMap(false)}
+                  className="text-xs text-slate-500 hover:text-slate-700 font-bold"
+                >
+                  Close Map
+                </button>
+              </div>
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: 350 }}>
+                <Suspense fallback={
+                  <div className="h-full w-full flex items-center justify-center bg-slate-50">
+                    <p className="text-xs text-slate-500">Loading map...</p>
+                  </div>
+                }>
+                  <RouteMap
+                    userLat={userLat}
+                    userLng={userLng}
+                    destLat={selectedHospital.latitude}
+                    destLng={selectedHospital.longitude}
+                  />
+                </Suspense>
+              </div>
+            </div>
+          )}
 
           {/* Nearby Ambulances */}
           <NearbyAmbulances />
@@ -363,7 +441,10 @@ export default function EmergencyPage() {
           />
 
           {/* Location Status */}
-          <LocationStatus onRefresh={handleLocationRefresh} />
+          <LocationStatus
+            onRefresh={handleLocationRefresh}
+            onLocationChange={handleLocationChange}
+          />
         </div>
       </div>
 

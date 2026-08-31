@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Phone, Clock, Navigation, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Truck, Phone, Clock, Navigation, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 interface Ambulance {
   id: string;
@@ -74,7 +74,14 @@ export const NearbyAmbulances = memo(function NearbyAmbulances({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-bold text-slate-900">Nearby Ambulances</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-bold text-slate-900">Nearby Ambulances</h3>
+        <Badge className="text-[9px] font-bold bg-amber-50 text-amber-700 border-amber-200 gap-1">
+          <Info className="h-2.5 w-2.5" />
+          Demo Data
+        </Badge>
+      </div>
+
 
       <div className="space-y-3">
         {ambulances.map((ambulance, index) => {
