@@ -1,9 +1,12 @@
-// services/locationService.ts
+// services/locationsService.ts
+import { api } from '@/services/api';
+
+export type FacilityType = 'hospital' | 'pharmacy' | 'clinic' | 'blood_bank';
 
 export interface Location {
   id: string;
   name: string;
-  type: 'hospital';
+  type: FacilityType;
   address: string;
   phone: string;
   latitude: number;
@@ -19,7 +22,7 @@ export interface NearbyLocationsResult {
 }
 
 /**
- * Get user's current location using browser Geolocation API (FREE)
+ * Get user's current location using browser Geolocation API
  */
 export function getUserLocation(): Promise<{ lat: number; lng: number }> {
   return new Promise((resolve, reject) => {
@@ -42,21 +45,20 @@ export function getUserLocation(): Promise<{ lat: number; lng: number }> {
 }
 
 /**
- * Fetch nearby hospitals using OpenStreetMap (Overpass API)
- * radius is in METERS
+ * Generic facility query supporting hospitals, pharmacies, clinics, and blood banks.
  */
-import { api } from '@/services/api';
-
-export async function getNearbyHospitals(
+export async function getNearbyFacilities(
   userLat: number,
   userLng: number,
   radiusMeters: number = 5000,
+  facilityType: FacilityType = 'hospital',
 ): Promise<NearbyLocationsResult> {
   try {
     const query = new URLSearchParams({
       lat: String(userLat),
       lng: String(userLng),
       radius: String(radiusMeters),
+      type: facilityType,
     });
 
     const result = await api.get<NearbyLocationsResult>(`/emergency/nearby?${query}`);
@@ -64,9 +66,21 @@ export async function getNearbyHospitals(
   } catch (error) {
     return {
       locations: [],
-      error: error instanceof Error ? error.message : 'Unable to load hospitals',
+      error: error instanceof Error ? error.message : `Unable to load ${facilityType} locations`,
     };
   }
+}
+
+/**
+ * Fetch nearby hospitals using OpenStreetMap (Overpass API)
+ * Backward-compatible wrapper around getNearbyFacilities.
+ */
+export async function getNearbyHospitals(
+  userLat: number,
+  userLng: number,
+  radiusMeters: number = 5000,
+): Promise<NearbyLocationsResult> {
+  return getNearbyFacilities(userLat, userLng, radiusMeters, 'hospital');
 }
 
 /**

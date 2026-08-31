@@ -28,6 +28,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+export interface MyDonation {
+  id: string;
+  donationDate: string;
+  facility: string;
+  units: number;
+  status: string;
+}
+
 interface Donor {
   id: string;
   name: string;
@@ -75,7 +83,7 @@ export default function BloodDonationPage() {
   const { toast } = useToast();
   const [donors, setDonors] = useState<Donor[]>([]);
   const [requests, setRequests] = useState<BloodRequest[]>([]);
-  const [myDonations, setMyDonations] = useState<any[]>([]);
+  const [myDonations, setMyDonations] = useState<MyDonation[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
@@ -100,17 +108,19 @@ export default function BloodDonationPage() {
             id: d._id || d.id,
             name: d.name || 'Anonymous Donor',
             bloodGroup: d.bloodType || d.bloodGroup || 'O+',
-            location: d.location || 'Local Area',
-            distance: d.distance || 2.5,
+            age: d.age || 30,
+            city: d.city || d.location || 'Local Area',
+            distance: d.distance,
             phone: d.phone || 'Contact via Portal',
-            isAvailable: d.isAvailable ?? true,
-            lastDonated: d.lastDonated || 'Available Now',
+            availability: (d.availability || (d.isAvailable === false ? 'unavailable' : 'available')) as 'available' | 'unavailable',
+            lastDonation: d.lastDonated || d.lastDonation,
+            totalDonations: d.totalDonations,
           }))
         );
       } else {
         setDonors([]);
       }
-    } catch (err) {
+    } catch {
       setDonors([]);
     }
   }, []);
@@ -137,7 +147,7 @@ export default function BloodDonationPage() {
       } else {
         setRequests([]);
       }
-    } catch (err) {
+    } catch {
       setRequests([]);
     }
   }, []);
@@ -145,12 +155,17 @@ export default function BloodDonationPage() {
   const fetchMyDonations = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await api.get<any[]>('/health/my-donations');
-      setMyDonations(data || []);
+      const data = await api.get<MyDonation[]>('/health/my-donations');
+      if (Array.isArray(data)) {
+        setMyDonations(data);
+      } else {
+        setMyDonations([]);
+      }
     } catch {
       setMyDonations([]);
     }
   }, [user]);
+
 
   useEffect(() => {
     const fetchData = async () => {
