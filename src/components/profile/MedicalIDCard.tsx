@@ -142,7 +142,7 @@ CHRONIC CONDITIONS: ${profile.chronic_diseases.join(', ') || 'None Reported'}
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Insurance Provider</p>
-                  <p className="text-xs font-bold text-white mt-0.5">{profile.insurance_provider || 'CareHealth Gold'}</p>
+                  <p className="text-xs font-bold text-white mt-0.5">{profile.insurance_provider || 'Not provided'}</p>
                 </div>
               </div>
             </div>

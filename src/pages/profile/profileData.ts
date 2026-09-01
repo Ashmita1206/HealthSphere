@@ -23,16 +23,16 @@ export interface Profile {
   organ_donor: boolean;
   primary_physician: string;
   preferred_hospital: string;
-  health_score: number;
-  height: number;
-  weight: number;
-  bmi: number;
-  blood_pressure_sys: number;
-  blood_pressure_dia: number;
-  blood_sugar_fasting: number;
-  health_streak: number;
-  medicine_adherence_rate: number;
-  appointment_completion_rate: number;
+  health_score?: number;
+  height?: number;
+  weight?: number;
+  bmi?: number;
+  blood_pressure_sys?: number;
+  blood_pressure_dia?: number;
+  blood_sugar_fasting?: number;
+  health_streak?: number;
+  medicine_adherence_rate?: number;
+  appointment_completion_rate?: number;
   allergies: string[];
   chronic_diseases: string[];
   surgeries: string[];
@@ -40,7 +40,7 @@ export interface Profile {
   smoking: string;
   alcohol: string;
   exercise_level: string;
-  sleep_hours: number;
+  sleep_hours?: number;
   diet_preference: string;
   language: string;
   units: string;
@@ -55,10 +55,10 @@ export interface Profile {
 const asString = (value: unknown, fallback = ''): string =>
   typeof value === 'string' ? value : fallback;
 
-const asNumber = (value: unknown, fallback: number): number =>
+const asNumber = (value: unknown, fallback?: number): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
-const asBoolean = (value: unknown, fallback: boolean): boolean =>
+const asBoolean = (value: unknown, fallback = false): boolean =>
   typeof value === 'boolean' ? value : fallback;
 
 export const normalizeStringArray = (value: unknown): string[] => {
@@ -76,30 +76,30 @@ export const createDefaultProfile = (): Profile => ({
   emergency_contact_name: '',
   emergency_contact_phone: '',
   emergency_contact_relationship: '',
-  insurance_provider: 'CareHealth Premier Gold',
-  insurance_policy_number: 'CH-98745210',
-  organ_donor: true,
-  primary_physician: 'Dr. Vikram Malhotra (Internal Medicine)',
-  preferred_hospital: 'HealthSphere Specialty Hospital',
-  health_score: 85,
-  height: 175,
-  weight: 70,
-  bmi: 22.9,
-  blood_pressure_sys: 118,
-  blood_pressure_dia: 76,
-  blood_sugar_fasting: 94,
-  health_streak: 14,
-  medicine_adherence_rate: 96,
-  appointment_completion_rate: 100,
+  insurance_provider: '',
+  insurance_policy_number: '',
+  organ_donor: false,
+  primary_physician: '',
+  preferred_hospital: '',
+  health_score: undefined,
+  height: undefined,
+  weight: undefined,
+  bmi: undefined,
+  blood_pressure_sys: undefined,
+  blood_pressure_dia: undefined,
+  blood_sugar_fasting: undefined,
+  health_streak: undefined,
+  medicine_adherence_rate: undefined,
+  appointment_completion_rate: undefined,
   allergies: [],
   chronic_diseases: [],
   surgeries: [],
   family_history: [],
-  smoking: 'Non-smoker',
-  alcohol: 'Occasional',
-  exercise_level: 'Moderate',
-  sleep_hours: 8,
-  diet_preference: 'Balanced Whole Foods',
+  smoking: '',
+  alcohol: '',
+  exercise_level: '',
+  sleep_hours: undefined,
+  diet_preference: '',
   language: 'en',
   units: 'metric',
   notification_preferences: {
@@ -107,48 +107,7 @@ export const createDefaultProfile = (): Profile => ({
     sms: true,
     push: true,
   },
-  documents: [
-    {
-      id: 'doc-1',
-      title: 'Annual Comprehensive Lipid Panel.pdf',
-      category: 'lab',
-      date: '2026-06-15',
-      fileSize: '1.8 MB',
-      fileType: 'PDF',
-    },
-    {
-      id: 'doc-2',
-      title: 'Cardiology Consultation Report.pdf',
-      category: 'report',
-      date: '2026-05-20',
-      fileSize: '2.4 MB',
-      fileType: 'PDF',
-    },
-    {
-      id: 'doc-3',
-      title: 'Metformin & Statin Prescription.png',
-      category: 'prescription',
-      date: '2026-07-01',
-      fileSize: '950 KB',
-      fileType: 'PNG',
-    },
-    {
-      id: 'doc-4',
-      title: 'COVID-19 & Tdap Booster Certificate.pdf',
-      category: 'vaccination',
-      date: '2025-11-10',
-      fileSize: '1.2 MB',
-      fileType: 'PDF',
-    },
-    {
-      id: 'doc-5',
-      title: 'Health Insurance Membership Card.pdf',
-      category: 'insurance',
-      date: '2026-01-01',
-      fileSize: '3.1 MB',
-      fileType: 'PDF',
-    },
-  ],
+  documents: [],
 });
 
 export const normalizeProfileData = (value: unknown): Profile => {
@@ -163,7 +122,9 @@ export const normalizeProfileData = (value: unknown): Profile => {
       ? (data.notification_preferences as Record<string, unknown>)
       : {};
 
-  const docs = Array.isArray(data.documents) ? (data.documents as ProfileDocument[]) : defaults.documents;
+  const docs = Array.isArray(data.documents)
+    ? (data.documents as ProfileDocument[])
+    : [];
 
   return {
     full_name: asString(data.full_name),
@@ -177,21 +138,21 @@ export const normalizeProfileData = (value: unknown): Profile => {
     emergency_contact_relationship: asString(
       data.emergency_contact_relationship,
     ),
-    insurance_provider: asString(data.insurance_provider, defaults.insurance_provider),
-    insurance_policy_number: asString(data.insurance_policy_number, defaults.insurance_policy_number),
-    organ_donor: asBoolean(data.organ_donor, defaults.organ_donor),
-    primary_physician: asString(data.primary_physician, defaults.primary_physician),
-    preferred_hospital: asString(data.preferred_hospital, defaults.preferred_hospital),
-    health_score: asNumber(data.health_score, defaults.health_score),
-    height: asNumber(data.height, defaults.height),
-    weight: asNumber(data.weight, defaults.weight),
-    bmi: asNumber(data.bmi, defaults.bmi),
-    blood_pressure_sys: asNumber(data.blood_pressure_sys, defaults.blood_pressure_sys),
-    blood_pressure_dia: asNumber(data.blood_pressure_dia, defaults.blood_pressure_dia),
-    blood_sugar_fasting: asNumber(data.blood_sugar_fasting, defaults.blood_sugar_fasting),
-    health_streak: asNumber(data.health_streak, defaults.health_streak),
-    medicine_adherence_rate: asNumber(data.medicine_adherence_rate, defaults.medicine_adherence_rate),
-    appointment_completion_rate: asNumber(data.appointment_completion_rate, defaults.appointment_completion_rate),
+    insurance_provider: asString(data.insurance_provider),
+    insurance_policy_number: asString(data.insurance_policy_number),
+    organ_donor: asBoolean(data.organ_donor, false),
+    primary_physician: asString(data.primary_physician),
+    preferred_hospital: asString(data.preferred_hospital),
+    health_score: asNumber(data.health_score),
+    height: asNumber(data.height),
+    weight: asNumber(data.weight),
+    bmi: asNumber(data.bmi),
+    blood_pressure_sys: asNumber(data.blood_pressure_sys),
+    blood_pressure_dia: asNumber(data.blood_pressure_dia),
+    blood_sugar_fasting: asNumber(data.blood_sugar_fasting),
+    health_streak: asNumber(data.health_streak),
+    medicine_adherence_rate: asNumber(data.medicine_adherence_rate),
+    appointment_completion_rate: asNumber(data.appointment_completion_rate),
     allergies: normalizeStringArray(data.allergies),
     chronic_diseases: normalizeStringArray(
       data.chronic_diseases ?? data.chronicDiseases,
@@ -200,11 +161,11 @@ export const normalizeProfileData = (value: unknown): Profile => {
     family_history: normalizeStringArray(
       data.family_history ?? data.familyHistory,
     ),
-    smoking: asString(data.smoking, defaults.smoking),
-    alcohol: asString(data.alcohol, defaults.alcohol),
-    exercise_level: asString(data.exercise_level, defaults.exercise_level),
-    sleep_hours: asNumber(data.sleep_hours, defaults.sleep_hours),
-    diet_preference: asString(data.diet_preference, defaults.diet_preference),
+    smoking: asString(data.smoking),
+    alcohol: asString(data.alcohol),
+    exercise_level: asString(data.exercise_level),
+    sleep_hours: asNumber(data.sleep_hours),
+    diet_preference: asString(data.diet_preference),
     language: asString(data.language, defaults.language),
     units: asString(data.units, defaults.units),
     notification_preferences: {
@@ -224,4 +185,3 @@ export const normalizeProfileData = (value: unknown): Profile => {
     documents: docs,
   };
 };
-

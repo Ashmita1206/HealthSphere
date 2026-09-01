@@ -21,9 +21,10 @@ interface HealthMetricsGridProps {
 
 export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: HealthMetricsGridProps) {
   // BMI Calculations
-  const bmi = profile.bmi || (profile.height && profile.weight ? Number((profile.weight / Math.pow(profile.height / 100, 2)).toFixed(1)) : 22.9);
+  const bmi = profile.bmi || (profile.height && profile.weight ? Number((profile.weight / Math.pow(profile.height / 100, 2)).toFixed(1)) : undefined);
   
-  const getBMICategory = (val: number) => {
+  const getBMICategory = (val?: number) => {
+    if (val === undefined) return { category: 'Not Recorded', color: 'text-slate-500', bg: 'bg-slate-100 border-slate-200' };
     if (val < 18.5) return { category: 'Underweight', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' };
     if (val <= 24.9) return { category: 'Healthy Weight', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' };
     if (val <= 29.9) return { category: 'Overweight', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' };
@@ -66,19 +67,21 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
 
             <div className="flex items-baseline justify-between pt-1">
               <div>
-                <p className="text-3xl font-extrabold font-heading text-slate-900">{bmi}</p>
-                <p className="text-[10px] text-slate-500 font-medium">Height: {profile.height || 175}cm • Weight: {profile.weight || 70}kg</p>
+                <p className="text-3xl font-extrabold font-heading text-slate-900">{bmi ?? '--'}</p>
+                <p className="text-[10px] text-slate-500 font-medium">Height: {profile.height ? `${profile.height}cm` : '--'} • Weight: {profile.weight ? `${profile.weight}kg` : '--'}</p>
               </div>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Optimal Target
-              </span>
+              {bmi !== undefined && (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Target Sync
+                </span>
+              )}
             </div>
 
-            <Progress value={Math.min(100, Math.max(0, ((bmi - 15) / 20) * 100))} className="h-2 bg-slate-100" />
+            <Progress value={bmi !== undefined ? Math.min(100, Math.max(0, ((bmi - 15) / 20) * 100)) : 0} className="h-2 bg-slate-100" />
           </CardContent>
         </Card>
 
-        {/* 2. Weight Trend Card */}
+        {/* 2. Weight Card */}
         <Card className="rounded-3xl border border-slate-200/80 shadow-xs bg-white hover:border-teal-300 transition-all">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center justify-between">
@@ -86,29 +89,20 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
                   <TrendingDown className="h-4.5 w-4.5" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Weight Trend (6 Mo)</span>
+                <span className="text-xs font-bold text-slate-800">Recorded Weight</span>
               </div>
               <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-bold">
-                -2.5 kg
+                {profile.weight ? 'Logged' : 'No Data'}
               </Badge>
             </div>
 
             <div className="flex items-baseline justify-between pt-1">
               <div>
                 <p className="text-3xl font-extrabold font-heading text-slate-900">
-                  {profile.weight || 70} <span className="text-xs font-normal text-slate-500">kg</span>
+                  {profile.weight ?? '--'} <span className="text-xs font-normal text-slate-500">kg</span>
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Target: 68.0 kg (Maintainable)</p>
+                <p className="text-[10px] text-slate-500 font-medium">{profile.weight ? 'Patient Telemetry Weight' : 'Log weight to track trends'}</p>
               </div>
-            </div>
-
-            {/* Visual Mini Bar Chart */}
-            <div className="flex items-end gap-1.5 h-8 pt-1">
-              {[72.5, 72.0, 71.2, 71.0, 70.4, profile.weight || 70].map((w, idx) => (
-                <div key={idx} className="flex-1 bg-blue-100 rounded-t-sm relative group overflow-hidden" style={{ height: `${(w / 75) * 100}%` }}>
-                  <div className="absolute inset-0 bg-blue-600 rounded-t-sm transition-all" />
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
@@ -123,24 +117,19 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
                 </div>
                 <span className="text-xs font-bold text-slate-800">Blood Pressure</span>
               </div>
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold uppercase">
-                Normal
+              <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-extrabold uppercase">
+                {profile.blood_pressure_sys && profile.blood_pressure_dia ? 'Recorded' : 'No Data'}
               </Badge>
             </div>
 
             <div className="flex items-baseline justify-between pt-1">
               <div>
                 <p className="text-3xl font-extrabold font-heading text-slate-900">
-                  {profile.blood_pressure_sys}/{profile.blood_pressure_dia}
+                  {profile.blood_pressure_sys && profile.blood_pressure_dia ? `${profile.blood_pressure_sys}/${profile.blood_pressure_dia}` : '--'}
                   <span className="text-xs font-normal text-slate-500 ml-1">mmHg</span>
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Recorded today at 8:30 AM</p>
+                <p className="text-[10px] text-slate-500 font-medium">Systolic / Diastolic</p>
               </div>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-2 border border-slate-100 flex items-center justify-between text-[11px]">
-              <span className="text-slate-500 font-medium">Systolic & Diastolic:</span>
-              <span className="font-bold text-teal-800">120/80 Target</span>
             </div>
           </CardContent>
         </Card>
@@ -163,13 +152,13 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
             <div className="flex items-baseline justify-between pt-1">
               <div>
                 <p className="text-3xl font-extrabold font-heading text-slate-900">
-                  {profile.blood_sugar_fasting} <span className="text-xs font-normal text-slate-500">mg/dL</span>
+                  {profile.blood_sugar_fasting ?? '--'} <span className="text-xs font-normal text-slate-500">mg/dL</span>
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">Normal Fasting: 70–99 mg/dL</p>
               </div>
             </div>
 
-            <Progress value={((profile.blood_sugar_fasting - 60) / 60) * 100} className="h-2 bg-slate-100" />
+            <Progress value={profile.blood_sugar_fasting ? Math.min(100, Math.max(0, ((profile.blood_sugar_fasting - 60) / 60) * 100)) : 0} className="h-2 bg-slate-100" />
           </CardContent>
         </Card>
 
@@ -184,20 +173,20 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
                 <span className="text-xs font-bold text-slate-800">Sleep Duration</span>
               </div>
               <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] font-bold">
-                Restful
+                {profile.sleep_hours ? 'Tracked' : 'No Data'}
               </Badge>
             </div>
 
             <div className="flex items-baseline justify-between pt-1">
               <div>
                 <p className="text-3xl font-extrabold font-heading text-slate-900">
-                  {profile.sleep_hours} <span className="text-xs font-normal text-slate-500">hrs/night</span>
+                  {profile.sleep_hours ?? '--'} <span className="text-xs font-normal text-slate-500">hrs/night</span>
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Deep Sleep: 2h 15m (28%)</p>
+                <p className="text-[10px] text-slate-500 font-medium">Rest Goal: 7–9 hrs</p>
               </div>
             </div>
 
-            <Progress value={(profile.sleep_hours / 9) * 100} className="h-2 bg-slate-100" />
+            <Progress value={profile.sleep_hours ? Math.min(100, (profile.sleep_hours / 9) * 100) : 0} className="h-2 bg-slate-100" />
           </CardContent>
         </Card>
 

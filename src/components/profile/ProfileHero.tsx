@@ -113,7 +113,7 @@ export const ProfileHero = memo(function ProfileHero({
               <div className="flex items-center gap-2 pt-1">
                 <ShieldCheck className="h-4 w-4 text-teal-400" />
                 <span className="text-[11px] font-semibold text-teal-200">
-                  {profile.insurance_provider || 'CareHealth Premier'} ({profile.insurance_policy_number || 'CH-98745210'})
+                  {profile.insurance_provider ? `${profile.insurance_provider}${profile.insurance_policy_number ? ` (${profile.insurance_policy_number})` : ''}` : 'No insurance policy linked'}
                 </span>
               </div>
             </div>
