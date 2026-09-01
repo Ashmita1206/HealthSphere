@@ -148,10 +148,24 @@ export default function MedicinesPage() {
     if (!user || !selectedMedicine) return;
     setLoading(true);
     try {
+      const updatedMedicine = await api.put<unknown>(
+        `/health/medicines/${selectedMedicine.id}`,
+        data,
+      );
+      const normalizedUpdated = normalizeMedicine(
+        {
+          ...(updatedMedicine && typeof updatedMedicine === 'object'
+            ? updatedMedicine
+            : {}),
+          ...data,
+          id: selectedMedicine.id,
+        },
+        selectedMedicine.id,
+      );
       setMedicines((currentMedicines) =>
         currentMedicines.map((medicine) =>
           medicine.id === selectedMedicine.id
-            ? { ...medicine, ...data }
+            ? normalizedUpdated
             : medicine,
         ),
       );
