@@ -88,7 +88,10 @@ export default function AIHealthScore() {
                 Overall AI Health Index
               </span>
               <h2 className="text-3xl font-extrabold font-heading">
-                Patient Health Status: <span className="text-teal-400">Optimal</span>
+                Patient Health Status:{' '}
+                <span className={typeof healthScores?.overallHealthScore === 'number' ? 'text-teal-400' : 'text-slate-400'}>
+                  {typeof healthScores?.overallHealthScore === 'number' ? 'Calculated' : 'Data Pending'}
+                </span>
               </h2>
               <p className="text-xs text-slate-300 max-w-xl">
                 Calculated by synthesizing active medications, vital logs, recent OCR lab report extractions, and daily wellness behaviors.
@@ -96,12 +99,20 @@ export default function AIHealthScore() {
             </div>
 
             <div className="flex flex-col items-center justify-center p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md min-w-40">
-              <span className="text-5xl font-extrabold text-teal-400 font-mono">
-                {healthScores?.overallHealthScore || 82}
-              </span>
-              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider mt-1">
-                out of 100
-              </span>
+              {typeof healthScores?.overallHealthScore === 'number' ? (
+                <>
+                  <span className="text-5xl font-extrabold text-teal-400 font-mono">
+                    {healthScores.overallHealthScore}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider mt-1">
+                    out of 100
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm font-bold text-slate-300 font-mono text-center">
+                  Health Score Unavailable
+                </span>
+              )}
             </div>
           </div>
 
