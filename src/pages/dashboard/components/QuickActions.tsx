@@ -21,7 +21,7 @@ export function QuickActions() {
       borderColor: "border-slate-200/80",
       textColor: "text-slate-800",
       iconBg: "bg-teal-700 text-white shadow-xs",
-      path: "/ai-assistant",
+      path: "/ai-chat",
     },
     {
       icon: FileText,

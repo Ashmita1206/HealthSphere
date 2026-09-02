@@ -33,7 +33,7 @@ const globalDestinations = [
   { path: "/blood-donation", keywords: ["blood", "donation", "donor"] },
   { path: "/emergency", keywords: ["emergency", "sos", "hospital", "ambulance"] },
   { path: "/reminders", keywords: ["reminder", "notification"] },
-  { path: "/ai-assistant", keywords: ["ai", "assistant", "consultation"] },
+  { path: "/ai-chat", keywords: ["ai", "assistant", "consultation"] },
 ];
 
 /* ------------------------------------------------------------------ */

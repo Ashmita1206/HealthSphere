@@ -58,8 +58,7 @@ const navGroups: NavGroupData[] = [
   {
     title: "INTELLIGENCE",
     items: [
-      { icon: MessageSquareText, label: "AI Consultation", href: "/ai-chat", badge: "AI" },
-      { icon: Bot, label: "AI Assistant", href: "/ai-assistant", badge: "AI" },
+      { icon: MessageSquareText, label: "AI Assistant", href: "/ai-chat", badge: "AI" },
       { icon: Eye, label: "AI Vision", href: "/ai-vision" },
       { icon: Heart, label: "AI Health Score", href: "/ai-health-score" },
     ],

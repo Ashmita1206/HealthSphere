@@ -36,7 +36,7 @@ export const AIHealthSummaryWidget = memo(function AIHealthSummaryWidget({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/ai-assistant')}
+            onClick={() => navigate('/ai-chat')}
             className="text-teal-200 hover:text-white hover:bg-white/10 text-xs font-bold h-8 rounded-xl gap-1"
           >
             Launch Assistant <ArrowRight className="h-3.5 w-3.5" />
@@ -59,7 +59,7 @@ export const AIHealthSummaryWidget = memo(function AIHealthSummaryWidget({
           <Button
             type="button"
             variant="link"
-            onClick={() => navigate('/ai-assistant')}
+            onClick={() => navigate('/ai-chat')}
             className="text-teal-300 hover:text-white text-xs font-bold p-0 h-auto"
           >
             Ask AI Assistant

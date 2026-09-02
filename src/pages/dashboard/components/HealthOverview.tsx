@@ -43,7 +43,7 @@ export function HealthOverview({
             onClick={() => {
               const chatWidgetBtn = document.getElementById("ai-chat-trigger");
               if (chatWidgetBtn) chatWidgetBtn.click();
-              else navigate("/ai-assistant");
+              else navigate("/ai-chat");
             }}
             className="bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2"
           >
