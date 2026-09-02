@@ -33,6 +33,18 @@ const medicineUpdateSchema = Joi.object({
   strength: Joi.string().trim().allow("").max(100),
 }).min(1);
 
+const donationRequestUpdateSchema = Joi.object({
+  status: Joi.string().valid("pending", "fulfilled", "cancelled", "active"),
+  notes: Joi.string().trim().allow("").max(1000),
+  urgency: Joi.string().trim().allow("").max(50),
+  requestType: Joi.string().trim().allow("").max(100),
+  request_type: Joi.string().trim().allow("").max(100),
+  bloodType: Joi.string().trim().allow("").max(20),
+  blood_type: Joi.string().trim().allow("").max(20),
+  organType: Joi.string().trim().allow("").max(100),
+  organ_type: Joi.string().trim().allow("").max(100),
+}).min(1);
+
 router.use(protect);
 router.get("/logs", c.listLogs);
 router.post("/logs", c.createLog);
@@ -50,6 +62,8 @@ router.get("/donors", c.listDonors);
 router.post("/donors", c.registerDonor);
 router.get("/donation-requests", c.listDonationRequests);
 router.post("/donation-requests", c.createDonationRequest);
+router.put("/donation-requests/:id", validate(donationRequestUpdateSchema), c.updateDonationRequest);
+router.delete("/donation-requests/:id", c.deleteDonationRequest);
 router.get("/insights", c.getInsights);
 router.post("/doses/toggle", c.toggleDose);
 router.get("/doses/today", c.getTodayDoses);

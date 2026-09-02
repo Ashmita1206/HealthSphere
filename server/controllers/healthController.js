@@ -365,13 +365,101 @@ async function createDonationRequest(req, res, next) {
       .json(
         await DonationRequest.create({
           userId: req.user._id,
-          requestType: req.body.request_type,
-          bloodType: req.body.blood_type,
-          organType: req.body.organ_type,
+          requestType: req.body.request_type || req.body.requestType,
+          bloodType: req.body.blood_type || req.body.bloodType,
+          organType: req.body.organ_type || req.body.organType,
           urgency: req.body.urgency,
           notes: req.body.notes,
+          status: req.body.status || 'pending',
         }),
       );
+  } catch (e) {
+    if (e.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed', details: e.message });
+    }
+    next(e);
+  }
+}
+async function updateDonationRequest(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid donation request ID' });
+    }
+
+    const request = await DonationRequest.findOne({
+      _id: id,
+      userId: req.user._id,
+    });
+
+    if (!request) {
+      const existsForOtherUser = await DonationRequest.findById(id);
+      if (existsForOtherUser) {
+        return res.status(403).json({ message: 'Forbidden: You do not own this donation request' });
+      }
+      return res.status(404).json({ message: 'Donation request not found' });
+    }
+
+    const updates = {};
+    const b = req.body || {};
+
+    if (b.status !== undefined) updates.status = b.status;
+    if (b.notes !== undefined) updates.notes = b.notes;
+    if (b.urgency !== undefined) updates.urgency = b.urgency;
+    if (b.requestType !== undefined) updates.requestType = b.requestType;
+    if (b.request_type !== undefined) updates.requestType = b.request_type;
+    if (b.bloodType !== undefined) updates.bloodType = b.bloodType;
+    if (b.blood_type !== undefined) updates.bloodType = b.blood_type;
+    if (b.organType !== undefined) updates.organType = b.organType;
+    if (b.organ_type !== undefined) updates.organType = b.organ_type;
+
+    // Protect immutable fields
+    delete updates._id;
+    delete updates.userId;
+    delete updates.createdAt;
+    delete updates.updatedAt;
+
+    const updated = await DonationRequest.findOneAndUpdate(
+      { _id: id, userId: req.user._id },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json(updated);
+  } catch (e) {
+    if (e.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed', details: e.message });
+    }
+    if (e.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid field value', details: e.message });
+    }
+    next(e);
+  }
+}
+async function deleteDonationRequest(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid donation request ID' });
+    }
+
+    const request = await DonationRequest.findOne({
+      _id: id,
+      userId: req.user._id,
+    });
+
+    if (!request) {
+      const existsForOtherUser = await DonationRequest.findById(id);
+      if (existsForOtherUser) {
+        return res.status(403).json({ message: 'Forbidden: You do not own this donation request' });
+      }
+      return res.status(404).json({ message: 'Donation request not found' });
+    }
+
+    await DonationRequest.deleteOne({ _id: id, userId: req.user._id });
+    res.status(204).end();
   } catch (e) {
     next(e);
   }
@@ -514,6 +602,8 @@ module.exports = {
   listDonationRequests,
   registerDonor,
   createDonationRequest,
+  updateDonationRequest,
+  deleteDonationRequest,
   chat,
   getInsights,
   toggleDose,
