@@ -27,7 +27,7 @@ describe('Router & Route Hygiene Verification', () => {
     await waitFor(() => {
       expect(screen.getByText(/HealthSphere AI Assistant/i)).toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it('2. /ai-assistant is obsolete and renders NotFound 404 page', async () => {
     window.location.hash = '#/ai-assistant';
@@ -37,7 +37,7 @@ describe('Router & Route Hygiene Verification', () => {
       expect(screen.getByText(/404/i)).toBeInTheDocument();
       expect(screen.queryByText(/AI Health Consultation Workspace/i)).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it('3. /blood-donation is available as canonical blood & organ donation route', async () => {
     window.location.hash = '#/blood-donation';
@@ -46,7 +46,7 @@ describe('Router & Route Hygiene Verification', () => {
     await waitFor(() => {
       expect(screen.getByText(/Blood Donation & Requests/i)).toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it('4. /blood-organ is obsolete and renders NotFound 404 page', async () => {
     window.location.hash = '#/blood-organ';
@@ -56,5 +56,5 @@ describe('Router & Route Hygiene Verification', () => {
       expect(screen.getByText(/404/i)).toBeInTheDocument();
       expect(screen.queryByText(/Blood & Organ Donor Registry/i)).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 });

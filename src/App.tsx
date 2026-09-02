@@ -7,6 +7,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { TimelineProvider } from '@/context/TimelineContext';
+import { AnalyticsProvider } from '@/context/AnalyticsContext';
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -43,51 +44,53 @@ const App = () => (
         <AuthProvider>
           <NotificationProvider>
             <TimelineProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <HashRouter>
-                  <Routes>
-                    {/* Public routes */}
-                    <Route element={<Layout />}>
-                      <Route path="/" element={<Landing />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/privacy" element={<Privacy />} />
-                      <Route path="/terms" element={<Terms />} />
-                    </Route>
+              <AnalyticsProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <HashRouter>
+                    <Routes>
+                      {/* Public routes */}
+                      <Route element={<Layout />}>
+                        <Route path="/" element={<Landing />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/privacy" element={<Privacy />} />
+                        <Route path="/terms" element={<Terms />} />
+                      </Route>
 
-                    {/* Auth routes */}
-                    <Route path="/auth/login" element={<LoginPage />} />
-                    <Route path="/auth/register" element={<RegisterPage />} />
+                      {/* Auth routes */}
+                      <Route path="/auth/login" element={<LoginPage />} />
+                      <Route path="/auth/register" element={<RegisterPage />} />
 
-                    {/* Protected routes */}
-                    <Route element={<Layout showSidebar />}>
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/ai-chat" element={<AIChat />} />
-                      <Route path="/chat" element={<AIChat />} />
-                      <Route path="/medical-reports" element={<MedicalReports />} />
-                      <Route path="/ai-vision" element={<AIVision />} />
-                      <Route path="/ai-health-score" element={<AIHealthScore />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/medicines" element={<Medicines />} />
-                      <Route path="/reports" element={<Reports />} />
-                      <Route path="/appointments" element={<Appointments />} />
-                      <Route
-                        path="/blood-organ/info"
-                        element={<BloodOrganInfo />}
-                      />
-                      <Route path="/reminders" element={<Reminders />} />
-                      <Route path="/timeline" element={<Timeline />} />
-                      <Route path="/blood-donation" element={<BloodDonation />} />
-                      <Route path="/emergency" element={<Emergency />} />
-                      <Route path="/settings" element={<Settings />} />
-                    </Route>
+                      {/* Protected routes */}
+                      <Route element={<Layout showSidebar />}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/ai-chat" element={<AIChat />} />
+                        <Route path="/chat" element={<AIChat />} />
+                        <Route path="/medical-reports" element={<MedicalReports />} />
+                        <Route path="/ai-vision" element={<AIVision />} />
+                        <Route path="/ai-health-score" element={<AIHealthScore />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/medicines" element={<Medicines />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/appointments" element={<Appointments />} />
+                        <Route
+                          path="/blood-organ/info"
+                          element={<BloodOrganInfo />}
+                        />
+                        <Route path="/reminders" element={<Reminders />} />
+                        <Route path="/timeline" element={<Timeline />} />
+                        <Route path="/blood-donation" element={<BloodDonation />} />
+                        <Route path="/emergency" element={<Emergency />} />
+                        <Route path="/settings" element={<Settings />} />
+                      </Route>
 
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </HashRouter>
-              </TooltipProvider>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </HashRouter>
+                </TooltipProvider>
+              </AnalyticsProvider>
             </TimelineProvider>
           </NotificationProvider>
         </AuthProvider>

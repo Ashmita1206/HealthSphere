@@ -20,9 +20,19 @@ import { Card } from "@/design-system/primitives/Card";
 import { Button } from "@/design-system/primitives/Button";
 import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
+import { useAnalytics } from "@/context/AnalyticsContext";
+import {
+  HealthScoreCard,
+  InsightsCard,
+  WeeklySummary,
+  DashboardStats,
+  ActivityTrend,
+  HealthBreakdown,
+} from "@/components/analytics";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { dashboardData: analyticsData, loading: analyticsLoading } = useAnalytics();
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
   const [dashboardData, setDashboardData] = useState<DashboardLogicData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,7 +153,7 @@ export default function DashboardPage() {
       <motion.div variants={motionVariants.contentReveal}>
         <HealthDailyBrief
           userName={userName}
-          overallScore={healthScore}
+          overallScore={analyticsData?.healthScore?.score ?? healthScore}
           statusLabel={healthScore !== undefined ? "Active Standing" : "Pending Data"}
           oneThingToKnow={
             dashboardData?.oneThingToKnow || {
@@ -178,10 +188,37 @@ export default function DashboardPage() {
         />
       </motion.div>
 
-      {/* 2. ASYMMETRIC NARRATIVE STREAM (65% Primary Stream / 35% Care Schedule) */}
+      {/* 2. SMART HEALTH ANALYTICS: Core KPI Metrics */}
+      <motion.div variants={motionVariants.contentReveal}>
+        <DashboardStats data={analyticsData} />
+      </motion.div>
+
+      {/* 3. HEALTH SCORE & DETERMINISTIC AI INSIGHTS */}
+      <motion.div variants={motionVariants.contentReveal} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <HealthScoreCard
+          healthScore={analyticsData?.healthScore}
+          loading={analyticsLoading}
+        />
+        <InsightsCard
+          insights={analyticsData?.recentInsights}
+        />
+      </motion.div>
+
+      {/* 4. 7-DAY WEEKLY ACTIVITY SUMMARY */}
+      <motion.div variants={motionVariants.contentReveal}>
+        <WeeklySummary summary={analyticsData?.weeklyActivity} />
+      </motion.div>
+
+      {/* 5. ASYMMETRIC NARRATIVE STREAM (65% Primary Stream / 35% Care Schedule) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Column (65% Primary Narrative) */}
         <motion.div variants={motionVariants.contentReveal} className="lg:col-span-2 space-y-6">
+          {/* Activity Trend Chart */}
+          <ActivityTrend trendData={analyticsData?.activityTrend} />
+
+          {/* Health Index Breakdown */}
+          <HealthBreakdown breakdown={analyticsData?.healthScore?.breakdown} />
+
           {/* Clinical Insight Banner (Render only if real report insight exists) */}
           {dashboardData?.clinicalInsight ? (
             <ClinicalInsight
