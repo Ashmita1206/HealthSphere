@@ -1,6 +1,7 @@
 const EmergencyAlert = require("../models/EmergencyAlert");
 const EmergencyNotification = require("../models/EmergencyNotification");
 const EmergencyContact = require("../models/EmergencyContact");
+const { recordTimelineEvent } = require("../services/timelineService");
 const logger = require("../utils/logger");
 
 const hospitals = [
@@ -34,6 +35,14 @@ async function triggerSos(req, res, next) {
       type: "contact_alert",
       message: `Emergency triggered near ${nearestHelp}`
     });
+    recordTimelineEvent({
+      userId: req.user._id,
+      eventType: "emergency",
+      category: "emergency",
+      title: "Emergency SOS Triggered",
+      description: `Emergency alert initiated near ${nearestHelp}`,
+      relatedId: row._id,
+    }).catch(() => {});
     logger.warn("Emergency SOS triggered", {
       userId: String(req.user._id),
       latitude: req.body.latitude,

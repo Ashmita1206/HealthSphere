@@ -1,5 +1,48 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import { adaptTimelineRecords, timelineAdapters } from '@/components/timeline/timelineAdapters';
+import { Timeline } from '@/components/timeline/Timeline';
+import { TimelineItem } from '@/components/timeline/TimelineItem';
+import { TimelinePreviewWidget } from '@/pages/dashboard/components/TimelinePreviewWidget';
+import type { TimelineEventRecord } from '@/services/timelineService';
+
+const mockTimelineEvents: TimelineEventRecord[] = [
+  {
+    id: 'evt-1',
+    _id: 'evt-1',
+    userId: 'u1',
+    eventType: 'medicine',
+    category: 'medicine',
+    title: 'Medication: Metformin 500mg',
+    description: 'Prescription active - daily with meals.',
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'evt-2',
+    _id: 'evt-2',
+    userId: 'u1',
+    eventType: 'appointment',
+    category: 'appointment',
+    title: 'Dr. Sarah Smith Appointment',
+    description: 'Cardiology consultation at Central Hospital.',
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'evt-3',
+    _id: 'evt-3',
+    userId: 'u1',
+    eventType: 'emergency',
+    category: 'emergency',
+    title: 'Emergency SOS Triggered',
+    description: 'Alert dispatched to nearest responder.',
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+  },
+];
 
 describe('Timeline Backend Integration & Data Adapters', () => {
   it('correctly maps raw backend records to structured TimelineEvents', () => {
@@ -81,5 +124,50 @@ describe('Timeline Backend Integration & Data Adapters', () => {
 
     const combined = [...emptyMeds, ...emptyAppts, ...emptyReports, ...emptyLogs];
     expect(combined).toHaveLength(0);
+  });
+});
+
+describe('Timeline Component Rendering & States', () => {
+  it('renders Timeline with grouped date headers and items', () => {
+    render(<Timeline events={mockTimelineEvents} />);
+
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Medication: Metformin 500mg')).toBeInTheDocument();
+    expect(screen.getByText('Dr. Sarah Smith Appointment')).toBeInTheDocument();
+    expect(screen.getByText('Emergency SOS Triggered')).toBeInTheDocument();
+  });
+
+  it('renders Timeline empty state when no events exist', () => {
+    render(<Timeline events={[]} />);
+
+    expect(screen.getByText('No Health Events Found')).toBeInTheDocument();
+  });
+
+  it('renders TimelineItem with category badge and description', () => {
+    render(<TimelineItem event={mockTimelineEvents[0]} />);
+
+    expect(screen.getByText('Medicine')).toBeInTheDocument();
+    expect(screen.getByText('Medication: Metformin 500mg')).toBeInTheDocument();
+    expect(screen.getByText('Prescription active - daily with meals.')).toBeInTheDocument();
+  });
+
+  it('renders TimelinePreviewWidget on dashboard with recent activities', () => {
+    render(
+      <BrowserRouter>
+        <TimelinePreviewWidget
+          events={mockTimelineEvents.map((e) => ({
+            id: e.id,
+            title: e.title,
+            description: e.description,
+            timestamp: e.timestamp,
+            type: e.eventType,
+          }))}
+        />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText('Recent Clinical Timeline')).toBeInTheDocument();
+    expect(screen.getByText('View Full Timeline')).toBeInTheDocument();
+    expect(screen.getByText('Medication: Metformin 500mg')).toBeInTheDocument();
   });
 });

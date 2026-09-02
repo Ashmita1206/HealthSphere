@@ -11,6 +11,7 @@ const {
   buildRecommendations,
   buildHealthInsights,
 } = require('../services/recommendationEngine');
+const { recordTimelineEvent } = require('../services/timelineService');
 const logger = require('../utils/logger');
 
 const mapMedicine = (m) => ({
@@ -64,9 +65,16 @@ async function listLogs(req, res, next) {
 async function createLog(req, res, next) {
   try {
     const { symptoms, notes, date, weight, glucose, heartRate, systolic, diastolic } = req.body;
-    res
-      .status(201)
-      .json(await HealthLog.create({ userId: req.user._id, symptoms, notes, date: date || Date.now(), weight, glucose, heartRate, systolic, diastolic }));
+    const createdLog = await HealthLog.create({ userId: req.user._id, symptoms, notes, date: date || Date.now(), weight, glucose, heartRate, systolic, diastolic });
+    recordTimelineEvent({
+      userId: req.user._id,
+      eventType: 'vitals',
+      category: 'vitals',
+      title: 'Health Vitals Logged',
+      description: `Vitals recorded${heartRate ? ` (HR: ${heartRate} bpm)` : ''}${systolic ? ` (BP: ${systolic}/${diastolic || '--'})` : ''}`,
+      relatedId: createdLog._id,
+    }).catch(() => {});
+    res.status(201).json(createdLog);
   } catch (e) {
     next(e);
   }
@@ -152,6 +160,14 @@ async function createMedicine(req, res, next) {
       instructions,
       strength,
     });
+    recordTimelineEvent({
+      userId: req.user._id,
+      eventType: 'medicine',
+      category: 'medicine',
+      title: `Medication: ${name}`,
+      description: `Dosage: ${dosage || 'As prescribed'} (${frequency || 'Daily'})`,
+      relatedId: row._id,
+    }).catch(() => {});
     res.status(201).json(mapMedicine(row));
   } catch (e) {
     if (e.name === 'ValidationError') {
@@ -289,6 +305,14 @@ async function createAppointment(req, res, next) {
       hospital: req.body.hospital,
       appointmentDate: req.body.appointment_date,
     });
+    recordTimelineEvent({
+      userId: req.user._id,
+      eventType: 'appointment',
+      category: 'appointment',
+      title: `Appointment: Dr. ${row.doctorName || 'Specialist'}`,
+      description: `${row.specialty || 'General'} · ${row.hospital || 'Medical Center'}`,
+      relatedId: row._id,
+    }).catch(() => {});
     res.status(201).json(mapAppointment(row));
   } catch (e) {
     next(e);

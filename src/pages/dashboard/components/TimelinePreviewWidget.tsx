@@ -1,10 +1,22 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, ArrowRight, Activity, Calendar, Pill, FileText, Stethoscope } from 'lucide-react';
+import {
+  Clock,
+  ArrowRight,
+  Activity,
+  Calendar,
+  Pill,
+  FileText,
+  Heart,
+  AlertTriangle,
+  Sparkles,
+  Stethoscope,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimelineDate } from '@/components/timeline/timelineHelpers';
+import { timelineService, type TimelineEventRecord } from '@/services/timelineService';
 
 interface TimelinePreviewWidgetProps {
   events?: Array<{
@@ -12,29 +24,63 @@ interface TimelinePreviewWidgetProps {
     title: string;
     description: string;
     timestamp: string;
-    type: string;
+    type?: string;
+    category?: string;
   }>;
 }
 
-export const TimelinePreviewWidget = memo(function TimelinePreviewWidget({ events }: TimelinePreviewWidgetProps) {
+export const TimelinePreviewWidget = memo(function TimelinePreviewWidget({
+  events: propEvents,
+}: TimelinePreviewWidgetProps) {
   const navigate = useNavigate();
-  const sampleEvents = useMemo(() => {
-    if (events && Array.isArray(events) && events.length > 0) {
-      return events.slice(0, 4);
+  const [fetchedEvents, setFetchedEvents] = useState<TimelineEventRecord[]>([]);
+
+  useEffect(() => {
+    if (!propEvents || propEvents.length === 0) {
+      timelineService.getTimeline({ limit: 5 }).then((data) => {
+        if (data && Array.isArray(data)) {
+          setFetchedEvents(data);
+        }
+      });
     }
-    return [];
-  }, [events]);
+  }, [propEvents]);
+
+  const displayEvents = useMemo(() => {
+    if (propEvents && Array.isArray(propEvents) && propEvents.length > 0) {
+      return propEvents.slice(0, 5).map((e) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        timestamp: e.timestamp,
+        type: e.type || e.category || 'general',
+      }));
+    }
+    return fetchedEvents.slice(0, 5).map((e) => ({
+      id: e.id || e._id || '',
+      title: e.title,
+      description: e.description,
+      timestamp: e.createdAt || e.timestamp,
+      type: e.category || e.eventType || 'general',
+    }));
+  }, [propEvents, fetchedEvents]);
 
   const getIcon = (type: string) => {
-    switch (type) {
+    switch (type?.toLowerCase()) {
       case 'appointment':
         return <Calendar className="h-3.5 w-3.5 text-blue-600" />;
       case 'medicine':
+      case 'medication':
         return <Pill className="h-3.5 w-3.5 text-emerald-600" />;
       case 'report':
         return <FileText className="h-3.5 w-3.5 text-violet-600" />;
+      case 'vitals':
+        return <Heart className="h-3.5 w-3.5 text-rose-600" />;
+      case 'emergency':
+        return <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />;
+      case 'health_goal':
+        return <Sparkles className="h-3.5 w-3.5 text-amber-600" />;
       default:
-        return <Stethoscope className="h-3.5 w-3.5 text-teal-600" />;
+        return <Activity className="h-3.5 w-3.5 text-teal-600" />;
     }
   };
 
@@ -61,14 +107,14 @@ export const TimelinePreviewWidget = memo(function TimelinePreviewWidget({ event
             onClick={() => navigate('/timeline')}
             className="text-xs font-bold text-teal-700 hover:bg-teal-50 h-8 rounded-xl gap-1"
           >
-            View All <ArrowRight className="h-3.5 w-3.5" />
+            View Full Timeline <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </CardHeader>
 
       <CardContent className="p-4 space-y-3">
-        {sampleEvents.length > 0 ? (
-          sampleEvents.map((evt) => (
+        {displayEvents.length > 0 ? (
+          displayEvents.map((evt) => (
             <div
               key={evt.id}
               onClick={() => navigate('/timeline')}

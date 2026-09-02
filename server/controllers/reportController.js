@@ -2,6 +2,7 @@ const multer = require("multer");
 const { v2: cloudinary } = require("cloudinary");
 const Report = require("../models/Report");
 const { parseMedicalReport } = require("../services/ocr/ocrService");
+const { recordTimelineEvent } = require("../services/timelineService");
 const { Readable } = require("stream");
 const logger = require("../utils/logger");
 
@@ -128,6 +129,14 @@ async function uploadReport(req, res, next) {
     }
 
     await report.save();
+    recordTimelineEvent({
+      userId: req.user._id,
+      eventType: "report",
+      category: "report",
+      title: `Lab Report: ${report.title}`,
+      description: `Uploaded report (${report.category || 'general'}) · Risk assessment: ${report.riskLevel || 'low'}`,
+      relatedId: report._id,
+    }).catch(() => {});
     res.status(201).json(mapReport(report));
   } catch (error) {
     next(error);
