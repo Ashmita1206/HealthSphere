@@ -21,6 +21,8 @@ import { Button } from "@/design-system/primitives/Button";
 import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
 import { useAnalytics } from "@/context/AnalyticsContext";
+import { useMedicalProfile } from "@/context/MedicalProfileContext";
+import { ProfileCompletion } from "@/components/medical-profile/ProfileCompletion";
 import {
   HealthScoreCard,
   InsightsCard,
@@ -29,10 +31,12 @@ import {
   ActivityTrend,
   HealthBreakdown,
 } from "@/components/analytics";
+import { QrCode } from "lucide-react";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { dashboardData: analyticsData, loading: analyticsLoading } = useAnalytics();
+  const { profile: medicalProfile } = useMedicalProfile();
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
   const [dashboardData, setDashboardData] = useState<DashboardLogicData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -341,6 +345,33 @@ export default function DashboardPage() {
               <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </Card>
+
+          {/* Profile Completion Widget */}
+          <ProfileCompletion
+            profile={medicalProfile}
+            onNavigateToTab={() => navigate("/profile")}
+          />
+
+          {/* Digital Health ID Quick Access Tile */}
+          <div
+            onClick={() => navigate("/profile")}
+            className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-teal-950 text-white border border-teal-500/30 flex items-center justify-between gap-3 shadow-xs cursor-pointer hover:border-teal-400 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-400/30">
+                <QrCode className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white group-hover:text-teal-300 transition-colors">
+                  Digital Health ID & QR
+                </h4>
+                <p className="text-[10px] text-slate-300 font-mono">
+                  {medicalProfile?.healthId || "HS-2026-000123"}
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-teal-400 group-hover:translate-x-1 transition-transform" />
+          </div>
 
           {/* Emergency SOS Access Tile */}
           <div className="p-4 rounded-2xl bg-red-50/70 border border-red-200/80 flex items-center justify-between gap-3">
