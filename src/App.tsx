@@ -16,7 +16,6 @@ import Profile from './pages/profile';
 import Medicines from './pages/medicines';
 import Reports from './pages/Reports';
 import Appointments from './pages/appointments';
-import BloodOrgan from './pages/BloodOrgan';
 import BloodOrganInfo from './pages/BloodOrganInfo';
 import Reminders from './pages/Reminders';
 import Timeline from './pages/timeline';
@@ -70,7 +69,6 @@ const App = () => (
                   <Route path="/medicines" element={<Medicines />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/appointments" element={<Appointments />} />
-                  <Route path="/blood-organ" element={<BloodOrgan />} />
                   <Route
                     path="/blood-organ/info"
                     element={<BloodOrganInfo />}

@@ -61,13 +61,13 @@ export default function BloodOrganInfoPage() {
         title="Donation Awareness & Guidelines"
         description="Learn about blood and organ donation eligibility criteria, process walkthroughs, and FAQs."
         breadcrumbs={[
-          { label: "Blood & Organ", href: "/blood-organ" },
+          { label: "Blood & Organ", href: "/blood-donation" },
           { label: "Info & FAQs" }
         ]}
         badge="Clinical Guide"
         actions={
           <Button
-            onClick={() => navigate("/blood-organ")}
+            onClick={() => navigate("/blood-donation")}
             className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2"
           >
             <span>Go to Registry</span>

@@ -74,7 +74,7 @@ const navSections: NavSection[] = [
     label: "Care",
     items: [
       { label: "Appointments", description: "Schedule & manage doctor visits", href: "/appointments", icon: Calendar },
-      { label: "Blood & Organ", description: "Donation tracking & eligibility", href: "/blood-organ", icon: Droplets },
+      { label: "Blood & Organ", description: "Donation tracking & eligibility", href: "/blood-donation", icon: Droplets },
       { label: "Emergency SOS", description: "24/7 emergency contacts & nearest ER", href: "/emergency", icon: AlertTriangle },
     ],
   },

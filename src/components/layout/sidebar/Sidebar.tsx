@@ -67,7 +67,7 @@ const navGroups: NavGroupData[] = [
     title: "SUPPORT",
     items: [
       { icon: AlertTriangle, label: "Emergency 24/7", href: "/emergency", alert: true },
-      { icon: Droplets, label: "Blood & Organ", href: "/blood-organ" },
+      { icon: Droplets, label: "Blood & Organ", href: "/blood-donation" },
       { icon: Bell, label: "Reminders", href: "/reminders", badge: "2" },
     ],
   },
