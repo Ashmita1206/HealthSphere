@@ -70,7 +70,7 @@ const eventConfig = {
 };
 
 export const EmergencyTimeline = memo(function EmergencyTimeline({
-  events = dummyEvents,
+  events = [],
 }: EmergencyTimelineProps) {
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);

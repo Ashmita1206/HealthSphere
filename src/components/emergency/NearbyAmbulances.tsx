@@ -76,9 +76,9 @@ export const NearbyAmbulances = memo(function NearbyAmbulances({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-bold text-slate-900">Nearby Ambulances</h3>
-        <Badge className="text-[9px] font-bold bg-amber-50 text-amber-700 border-amber-200 gap-1">
+        <Badge className="text-[9px] font-bold bg-amber-50 text-amber-800 border-amber-300 gap-1">
           <Info className="h-2.5 w-2.5" />
-          Demo Data
+          Simulated Dispatch (Real-Time GPS Telematics Unavailable)
         </Badge>
       </div>
 

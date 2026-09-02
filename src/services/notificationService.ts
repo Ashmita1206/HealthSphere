@@ -12,45 +12,14 @@ export interface AppNotification {
   route: string;
 }
 
-// Initial mock notifications for initial state
-const initialNotifications: AppNotification[] = [
-  {
-    id: 'notif-1',
-    type: 'report',
-    title: 'Lab Analysis Baseline Ready',
-    message: 'Your Blood Panel CBC OCR report has been analyzed by HealthSphere AI.',
-    timestamp: '10 mins ago',
-    read: false,
-    severity: 'info',
-    route: '/reports',
-  },
-  {
-    id: 'notif-2',
-    type: 'medication',
-    title: 'Medicine Reminder',
-    message: 'Time for Metformin 500mg (Post Lunch). Take with 250ml water.',
-    timestamp: '1 hour ago',
-    read: false,
-    severity: 'attention',
-    route: '/medicines',
-  },
-  {
-    id: 'notif-3',
-    type: 'appointment',
-    title: 'Upcoming Appointment',
-    message: 'Dr. Sarah Jenkins consultation scheduled for tomorrow at 10:00 AM.',
-    timestamp: '3 hours ago',
-    read: true,
-    severity: 'info',
-    route: '/appointments',
-  },
-];
+// Notifications are populated via Socket.IO realtime events.
+// No mock/seed data — empty until backend delivers real notifications.
 
 type NotificationListener = (notifications: AppNotification[]) => void;
 type ConnectionListener = (connected: boolean) => void;
 
 class NotificationService {
-  private notifications: AppNotification[] = [...initialNotifications];
+  private notifications: AppNotification[] = [];
   private listeners: NotificationListener[] = [];
   private connectionListeners: ConnectionListener[] = [];
   private isConnected = false;
