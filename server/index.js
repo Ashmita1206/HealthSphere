@@ -23,6 +23,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const timelineRoutes = require('./routes/timelineRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const medicalProfileRoutes = require('./routes/medicalProfileRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -106,6 +107,8 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/timeline', timelineRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/profile/medical', medicalProfileRoutes);
+app.use('/api/medical-profile', medicalProfileRoutes);
 /*
 ====================================================
 Socket.IO

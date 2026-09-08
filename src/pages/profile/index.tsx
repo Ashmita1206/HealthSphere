@@ -28,6 +28,15 @@ import { MedicalInformation } from '@/components/profile/MedicalInformation';
 import { LifestyleInformation } from '@/components/profile/LifestyleInformation';
 import { Preferences } from '@/components/profile/Preferences';
 import { MedicalIDCard } from '@/components/profile/MedicalIDCard';
+import { useMedicalProfile } from '@/context/MedicalProfileContext';
+import {
+  DigitalHealthCard,
+  QRCodeCard,
+  EmergencyCard,
+  ProfileCompletion,
+  MedicalProfileCard,
+  MedicalProfileForm,
+} from '@/components/medical-profile';
 
 import {
   createDefaultProfile,
@@ -38,6 +47,7 @@ import {
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { profile: medicalProfile, saveProfile: saveMedicalProfile } = useMedicalProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [fetchingProfile, setFetchingProfile] = useState(true);
@@ -211,6 +221,11 @@ export default function ProfilePage() {
         onPrintCard={handlePrintCard}
       />
 
+      {/* Profile Completeness Assessment & Actionable Suggestions */}
+      <ProfileCompletion
+        profile={medicalProfile}
+      />
+
       {/* Navigation Tabs */}
       <Tabs defaultValue="overview" className="w-full space-y-6">
         <TabsList className="bg-slate-100 p-1 rounded-2xl flex flex-wrap h-auto gap-1 border border-slate-200/80">
@@ -222,6 +237,20 @@ export default function ProfilePage() {
           </TabsTrigger>
 
           <TabsTrigger
+            value="idcard"
+            className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" /> Digital Health ID & QR
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="edit-medical"
+            className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
+          >
+            <Heart className="h-3.5 w-3.5" /> Lifelong Medical Profile
+          </TabsTrigger>
+
+          <TabsTrigger
             value="documents"
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
@@ -229,24 +258,10 @@ export default function ProfilePage() {
           </TabsTrigger>
 
           <TabsTrigger
-            value="medical"
-            className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
-          >
-            <Heart className="h-3.5 w-3.5" /> Medical History
-          </TabsTrigger>
-
-          <TabsTrigger
             value="emergency"
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
-            <PhoneCall className="h-3.5 w-3.5" /> Emergency & Insurance
-          </TabsTrigger>
-
-          <TabsTrigger
-            value="idcard"
-            className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" /> Medical Emergency ID
+            <PhoneCall className="h-3.5 w-3.5" /> Emergency Contacts
           </TabsTrigger>
 
           <TabsTrigger
@@ -259,12 +274,38 @@ export default function ProfilePage() {
 
         {/* Tab 1: Clinical Overview */}
         <TabsContent value="overview" className="space-y-6">
+          <MedicalProfileCard profile={medicalProfile} />
           <HealthMetricsGrid profile={profile} />
           <AchievementsSection profile={profile} />
-          <MedicalIDCard profile={profile} userId={user?.id} />
         </TabsContent>
 
-        {/* Tab 2: Health Records Vault */}
+        {/* Tab 2: Digital Health ID & QR Code & Emergency Access */}
+        <TabsContent value="idcard" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="lg:col-span-2 space-y-6">
+              <DigitalHealthCard profile={medicalProfile} />
+              <EmergencyCard profile={medicalProfile} />
+            </div>
+            <div className="space-y-6">
+              <QRCodeCard
+                healthId={medicalProfile?.healthId || 'HS-2026-000123'}
+                fullName={medicalProfile?.fullName || profile.full_name}
+                bloodGroup={medicalProfile?.bloodGroup || profile.blood_type}
+                qrData={medicalProfile?.qrData}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Tab 3: Complete Lifelong Medical Profile Editor */}
+        <TabsContent value="edit-medical" className="space-y-6">
+          <MedicalProfileForm
+            initialData={medicalProfile}
+            onSave={saveMedicalProfile}
+          />
+        </TabsContent>
+
+        {/* Tab 4: Health Records Vault */}
         <TabsContent value="documents" className="space-y-6">
           <HealthDocumentsVault
             documents={profile.documents || []}
@@ -273,42 +314,9 @@ export default function ProfilePage() {
           />
         </TabsContent>
 
-        {/* Tab 3: Medical History & Demographics */}
-        <TabsContent value="medical" className="space-y-6">
-          <PersonalInformation
-            full_name={profile.full_name}
-            phone={profile.phone}
-            date_of_birth={profile.date_of_birth}
-            gender={profile.gender}
-            blood_type={profile.blood_type}
-            address={profile.address}
-            updateProfile={updateProfile}
-          />
-
-          <MedicalInformation
-            height={profile.height}
-            weight={profile.weight}
-            bmi={profile.bmi}
-            allergies={profile.allergies ?? []}
-            chronic_diseases={profile.chronic_diseases ?? []}
-            surgeries={profile.surgeries ?? []}
-            family_history={profile.family_history ?? []}
-            units={profile.units}
-            updateProfile={updateProfile}
-          />
-
-          <LifestyleInformation
-            smoking={profile.smoking}
-            alcohol={profile.alcohol}
-            exercise_level={profile.exercise_level}
-            sleep_hours={profile.sleep_hours}
-            diet_preference={profile.diet_preference}
-            updateProfile={updateProfile}
-          />
-        </TabsContent>
-
-        {/* Tab 4: Emergency & Insurance */}
+        {/* Tab 5: Emergency Contacts & Legacy Information */}
         <TabsContent value="emergency" className="space-y-6">
+          <EmergencyCard profile={medicalProfile} />
           <EmergencyContact
             emergency_contact_name={profile.emergency_contact_name}
             emergency_contact_phone={profile.emergency_contact_phone}
@@ -320,11 +328,6 @@ export default function ProfilePage() {
             preferred_hospital={profile.preferred_hospital}
             updateProfile={updateProfile}
           />
-        </TabsContent>
-
-        {/* Tab 5: Medical Emergency ID Card */}
-        <TabsContent value="idcard" className="space-y-6">
-          <MedicalIDCard profile={profile} userId={user?.id} />
         </TabsContent>
 
         {/* Tab 6: Preferences & Settings */}
