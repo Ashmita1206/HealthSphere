@@ -32,6 +32,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
+const assistantRoutes = require('./routes/assistantRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -127,6 +128,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wearables', wearableRoutes);
 app.use('/api/workflows', workflowRoutes);
+app.use('/api/assistant', assistantRoutes);
 /*
 ====================================================
 Socket.IO
