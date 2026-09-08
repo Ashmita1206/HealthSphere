@@ -36,6 +36,7 @@ import MedicalReports from './pages/MedicalReports';
 import AIVision from './pages/AIVision';
 import AIHealthScore from './pages/AIHealthScore';
 import DoctorPortal from './pages/doctor/DoctorPortal';
+import TelemedicineRoom from './pages/telemedicine/TelemedicineRoom';
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,8 @@ const App = () => (
                           <Route path="/appointments" element={<Appointments />} />
                           <Route path="/doctor-portal" element={<DoctorPortal />} />
                           <Route path="/doctor" element={<DoctorPortal />} />
+                          <Route path="/telemedicine" element={<TelemedicineRoom />} />
+                          <Route path="/telemedicine/:consultationId" element={<TelemedicineRoom />} />
                           <Route
                             path="/blood-organ/info"
                             element={<BloodOrganInfo />}
