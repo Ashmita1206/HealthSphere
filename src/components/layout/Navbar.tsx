@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { notificationService, type AppNotification } from "@/services/notificationService";
+import { NotificationBell } from "@/components/notifications";
 
 /* ------------------------------------------------------------------ */
 /*  Global search destinations                                         */
@@ -117,14 +117,9 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const location = useLocation();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [publicMenuOpen, setPublicMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  // Notification state
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -139,15 +134,6 @@ export function Navbar({ onMenuClick }: NavbarProps) {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  /* ---------- Notification Service Subscription ---------- */
-  useEffect(() => {
-    const unsubscribe = notificationService.subscribe((list) => {
-      setNotifications(list);
-      setUnreadCount(list.filter((n) => !n.read).length);
-    });
-    return () => unsubscribe();
   }, []);
 
   /* ---------- Mobile Drawer Body Scroll Lock & Focus Management ---------- */
@@ -236,12 +222,6 @@ export function Navbar({ onMenuClick }: NavbarProps) {
         `/timeline?search=${encodeURIComponent(searchQuery.trim())}`,
     );
     setSearchQuery("");
-  };
-
-  const handleNotificationClick = (notif: AppNotification) => {
-    notificationService.markAsRead(notif.id);
-    setNotificationsOpen(false);
-    navigate(notif.route);
   };
 
   return (
@@ -414,93 +394,9 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                 <span>Emergency SOS</span>
               </Link>
 
-              {/* Notification Popover Center */}
-              <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative text-slate-600 hover:bg-slate-100 rounded-xl"
-                    aria-label="Open notifications"
-                    aria-expanded={notificationsOpen}
-                  >
-                    <Bell className="w-5 h-5" />
-                    {unreadCount > 0 && (
-                      <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-600"></span>
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 sm:w-96 p-0 rounded-2xl border border-slate-200 shadow-xl bg-white overflow-hidden">
-                  <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-[#FAF9F6]">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-xs text-slate-900 font-heading uppercase tracking-wider">
-                        Notifications
-                      </h4>
-                      {unreadCount > 0 && (
-                        <span className="text-[10px] text-[#0F766E] font-bold bg-[#F0FDFA] px-2 py-0.5 rounded-full border border-[#CCFBF1]">
-                          {unreadCount} New
-                        </span>
-                      )}
-                    </div>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={() => notificationService.markAllAsRead()}
-                        className="text-[11px] font-semibold text-[#0F766E] hover:text-[#115E59] flex items-center gap-1"
-                      >
-                        <Check className="w-3 h-3" />
-                        <span>Mark all read</span>
-                      </button>
-                    )}
-                  </div>
+              {/* Notification Bell Component */}
+              <NotificationBell />
 
-                  <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-500">
-                        No notifications at this time.
-                      </div>
-                    ) : (
-                      notifications.map((notif) => (
-                        <DropdownMenuItem
-                          key={notif.id}
-                          onSelect={() => handleNotificationClick(notif)}
-                          className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start gap-3 rounded-none focus:bg-slate-50 ${
-                            !notif.read ? "bg-[#F0FDFA]/50" : ""
-                          }`}
-                        >
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                              notif.severity === "attention"
-                                ? "bg-amber-50 text-amber-600"
-                                : notif.severity === "critical"
-                                ? "bg-rose-50 text-rose-600"
-                                : "bg-teal-50 text-teal-700"
-                            }`}
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-bold text-slate-900 truncate">{notif.title}</p>
-                              {!notif.read && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] shrink-0" />
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
-                              {notif.message}
-                            </p>
-                            <span className="text-[10px] text-slate-400 mt-1 block">
-                              {notif.timestamp}
-                            </span>
-                          </div>
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
 
               {/* User Dropdown */}
               <DropdownMenu>

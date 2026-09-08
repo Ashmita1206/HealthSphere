@@ -3,10 +3,10 @@ const mongoose = require("mongoose");
 const donorSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    bloodType: String,
-    organType: String,
-    donationType: String,
-    status: { type: String, default: "active" },
+    bloodType: { type: String, trim: true },
+    organType: { type: String, trim: true },
+    donationType: { type: String, trim: true },
+    status: { type: String, default: "active", trim: true },
     isAvailable: { type: Boolean, default: true }
   },
   { timestamps: true }
@@ -15,12 +15,17 @@ const donorSchema = new mongoose.Schema(
 const donationRequestSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    requestType: String,
-    bloodType: String,
-    organType: String,
-    urgency: String,
-    notes: String,
-    status: { type: String, default: "active" }
+    requestType: { type: String, trim: true },
+    bloodType: { type: String, trim: true },
+    organType: { type: String, trim: true },
+    urgency: { type: String, trim: true },
+    notes: { type: String, trim: true },
+    status: {
+      type: String,
+      enum: ["pending", "fulfilled", "cancelled", "active"],
+      default: "pending",
+      trim: true
+    }
   },
   { timestamps: true }
 );
