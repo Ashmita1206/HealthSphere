@@ -11,6 +11,7 @@ const {
   updateContact,
   deleteContact,
 } = require("../controllers/emergencyController");
+const eic = require("../controllers/emergencyIncidentController");
 
 router.use(protect);
 router.get("/contacts", listContacts);
@@ -61,5 +62,9 @@ router.post(
   triggerSos
 );
 router.post("/resolve", resolveSos);
+router.post("/report", eic.reportEmergency);
+router.get("/history", eic.getEmergencyHistory);
+router.get("/active", eic.getActiveEmergencies);
+router.put("/:id/resolve", eic.resolveEmergency);
 
 module.exports = router;

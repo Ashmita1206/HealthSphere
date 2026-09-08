@@ -8,6 +8,7 @@ const Report = require('../models/Report');
 const SymptomAssessment = require('../models/SymptomAssessment');
 const HealthTimeline = require('../models/HealthTimeline');
 const Notification = require('../models/Notification');
+const EmergencyIncident = require('../models/EmergencyIncident');
 const { getUserHealthContext, calculateAdherenceMetrics } = require('../services/aiContextService');
 const { generateHealthScores } = require('../services/healthScoreEngine');
 const { generateComprehensiveRecommendations } = require('../services/recommendationEngine');
@@ -77,6 +78,9 @@ async function getDashboard(req, res, next) {
       recentSymptoms,
       timelineEvents,
       activeNotifications,
+      activeIncidents,
+      lastEmergency,
+      scoreHistory,
     ] = await Promise.all([
       User.findById(userId).select('-password').lean(),
       MedicalProfile.findOne({ userId }).lean(),
@@ -109,6 +113,16 @@ async function getDashboard(req, res, next) {
       Notification.find({ userId, isRead: false })
         .sort({ createdAt: -1 })
         .limit(10)
+        .lean(),
+      EmergencyIncident.find({ userId, status: { $in: ['active', 'investigating'] } })
+        .sort({ createdAt: -1 })
+        .lean(),
+      EmergencyIncident.findOne({ userId })
+        .sort({ createdAt: -1 })
+        .lean(),
+      HealthScore.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(2)
         .lean(),
     ]);
 
@@ -198,6 +212,31 @@ async function getDashboard(req, res, next) {
       });
     }
 
+    // 8. Emergency Status, Active Alerts, and Risk Trend
+    for (const inc of activeIncidents) {
+      alerts.unshift({
+        id: inc._id,
+        title: `EMERGENCY ALERT: ${inc.severity}`,
+        message: inc.triggerReason,
+        severity: inc.severity === 'CRITICAL' ? 'critical' : 'high',
+        createdAt: inc.createdAt,
+      });
+    }
+
+    const hasCriticalEmergency = activeIncidents.some((i) => i.severity === 'CRITICAL');
+    const emergencyStatus = hasCriticalEmergency
+      ? 'critical'
+      : activeIncidents.length > 0 || alerts.some((a) => a.severity === 'critical')
+      ? 'alert'
+      : 'normal';
+
+    let riskTrend = 'stable';
+    if (scoreHistory.length >= 2) {
+      const diff = scoreHistory[0].overallHealthScore - scoreHistory[1].overallHealthScore;
+      if (diff > 2) riskTrend = 'improving';
+      else if (diff < -2) riskTrend = 'deteriorating';
+    }
+
     const dashboardPayload = {
       profileSummary,
       healthScore,
@@ -216,6 +255,10 @@ async function getDashboard(req, res, next) {
       healthTimeline: timelineEvents,
       aiRecommendations,
       alerts,
+      activeAlerts: alerts,
+      emergencyStatus,
+      riskTrend,
+      lastEmergency: lastEmergency || null,
     };
 
     // 8. Cache response
