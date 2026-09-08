@@ -22,9 +22,48 @@ import {
   X,
   FileText,
   Image as ImageIcon,
+  Volume2,
+  VolumeX,
+  AlertTriangle,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+
+export type ChatLanguage = 'en' | 'hi' | 'pa' | 'hinglish' | 'es';
+
+export const LANGUAGE_PROMPTS: Record<ChatLanguage, string[]> = {
+  en: [
+    'Explain my latest fasting blood sugar levels',
+    'What are potential side effects of active medications?',
+    'Explain CBC normal ranges for hemoglobin',
+    'Generate a 7-day heart health diet plan',
+  ],
+  hi: [
+    'मेरी हालिया फास्टिंग ब्लड शुगर रिपोर्ट समझाएं',
+    'मेरी दवाओं के क्या साइड इफेक्ट्स हो सकते हैं?',
+    'हीमोग्लोबिन की सामान्य सीमा (नॉर्मल रेंज) क्या है?',
+    'हार्ट हेल्थ के लिए 7 दिन का डाइट प्लान बताएं',
+  ],
+  pa: [
+    'ਮੇਰੀ ਸ਼ੂਗਰ ਦੀ ਜਾਂਚ ਰਿਪੋਰਟ ਸਮਝਾਓ',
+    'ਦਵਾਈਆਂ ਦੇ ਸੰਭਾਵੀ ਮਾੜੇ ਪ੍ਰਭਾਵ ਕੀ ਹਨ?',
+    'ਹੀਮੋਗਲੋਬਿਨ ਦੀ ਆਮ ਰੇਂਜ ਕੀ ਹੁੰਦੀ ਹੈ?',
+    'ਦਿਲ ਦੀ ਸਿਹਤ ਲਈ ਖੁਰਾਕ ਚਾਰਟ ਬਣਾਓ',
+  ],
+  hinglish: [
+    'Meri latest blood sugar report explain karo',
+    'Kya meri medicines ke koi side effects hain?',
+    'Hemoglobin ki normal range kya hoti hai?',
+    'Heart health ke liye best lifestyle plan do',
+  ],
+  es: [
+    'Explique mis últimos niveles de glucosa en ayunas',
+    '¿Cuáles son los efectos secundarios de mis medicamentos?',
+    'Explique los rangos normales de hemoglobina en CBC',
+    'Generar un plan de dieta saludable para el corazón de 7 días',
+  ],
+};
 
 export default function AIChat() {
   const {
@@ -57,15 +96,40 @@ export default function AIChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const suggestedQuestions = [
-    'Analyze my latest fasting blood sugar levels',
-    'What are potential side effects of active medications?',
-    'Explain CBC normal ranges for hemoglobin',
-    'Generate a 7-day heart health diet plan',
-  ];
+  const [currentLang, setCurrentLang] = useState<ChatLanguage>('en');
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const suggestedQuestions = LANGUAGE_PROMPTS[currentLang];
+
+  const handleSpeakMessage = (text: string, id: string) => {
+    if (typeof window === 'undefined') return;
+    if (speakingMessageId === id) {
+      window.speechSynthesis?.cancel();
+      setSpeakingMessageId(null);
+    } else {
+      window.speechSynthesis?.cancel();
+      const SpeechUtterance = window.SpeechSynthesisUtterance || (globalThis as any).SpeechSynthesisUtterance;
+      if ('speechSynthesis' in window && SpeechUtterance) {
+        const utterance = new SpeechUtterance(text);
+        if (currentLang === 'hi' || currentLang === 'hinglish') {
+          utterance.lang = 'hi-IN';
+        } else if (currentLang === 'pa') {
+          utterance.lang = 'pa-IN';
+        } else if (currentLang === 'es') {
+          utterance.lang = 'es-ES';
+        } else {
+          utterance.lang = 'en-US';
+        }
+        utterance.onend = () => setSpeakingMessageId(null);
+        utterance.onerror = () => setSpeakingMessageId(null);
+        setSpeakingMessageId(id);
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
   const handleSend = () => {
@@ -232,6 +296,31 @@ export default function AIChat() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Language Selector */}
+            <div data-testid="language-selector" className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <Globe className="w-3.5 h-3.5 text-slate-400 ml-1" />
+              {[
+                { code: 'en', label: 'EN' },
+                { code: 'hi', label: 'हिंदी' },
+                { code: 'pa', label: 'ਪੰਜਾਬੀ' },
+                { code: 'hinglish', label: 'Hinglish' },
+                { code: 'es', label: 'ES' },
+              ].map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => setCurrentLang(lang.code as ChatLanguage)}
+                  className={`px-2 py-0.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                    currentLang === lang.code
+                      ? 'bg-white dark:bg-slate-700 text-teal-800 dark:text-teal-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -249,6 +338,14 @@ export default function AIChat() {
               <Mic className="w-3.5 h-3.5 text-rose-500" /> Voice AI
             </Button>
           </div>
+        </div>
+
+        {/* Clinical Disclaimer Banner */}
+        <div data-testid="clinical-disclaimer-banner" className="mx-6 mt-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-900 dark:text-amber-200 flex items-center gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            <strong>Clinical AI Decision Support:</strong> For informational and educational guidance. In acute emergencies, immediately activate SOS or contact local emergency dispatch.
+          </span>
         </div>
 
         {/* Message Stream Body */}
@@ -350,6 +447,27 @@ export default function AIChat() {
                       </button>
 
                       <button
+                        data-testid={`read-aloud-${m._id}`}
+                        onClick={() => handleSpeakMessage(m.content, m._id)}
+                        className={`hover:text-teal-600 flex items-center gap-1 ${
+                          speakingMessageId === m._id ? 'text-teal-600 font-bold' : ''
+                        }`}
+                        title={speakingMessageId === m._id ? 'Stop Speaking' : 'Read Aloud'}
+                      >
+                        {speakingMessageId === m._id ? (
+                          <>
+                            <VolumeX className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
+                            <span>Stop Audio</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>Read Aloud</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
                         onClick={() => feedbackMessage(m._id, m.feedback === 'like' ? null : 'like')}
                         className={`hover:text-teal-600 flex items-center gap-1 ${
                           m.feedback === 'like' ? 'text-teal-600 font-bold' : ''
@@ -437,6 +555,16 @@ export default function AIChat() {
               title="Upload Image / PDF Report"
             >
               <Paperclip className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              data-testid="voice-input-mic-btn"
+              onClick={() => setIsVoiceOpen(true)}
+              className="p-2 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-500 transition-colors cursor-pointer"
+              title="Voice Input (Speak to HealthSphere)"
+            >
+              <Mic className="w-4 h-4" />
             </button>
 
             <textarea
