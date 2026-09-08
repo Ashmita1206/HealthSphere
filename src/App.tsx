@@ -40,6 +40,7 @@ import TelemedicineRoom from './pages/telemedicine/TelemedicineRoom';
 import PredictiveDashboard from './pages/predictive/PredictiveDashboard';
 import NotificationCenter from './pages/notifications/NotificationCenter';
 import AdminAnalyticsDashboard from './pages/admin/AdminAnalyticsDashboard';
+import WearableDashboard from './pages/wearables/WearableDashboard';
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,8 @@ const App = () => (
                           <Route path="/notification-center" element={<NotificationCenter />} />
                           <Route path="/admin" element={<AdminAnalyticsDashboard />} />
                           <Route path="/admin/analytics" element={<AdminAnalyticsDashboard />} />
+                          <Route path="/wearables" element={<WearableDashboard />} />
+                          <Route path="/wearable" element={<WearableDashboard />} />
                           <Route path="/settings" element={<Settings />} />
                         </Route>
 
