@@ -37,6 +37,7 @@ import AIVision from './pages/AIVision';
 import AIHealthScore from './pages/AIHealthScore';
 import DoctorPortal from './pages/doctor/DoctorPortal';
 import TelemedicineRoom from './pages/telemedicine/TelemedicineRoom';
+import PredictiveDashboard from './pages/predictive/PredictiveDashboard';
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,8 @@ const App = () => (
                           <Route path="/timeline" element={<Timeline />} />
                           <Route path="/blood-donation" element={<BloodDonation />} />
                           <Route path="/emergency" element={<Emergency />} />
+                          <Route path="/predictive" element={<PredictiveDashboard />} />
+                          <Route path="/predictive-ai" element={<PredictiveDashboard />} />
                           <Route path="/settings" element={<Settings />} />
                         </Route>
 
