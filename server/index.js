@@ -22,6 +22,7 @@ const newChatRoutes = require('./routes/chatRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const timelineRoutes = require('./routes/timelineRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -104,6 +105,7 @@ app.use('/api/legacy-chat', chatRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/timeline', timelineRoutes);
+app.use('/api/analytics', analyticsRoutes);
 /*
 ====================================================
 Socket.IO
