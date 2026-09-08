@@ -23,6 +23,9 @@ import { EmergencyTimeline } from '@/components/emergency/EmergencyTimeline';
 import { EmergencyStats } from '@/components/emergency/EmergencyStats';
 import { EmergencySkeleton } from '@/components/emergency/EmergencySkeleton';
 import { downloadMedicalCard, printMedicalCard, exportEmergencyContactsToJSON, exportEmergencyContactsToCSV } from '@/components/emergency/emergencyExportUtils';
+import { ActiveAlertsBanner, EmergencyIncidentData } from '@/components/emergency/ActiveAlertsBanner';
+import { LiveRiskCards, LiveRiskMetric } from '@/components/emergency/LiveRiskCards';
+import { IncidentHistoryTable, IncidentRecord } from '@/components/emergency/IncidentHistoryTable';
 
 const RouteMap = lazy(() => import('@/components/RouteMap'));
 
@@ -90,6 +93,31 @@ export default function EmergencyPage() {
       setUserLng(geoLocation.longitude);
     }
   }, [geoLocation]);
+
+  const [activeIncidents, setActiveIncidents] = useState<EmergencyIncidentData[]>([
+    {
+      id: 'INC-ACTIVE-01',
+      severity: 'HIGH',
+      triggerReason: 'Elevated tachycardia (HR 124 bpm) & severe dyspnea detected',
+      status: 'active',
+      createdAt: '4 mins ago',
+      location: {
+        latitude: 37.7749,
+        longitude: -122.4194,
+        address: 'Downtown Medical Corridor, Sector 4',
+      },
+      assignedDoctor: {
+        name: 'Anita Verma',
+        specialization: 'Emergency Medicine & Triage',
+        phone: '+1-555-0199',
+      },
+    },
+  ]);
+
+  const handleResolveIncident = useCallback((id: string) => {
+    setActiveIncidents((prev) => prev.filter((inc) => inc.id !== id));
+    toast({ title: 'Incident Resolved', description: 'Emergency alert marked resolved and added to log.' });
+  }, [toast]);
 
   const sosReady = useMemo(() => {
     return contacts.length > 0 && locationEnabled;
@@ -190,6 +218,26 @@ export default function EmergencyPage() {
       description: 'SOS emergency alert triggered',
     };
     setTimeline((prev) => [newEvent, ...prev]);
+
+    const newIncident: EmergencyIncidentData = {
+      id: `INC-${Date.now().toString().slice(-4)}`,
+      severity: 'CRITICAL',
+      triggerReason: 'SOS Button Manual Emergency Dispatch',
+      status: 'active',
+      createdAt: 'Just now',
+      location: {
+        latitude: userLat ?? 37.7749,
+        longitude: userLng ?? -122.4194,
+        address: 'Live GPS Coordinates Broadcasted',
+      },
+      assignedDoctor: {
+        name: 'Rapid Response Team',
+        specialization: 'Emergency Trauma Triage',
+        phone: '911',
+      },
+    };
+    setActiveIncidents((prev) => [newIncident, ...prev]);
+
     toast({
       title: 'SOS Triggered',
       description: 'Emergency alert sent to your contacts and nearest facility',
@@ -341,8 +389,18 @@ export default function EmergencyPage() {
         locationEnabled={locationEnabled}
       />
 
+      {/* Active Alerts Banner */}
+      <ActiveAlertsBanner
+        incidents={activeIncidents}
+        onResolve={handleResolveIncident}
+        onCallAssignedDoctor={(phone) => window.open(`tel:${phone}`)}
+      />
+
+      {/* Live Risk Telemetry */}
+      <LiveRiskCards />
+
       {/* SOS Button */}
-      <div className="flex justify-center">
+      <div className="flex justify-center py-2">
         <SOSButton onSOSTriggered={handleSOSTriggered} />
       </div>
 
@@ -411,6 +469,9 @@ export default function EmergencyPage() {
 
           {/* Emergency Timeline */}
           <EmergencyTimeline events={timeline} />
+
+          {/* Incident History Audit Log */}
+          <IncidentHistoryTable />
         </div>
 
         {/* Right Column */}
