@@ -75,6 +75,16 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           ))
         )}
       </div>
+
+      {/* Footer link to full Notification Center */}
+      <div className="p-2 border-t border-slate-100 bg-slate-50/60 text-center">
+        <a
+          href="#/notifications"
+          className="text-xs font-bold text-teal-700 hover:text-teal-800 transition-colors inline-block py-1"
+        >
+          Open Notification Center & Timeline &rarr;
+        </a>
+      </div>
     </div>
   );
 };

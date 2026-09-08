@@ -38,6 +38,7 @@ import AIHealthScore from './pages/AIHealthScore';
 import DoctorPortal from './pages/doctor/DoctorPortal';
 import TelemedicineRoom from './pages/telemedicine/TelemedicineRoom';
 import PredictiveDashboard from './pages/predictive/PredictiveDashboard';
+import NotificationCenter from './pages/notifications/NotificationCenter';
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,8 @@ const App = () => (
                           <Route path="/emergency" element={<Emergency />} />
                           <Route path="/predictive" element={<PredictiveDashboard />} />
                           <Route path="/predictive-ai" element={<PredictiveDashboard />} />
+                          <Route path="/notifications" element={<NotificationCenter />} />
+                          <Route path="/notification-center" element={<NotificationCenter />} />
                           <Route path="/settings" element={<Settings />} />
                         </Route>
 
