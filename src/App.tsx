@@ -35,6 +35,7 @@ import AIChat from './pages/AIChat';
 import MedicalReports from './pages/MedicalReports';
 import AIVision from './pages/AIVision';
 import AIHealthScore from './pages/AIHealthScore';
+import DoctorPortal from './pages/doctor/DoctorPortal';
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,8 @@ const App = () => (
                           <Route path="/medicines" element={<Medicines />} />
                           <Route path="/reports" element={<Reports />} />
                           <Route path="/appointments" element={<Appointments />} />
+                          <Route path="/doctor-portal" element={<DoctorPortal />} />
+                          <Route path="/doctor" element={<DoctorPortal />} />
                           <Route
                             path="/blood-organ/info"
                             element={<BloodOrganInfo />}
