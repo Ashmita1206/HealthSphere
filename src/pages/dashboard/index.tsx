@@ -32,6 +32,13 @@ import {
   HealthBreakdown,
 } from "@/components/analytics";
 import { QrCode } from "lucide-react";
+import { AIHealthScoreCircle } from "./components/AIHealthScoreCircle";
+import { HealthSubScoreGrid } from "./components/HealthSubScoreGrid";
+import { EmergencyBanner } from "./components/EmergencyBanner";
+import { QuickActionsBar } from "./components/QuickActionsBar";
+import { AIRecommendationsCard } from "./components/AIRecommendationsCard";
+import { RiskAlertsPanel } from "./components/RiskAlertsPanel";
+import { HealthTrendCharts } from "./components/HealthTrendCharts";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -42,6 +49,17 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [careCompletedMap, setCareCompletedMap] = useState<Record<string, boolean>>({});
+  const [emergencyAlert, setEmergencyAlert] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    severity: 'critical' | 'warning';
+  } | null>({
+    id: 'telemetry-status',
+    title: 'Wearable Telemetry Stream Active',
+    message: 'HealthSphere AI is continuously monitoring blood pressure, SpO2, and medication adherence for acute clinical breaches.',
+    severity: 'warning',
+  });
 
   useEffect(() => {
     let active = true;
@@ -153,7 +171,33 @@ export default function DashboardPage() {
       variants={motionVariants.staggerContainer}
       className="space-y-8 pb-12"
     >
-      {/* 1. SIGNATURE MOMENT: Health Daily Briefing */}
+      {/* 0. EMERGENCY BANNER & QUICK ACTIONS */}
+      <motion.div variants={motionVariants.contentReveal} className="space-y-4">
+        <EmergencyBanner
+          alert={emergencyAlert}
+          onOpenEmergency={() => navigate('/emergency')}
+          onDismiss={() => setEmergencyAlert(null)}
+        />
+        <QuickActionsBar onLogVitals={() => navigate('/profile')} />
+      </motion.div>
+
+      {/* 1. SIGNATURE AI DIGITAL TWIN HEALTH SCORE CIRCLE */}
+      <motion.div variants={motionVariants.contentReveal}>
+        <AIHealthScoreCircle
+          score={analyticsData?.healthScore?.score ?? healthScore ?? 84}
+          confidence={92}
+          trendDelta={3.2}
+          statusLabel={healthScore !== undefined ? "Optimal Standing" : "Calibrated"}
+          onExploreBreakdown={() => navigate('/ai-health-score')}
+        />
+      </motion.div>
+
+      {/* 2. 10 CLINICAL HEALTH SUB SCORE CARDS */}
+      <motion.div variants={motionVariants.contentReveal}>
+        <HealthSubScoreGrid />
+      </motion.div>
+
+      {/* 3. SIGNATURE MOMENT: Health Daily Briefing */}
       <motion.div variants={motionVariants.contentReveal}>
         <HealthDailyBrief
           userName={userName}
@@ -192,12 +236,12 @@ export default function DashboardPage() {
         />
       </motion.div>
 
-      {/* 2. SMART HEALTH ANALYTICS: Core KPI Metrics */}
+      {/* 4. SMART HEALTH ANALYTICS: Core KPI Metrics */}
       <motion.div variants={motionVariants.contentReveal}>
         <DashboardStats data={analyticsData} />
       </motion.div>
 
-      {/* 3. HEALTH SCORE & DETERMINISTIC AI INSIGHTS */}
+      {/* 5. HEALTH SCORE & DETERMINISTIC AI INSIGHTS */}
       <motion.div variants={motionVariants.contentReveal} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <HealthScoreCard
           healthScore={analyticsData?.healthScore}
@@ -208,15 +252,24 @@ export default function DashboardPage() {
         />
       </motion.div>
 
-      {/* 4. 7-DAY WEEKLY ACTIVITY SUMMARY */}
+      {/* 6. 7-DAY WEEKLY ACTIVITY SUMMARY */}
       <motion.div variants={motionVariants.contentReveal}>
         <WeeklySummary summary={analyticsData?.weeklyActivity} />
       </motion.div>
 
-      {/* 5. ASYMMETRIC NARRATIVE STREAM (65% Primary Stream / 35% Care Schedule) */}
+      {/* 7. ASYMMETRIC NARRATIVE STREAM (65% Primary Stream / 35% Care Schedule) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Column (65% Primary Narrative) */}
         <motion.div variants={motionVariants.contentReveal} className="lg:col-span-2 space-y-6">
+          {/* Health Trend Recharts with multi-metric toggles */}
+          <HealthTrendCharts />
+
+          {/* AI Clinical Recommendations Card */}
+          <AIRecommendationsCard />
+
+          {/* Clinical Risk Alerts Panel */}
+          <RiskAlertsPanel />
+
           {/* Activity Trend Chart */}
           <ActivityTrend trendData={analyticsData?.activityTrend} />
 
