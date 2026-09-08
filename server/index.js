@@ -30,6 +30,7 @@ const consultationRoutes = require('./routes/consultationRoutes');
 const symptomRoutes = require('./routes/symptomRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const wearableRoutes = require('./routes/wearableRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -123,6 +124,7 @@ app.use('/api/consultations', consultationRoutes);
 app.use('/api/ai', symptomRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/wearables', wearableRoutes);
 /*
 ====================================================
 Socket.IO
