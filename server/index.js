@@ -33,6 +33,8 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
+const registerCollaborationSocket = require('./sockets/collaboration.socket');
+const { setIO } = require('./services/realtimeService');
 
 const app = express();
 const httpServer = createServer(app);
@@ -135,6 +137,8 @@ const io = new Server(httpServer, {
 
 registerChatSocket(io);
 registerNotificationSocket(io);
+registerCollaborationSocket(io);
+setIO(io);
 
 /*
 ====================================================

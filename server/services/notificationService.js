@@ -27,6 +27,14 @@ async function createNotification({
       route,
       metadata,
     });
+
+    try {
+      const realtimeService = require('./realtimeService');
+      realtimeService.broadcastNotification(userId, notification);
+    } catch (_rtErr) {
+      // Non-blocking real-time broadcast error
+    }
+
     return notification;
   } catch (err) {
     logger.warn('Failed to automatically create notification', {

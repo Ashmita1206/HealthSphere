@@ -2,7 +2,9 @@ const crypto = require('crypto');
 const Consultation = require('../models/Consultation');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
+const ConsultationMessage = require('../models/ConsultationMessage');
 const timelineService = require('../services/timelineService');
+const realtimeService = require('../services/realtimeService');
 const { createNotification } = require('../services/notificationService');
 
 /**
@@ -215,6 +217,11 @@ async function startConsultation(req, res, next) {
     consultation.startedAt = new Date();
     await consultation.save();
 
+    realtimeService.broadcastConsultationStatus(consultation._id, {
+      status: 'active',
+      startedAt: consultation.startedAt,
+    });
+
     // Timeline event
     await timelineService.createEvent({
       userId: consultation.patientId,
@@ -275,6 +282,11 @@ async function endConsultation(req, res, next) {
     consultation.status = 'completed';
     consultation.endedAt = new Date();
     await consultation.save();
+
+    realtimeService.broadcastConsultationStatus(consultation._id, {
+      status: 'completed',
+      endedAt: consultation.endedAt,
+    });
 
     // Timeline event
     await timelineService.createEvent({
@@ -351,6 +363,11 @@ async function addDoctorNotes(req, res, next) {
 
     await consultation.save();
 
+    realtimeService.broadcastPrescriptionUpdate(consultation._id, {
+      prescription: consultation.prescription,
+      doctorNotes: consultation.doctorNotes,
+    });
+
     // Notify patient about new clinical notes
     await createNotification({
       userId: consultation.patientId,
@@ -370,6 +387,124 @@ async function addDoctorNotes(req, res, next) {
   }
 }
 
+/**
+ * GET /api/consultations/:id/messages
+ * Retrieve messages for consultation session with IDOR protection
+ */
+async function getConsultationMessages(req, res, next) {
+  try {
+    const userId = req.user._id || req.user.id;
+    const { id } = req.params;
+
+    const consultation = await Consultation.findById(id);
+    if (!consultation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Consultation not found',
+      });
+    }
+
+    const isPatient = consultation.patientId.toString() === userId.toString();
+    const isDoctor = await isUserConsultingDoctor(userId, consultation);
+
+    if (!isPatient && !isDoctor) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You are not a participant in this consultation',
+      });
+    }
+
+    const messages = await ConsultationMessage.find({ consultationId: id })
+      .sort({ createdAt: 1 })
+      .populate('senderId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      count: messages.length,
+      data: messages,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/consultations/:id/messages
+ * Post a new message in consultation with real-time room broadcast and IDOR protection
+ */
+async function sendConsultationMessage(req, res, next) {
+  try {
+    const userId = req.user._id || req.user.id;
+    const { id } = req.params;
+    const { content, attachments } = req.body;
+
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message content is required',
+      });
+    }
+
+    const consultation = await Consultation.findById(id);
+    if (!consultation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Consultation not found',
+      });
+    }
+
+    const isPatient = consultation.patientId.toString() === userId.toString();
+    const isDoctor = await isUserConsultingDoctor(userId, consultation);
+
+    if (!isPatient && !isDoctor) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You are not a participant in this consultation',
+      });
+    }
+
+    const role = isDoctor ? 'doctor' : 'patient';
+
+    const message = await ConsultationMessage.create({
+      consultationId: id,
+      senderId: userId,
+      senderRole: role,
+      content: String(content).trim(),
+      attachments: Array.isArray(attachments) ? attachments : [],
+      status: 'sent',
+    });
+
+    const populated = await ConsultationMessage.findById(message._id).populate(
+      'senderId',
+      'name email'
+    );
+
+    realtimeService.broadcastConsultationMessage(id, populated);
+
+    // Send push / notification to recipient
+    const recipientUserId = isDoctor
+      ? consultation.patientId
+      : (await Doctor.findById(consultation.doctorId))?.userId;
+
+    if (recipientUserId) {
+      await createNotification({
+        userId: recipientUserId,
+        title: `Message from ${isDoctor ? 'Physician' : 'Patient'}`,
+        message: String(content).slice(0, 80),
+        type: 'consultation',
+        route: `/consultations/${id}`,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: populated,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createConsultation,
   getConsultations,
@@ -377,4 +512,6 @@ module.exports = {
   startConsultation,
   endConsultation,
   addDoctorNotes,
+  getConsultationMessages,
+  sendConsultationMessage,
 };

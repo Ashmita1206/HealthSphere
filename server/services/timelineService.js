@@ -26,6 +26,14 @@ async function recordTimelineEvent({
       metadata,
       relatedId,
     });
+
+    try {
+      const realtimeService = require('./realtimeService');
+      realtimeService.broadcastTimelineUpdate(userId, event);
+    } catch (_rtErr) {
+      // Non-blocking real-time broadcast error
+    }
+
     return event;
   } catch (err) {
     logger.warn('Failed to automatically record health timeline event', {
