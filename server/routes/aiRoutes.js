@@ -22,6 +22,11 @@ const {
   generateWeeklyReport,
   triggerReanalysis,
 } = require('../controllers/predictiveCareController');
+const {
+  getDigitalTwin,
+  rebuildDigitalTwin,
+  chatHealthCopilot,
+} = require('../controllers/digitalTwinController');
 
 // All AI endpoints protect optional/mandatory user context
 router.post('/report/analyze', protect, analyzeReport);
@@ -44,5 +49,10 @@ router.get('/weekly-reports/:id', protect, getWeeklyReportById);
 router.post('/weekly-reports/generate', protect, generateWeeklyReport);
 router.post('/predictive-care/reanalyze', protect, triggerReanalysis);
 router.post('/reanalyze', protect, triggerReanalysis);
+
+// F19 — AI Digital Twin & Personalized Health Copilot
+router.get('/digital-twin', protect, getDigitalTwin);
+router.post('/digital-twin/rebuild', protect, rebuildDigitalTwin);
+router.post('/health-copilot/chat', protect, chatHealthCopilot);
 
 module.exports = router;

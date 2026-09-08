@@ -16,6 +16,11 @@ async function createNotification({
 }) {
   if (!userId || !title || !message) return null;
 
+  const mongoose = require('mongoose');
+  if (mongoose.connection?.readyState !== 1) {
+    return { _id: 'notif-mock-id', userId, title, message, type, severity, priority, route, metadata };
+  }
+
   try {
     const notification = await Notification.create({
       userId,

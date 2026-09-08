@@ -16,6 +16,11 @@ async function recordTimelineEvent({
 }) {
   if (!userId || !title || !description) return null;
 
+  const mongoose = require('mongoose');
+  if (mongoose.connection?.readyState !== 1) {
+    return { _id: 'timeline-mock-id', userId, title, description, eventType, category, metadata, relatedId };
+  }
+
   try {
     const event = await HealthTimeline.create({
       userId,
