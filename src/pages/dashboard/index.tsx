@@ -14,6 +14,7 @@ import { ClinicalInsight } from "@/design-system/healthcare/ClinicalInsight";
 import { CareAction } from "@/design-system/healthcare/CareAction";
 import { HealthTrendChart } from "./components/HealthTrendChart";
 import { TimelinePreviewWidget } from "./components/TimelinePreviewWidget";
+import { DoctorShareWidget } from "./components/DoctorShareWidget";
 import { AdherenceTrendChart } from "@/components/charts/AdherenceTrendChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/design-system/primitives/Card";
@@ -351,6 +352,9 @@ export default function DashboardPage() {
             profile={medicalProfile}
             onNavigateToTab={() => navigate("/profile")}
           />
+
+          {/* Secure Record Sharing & Doctor Portal Widget */}
+          <DoctorShareWidget />
 
           {/* Digital Health ID Quick Access Tile */}
           <div

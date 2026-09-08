@@ -1,0 +1,84 @@
+const mongoose = require('mongoose');
+
+const doctorSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    doctorId: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      index: true,
+    },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    specialization: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    hospital: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    experience: {
+      type: Number,
+      default: 0,
+    },
+    qualification: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    licenseNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    availability: {
+      type: [String],
+      default: ['Monday - Friday: 09:00 - 17:00'],
+    },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    verified: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Search text index for flexible doctor discovery
+doctorSchema.index({
+  fullName: 'text',
+  specialization: 'text',
+  hospital: 'text',
+});
+
+module.exports = mongoose.model('Doctor', doctorSchema);

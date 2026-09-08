@@ -17,6 +17,7 @@ import {
   Bell,
   User,
   Settings,
+  Stethoscope,
 } from "lucide-react";
 import { SidebarBrand } from "./SidebarBrand";
 import { SidebarCollapseButton } from "./SidebarCollapseButton";
@@ -53,6 +54,7 @@ const navGroups: NavGroupData[] = [
       { icon: FileText, label: "Medical Reports", href: "/reports" },
       { icon: FileText, label: "Medical OCR", href: "/medical-reports", badge: "AI" },
       { icon: History, label: "Health Timeline", href: "/timeline" },
+      { icon: Stethoscope, label: "Doctor Portal", href: "/doctors" },
     ],
   },
   {
