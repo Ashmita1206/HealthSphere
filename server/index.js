@@ -28,6 +28,7 @@ const doctorRoutes = require('./routes/doctorRoutes');
 const recordShareRoutes = require('./routes/recordShareRoutes');
 const consultationRoutes = require('./routes/consultationRoutes');
 const symptomRoutes = require('./routes/symptomRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -117,6 +118,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/records', recordShareRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/ai', symptomRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 /*
 ====================================================
 Socket.IO
