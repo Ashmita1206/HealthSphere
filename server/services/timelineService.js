@@ -39,4 +39,5 @@ async function recordTimelineEvent({
 
 module.exports = {
   recordTimelineEvent,
+  createEvent: recordTimelineEvent,
 };
