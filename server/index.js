@@ -17,6 +17,7 @@ const {
   apiErrorFormatter,
 } = require('./middlewares/security');
 const { apiLimiter, authLimiter } = require('./middlewares/rateLimiters');
+const { compressionMiddleware } = require('./middlewares/compression');
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -58,6 +59,7 @@ Middlewares & Security Layer
 */
 
 app.use(requestIdMiddleware);
+app.use(compressionMiddleware());
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
