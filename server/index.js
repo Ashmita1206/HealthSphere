@@ -58,6 +58,7 @@ const smartPharmacyRoutes = require('./routes/smartPharmacyRoutes');
 const labInformationRoutes = require('./routes/labInformationRoutes');
 const billingInsuranceRoutes = require('./routes/billingInsuranceRoutes');
 const clinicalResearchRoutes = require('./routes/clinicalResearchRoutes');
+const healthcareAutomationRoutes = require('./routes/healthcareAutomationRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -190,6 +191,7 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/lab`, labInformationRoutes);
   app.use(`${prefix}/billing`, billingInsuranceRoutes);
   app.use(`${prefix}/research`, clinicalResearchRoutes);
+  app.use(`${prefix}/automation`, healthcareAutomationRoutes);
 });
 /*
 ====================================================
