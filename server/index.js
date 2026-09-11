@@ -50,6 +50,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+const cdssRoutes = require('./routes/cdssRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -174,6 +175,7 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/wearables`, wearableRoutes);
   app.use(`${prefix}/workflows`, workflowRoutes);
   app.use(`${prefix}/assistant`, assistantRoutes);
+  app.use(`${prefix}/cdss`, cdssRoutes);
 });
 /*
 ====================================================
