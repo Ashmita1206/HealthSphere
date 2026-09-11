@@ -1,0 +1,124 @@
+# ====================================================
+# HealthSphere Production Orchestration
+# Services: Frontend (Nginx), Backend (Node.js), MongoDB, Redis
+# ====================================================
+
+services:
+  # --------------------------------------------------
+  # Database: MongoDB 7.0
+  # --------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: healthsphere-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-healthsphere}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - healthsphere-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --------------------------------------------------
+  # Cache & Real-Time Broker: Redis 7.2
+  # --------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: healthsphere-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - healthsphere-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # --------------------------------------------------
+  # Application Server: Node.js Express Backend
+  # --------------------------------------------------
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: healthsphere-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: mongodb://mongodb:27017/healthsphere
+      REDIS_URL: redis://redis:6379
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      JWT_SECRET: ${JWT_SECRET:-healthsphere-prod-secret-replace-in-env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - healthsphere-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4000/api/healthcheck || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # --------------------------------------------------
+  # Web Gateway & Static Host: Frontend Nginx
+  # --------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-/}
+    container_name: healthsphere-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - healthsphere-network
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  healthsphere-network:
+    driver: bridge
+    name: healthsphere-network
+
+volumes:
+  mongodb_data:
+    driver: local
+    name: healthsphere_mongodb_data
+  mongodb_config:
+    driver: local
+    name: healthsphere_mongodb_config
+  redis_data:
+    driver: local
+    name: healthsphere_redis_data
