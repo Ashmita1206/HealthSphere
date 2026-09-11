@@ -18,8 +18,10 @@ const {
 } = require('./middlewares/security');
 const { apiLimiter, authLimiter } = require('./middlewares/rateLimiters');
 const { compressionMiddleware } = require('./middlewares/compression');
+const { requestLoggerMiddleware } = require('./middlewares/requestLogger');
 
 // Routes
+const monitoringRoutes = require('./routes/monitoringRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const healthRoutes = require('./routes/healthRoutes');
@@ -60,7 +62,9 @@ Middlewares & Security Layer
 */
 
 app.use(requestIdMiddleware);
+app.use(requestLoggerMiddleware);
 app.use(compressionMiddleware());
+app.use(monitoringRoutes);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
