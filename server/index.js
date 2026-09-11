@@ -33,6 +33,10 @@ const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+const systemRoutes = require('./routes/systemRoutes');
+
+// Observability & Tracing Middleware
+const { requestLogger } = require('./middlewares/requestLogger');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -42,6 +46,9 @@ const { setIO } = require('./services/realtimeService');
 
 const app = express();
 const httpServer = createServer(app);
+
+// Request Tracing and Response Timing (Placed before routes and middlewares)
+app.use(requestLogger);
 
 /*
 ====================================================
@@ -185,6 +192,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/wearables', wearableRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/', systemRoutes);
 /*
 ====================================================
 Socket.IO
@@ -228,50 +237,78 @@ httpServer.listen(PORT, () => {
 
 /*
 ====================================================
-Graceful Shutdown
+Graceful Shutdown & Fault Tolerance
 ====================================================
 */
 
-process.on('SIGINT', async () => {
-  logger.info('Shutting down server...');
+let isShuttingDown = false;
 
-  await mongoose.connection.close();
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-  process.exit(0);
-});
+  logger.info(`Received ${signal}. Initiating graceful shutdown...`);
 
-process.on('SIGTERM', async () => {
-  logger.info('Server terminated.');
+  // Stop accepting new HTTP connections and drain active requests
+  httpServer.close(async (err) => {
+    if (err) {
+      logger.error('Error closing HTTP server', { error: err.message });
+    } else {
+      logger.info('HTTP server closed successfully.');
+    }
 
-  await mongoose.connection.close();
+    try {
+      if (io) {
+        io.close();
+        logger.info('Socket.IO connections closed.');
+      }
 
-  process.exit(0);
-});
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.close(false);
+        logger.info('MongoDB connection closed.');
+      }
+
+      process.exit(0);
+    } catch (cleanupErr) {
+      logger.error('Error during shutdown cleanup', { error: cleanupErr.message });
+      process.exit(1);
+    }
+  });
+
+  // Force termination if graceful drain exceeds 10 seconds
+  const forceTimeout = setTimeout(() => {
+    logger.error('Graceful shutdown timed out (10s threshold). Forcing immediate termination.');
+    process.exit(1);
+  }, 10000);
+
+  if (forceTimeout.unref) {
+    forceTimeout.unref();
+  }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 /*
 ====================================================
-Unhandled Promise Rejections
+Unhandled Promise Rejections & Uncaught Exceptions
 ====================================================
 */
 
 process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled Rejection', {
-    error: reason,
+  logger.error('Unhandled Promise Rejection Detected', {
+    error: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
   });
 });
 
-/*
-====================================================
-Uncaught Exceptions
-====================================================
-*/
-
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', {
+  logger.error('Uncaught Exception Detected - Server Terminating', {
     error: error.message,
     stack: error.stack,
   });
 
+  // Fail fast on fatal uncaught exceptions
   process.exit(1);
 });
 
