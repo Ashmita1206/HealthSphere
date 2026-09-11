@@ -47,8 +47,10 @@ const { setIO } = require('./services/realtimeService');
 const app = express();
 const httpServer = createServer(app);
 
-// Request Tracing and Response Timing (Placed before routes and middlewares)
+// Request Tracing, Compression, and Response Timing
 app.use(requestLogger);
+const { compressionMiddleware } = require('./middlewares/compression');
+app.use(compressionMiddleware);
 
 /*
 ====================================================
