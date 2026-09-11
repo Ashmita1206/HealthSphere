@@ -9,6 +9,14 @@ const mongoose = require('mongoose');
 
 const logger = require('./utils/logger');
 const { errorHandler } = require('./middlewares/errorHandler');
+const {
+  requestIdMiddleware,
+  mongoSanitize,
+  xssProtection,
+  configureCors,
+  apiErrorFormatter,
+} = require('./middlewares/security');
+const { apiLimiter, authLimiter } = require('./middlewares/rateLimiters');
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -45,21 +53,27 @@ const httpServer = createServer(app);
 
 /*
 ====================================================
-Middlewares
+Middlewares & Security Layer
 ====================================================
 */
 
-app.use(helmet());
-
+app.use(requestIdMiddleware);
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL || '*',
-    credentials: true,
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   }),
 );
-
+app.use(cors(configureCors()));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize);
+app.use(xssProtection);
+
+// Global & Auth Rate Limiters
+app.use('/api', apiLimiter);
+app.use('/api/v1', apiLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/v1/auth', authLimiter);
 
 /*
 ====================================================
@@ -93,42 +107,51 @@ Health Check
 ====================================================
 */
 
-app.get('/api/healthcheck', (_req, res) => {
+const healthHandler = (_req, res) => {
   res.status(200).json({
     success: true,
     message: 'HealthSphere Backend Running 🚀',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
   });
-});
+};
+
+app.get('/api/healthcheck', healthHandler);
+app.get('/api/v1/healthcheck', healthHandler);
 
 /*
 ====================================================
-Routes
+Routes (API v1 & Legacy Prefix Aliasing)
 ====================================================
 */
 
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/health', healthRoutes);
-app.use('/api/reminders', reminderRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/emergency', emergencyRoutes);
-app.use('/api/chat', newChatRoutes);
-app.use('/api/legacy-chat', chatRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/timeline', timelineRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/profile/medical', medicalProfileRoutes);
-app.use('/api/medical-profile', medicalProfileRoutes);
-app.use('/api/doctors', doctorRoutes);
-app.use('/api/records', recordShareRoutes);
-app.use('/api/consultations', consultationRoutes);
-app.use('/api/ai', symptomRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/wearables', wearableRoutes);
-app.use('/api/workflows', workflowRoutes);
-app.use('/api/assistant', assistantRoutes);
+const apiPrefixes = ['/api', '/api/v1'];
+
+apiPrefixes.forEach((prefix) => {
+  app.use(`${prefix}/auth`, authRoutes);
+  app.use(`${prefix}/user`, userRoutes);
+  app.use(`${prefix}/health`, healthRoutes);
+  app.use(`${prefix}/reminders`, reminderRoutes);
+  app.use(`${prefix}/reports`, reportRoutes);
+  app.use(`${prefix}/emergency`, emergencyRoutes);
+  app.use(`${prefix}/chat`, newChatRoutes);
+  app.use(`${prefix}/legacy-chat`, chatRoutes);
+  app.use(`${prefix}/ai`, aiRoutes);
+  app.use(`${prefix}/notifications`, notificationRoutes);
+  app.use(`${prefix}/timeline`, timelineRoutes);
+  app.use(`${prefix}/analytics`, analyticsRoutes);
+  app.use(`${prefix}/profile/medical`, medicalProfileRoutes);
+  app.use(`${prefix}/medical-profile`, medicalProfileRoutes);
+  app.use(`${prefix}/doctors`, doctorRoutes);
+  app.use(`${prefix}/records`, recordShareRoutes);
+  app.use(`${prefix}/consultations`, consultationRoutes);
+  app.use(`${prefix}/ai`, symptomRoutes);
+  app.use(`${prefix}/dashboard`, dashboardRoutes);
+  app.use(`${prefix}/admin`, adminRoutes);
+  app.use(`${prefix}/wearables`, wearableRoutes);
+  app.use(`${prefix}/workflows`, workflowRoutes);
+  app.use(`${prefix}/assistant`, assistantRoutes);
+});
 /*
 ====================================================
 Socket.IO
@@ -154,7 +177,7 @@ Error Handler
 ====================================================
 */
 
-app.use(errorHandler);
+app.use(apiErrorFormatter);
 
 /*
 ====================================================
