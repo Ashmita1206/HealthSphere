@@ -47,6 +47,7 @@ const assistantRoutes = require('./routes/assistantRoutes');
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
 const registerCollaborationSocket = require('./sockets/collaboration.socket');
+const { registerRealtimeInfrastructureSocket } = require('./sockets/realtimeInfrastructure.socket');
 const { setIO } = require('./services/realtimeService');
 
 const app = express();
@@ -171,6 +172,7 @@ const io = new Server(httpServer, {
 registerChatSocket(io);
 registerNotificationSocket(io);
 registerCollaborationSocket(io);
+registerRealtimeInfrastructureSocket(io);
 setIO(io);
 
 /*
