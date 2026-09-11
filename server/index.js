@@ -36,7 +36,7 @@ const assistantRoutes = require('./routes/assistantRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const collaborationRoutes = require('./routes/collaborationRoutes');
 const syncRoutes = require('./routes/syncRoutes');
-
+const performanceRoutes = require('./routes/performanceRoutes');
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
@@ -135,6 +135,7 @@ app.use('/api/assistant', assistantRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/performance', performanceRoutes);
 /*
 ====================================================
 Socket.IO

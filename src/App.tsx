@@ -44,7 +44,7 @@ import WearableDashboard from './pages/wearables/WearableDashboard';
 import SecurityDashboard from './pages/security/SecurityDashboard';
 import CareTeamWorkspace from './pages/collaboration/CareTeamWorkspace';
 import OfflinePlatformDashboard from './pages/offline/OfflinePlatformDashboard';
-
+import PerformanceDashboard from './pages/admin/PerformanceDashboard';
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -113,6 +113,8 @@ const App = () => (
                           <Route path="/care-team" element={<CareTeamWorkspace />} />
                           <Route path="/offline" element={<OfflinePlatformDashboard />} />
                           <Route path="/pwa" element={<OfflinePlatformDashboard />} />
+                          <Route path="/admin/performance" element={<PerformanceDashboard />} />
+                          <Route path="/performance" element={<PerformanceDashboard />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />
