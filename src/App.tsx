@@ -45,6 +45,7 @@ import SecurityDashboard from './pages/security/SecurityDashboard';
 import CareTeamWorkspace from './pages/collaboration/CareTeamWorkspace';
 import OfflinePlatformDashboard from './pages/offline/OfflinePlatformDashboard';
 import PerformanceDashboard from './pages/admin/PerformanceDashboard';
+import MonitoringOpsDashboard from './pages/admin/MonitoringOpsDashboard';
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -115,6 +116,8 @@ const App = () => (
                           <Route path="/pwa" element={<OfflinePlatformDashboard />} />
                           <Route path="/admin/performance" element={<PerformanceDashboard />} />
                           <Route path="/performance" element={<PerformanceDashboard />} />
+                          <Route path="/admin/monitoring" element={<MonitoringOpsDashboard />} />
+                          <Route path="/admin/diagnostics" element={<MonitoringOpsDashboard />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />

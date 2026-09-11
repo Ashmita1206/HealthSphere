@@ -37,7 +37,9 @@ const securityRoutes = require('./routes/securityRoutes');
 const collaborationRoutes = require('./routes/collaborationRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
-// Socket
+const monitoringRoutes = require('./routes/monitoringRoutes');
+const monitoringController = require('./controllers/monitoringController');
+const monitoringService = require('./services/monitoringService');
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
 const registerCollaborationSocket = require('./sockets/collaboration.socket');
@@ -92,9 +94,23 @@ connectDatabase();
 
 /*
 ====================================================
-Health Check
+Health Probes & Prometheus Metrics (F39)
 ====================================================
 */
+
+// Request duration & metrics interceptor
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    monitoringService.recordRequest(req.method, req.path, res.statusCode, Date.now() - start);
+  });
+  next();
+});
+
+app.get('/health', monitoringController.getHealth);
+app.get('/health/liveness', monitoringController.getLiveness);
+app.get('/health/readiness', monitoringController.getReadiness);
+app.get('/metrics', monitoringController.getPrometheusMetrics);
 
 app.get('/api/healthcheck', (_req, res) => {
   res.status(200).json({
@@ -136,6 +152,7 @@ app.use('/api/security', securityRoutes);
 app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/performance', performanceRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 /*
 ====================================================
 Socket.IO
