@@ -215,7 +215,12 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  pingInterval: 25000,
+  pingTimeout: 20000,
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e6,
 });
+
 
 registerChatSocket(io);
 registerNotificationSocket(io);
