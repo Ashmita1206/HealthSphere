@@ -42,7 +42,7 @@ import NotificationCenter from './pages/notifications/NotificationCenter';
 import AdminAnalyticsDashboard from './pages/admin/AdminAnalyticsDashboard';
 import WearableDashboard from './pages/wearables/WearableDashboard';
 import SecurityDashboard from './pages/security/SecurityDashboard';
-
+import CareTeamWorkspace from './pages/collaboration/CareTeamWorkspace';
 
 
 const queryClient = new QueryClient();
@@ -109,6 +109,8 @@ const App = () => (
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/security" element={<SecurityDashboard />} />
                           <Route path="/security-dashboard" element={<SecurityDashboard />} />
+                          <Route path="/collaboration" element={<CareTeamWorkspace />} />
+                          <Route path="/care-team" element={<CareTeamWorkspace />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />

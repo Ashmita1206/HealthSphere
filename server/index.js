@@ -34,6 +34,7 @@ const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
 const securityRoutes = require('./routes/securityRoutes');
+const collaborationRoutes = require('./routes/collaborationRoutes');
 
 
 // Socket
@@ -132,6 +133,7 @@ app.use('/api/wearables', wearableRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/security', securityRoutes);
+app.use('/api/collaboration', collaborationRoutes);
 
 /*
 ====================================================
