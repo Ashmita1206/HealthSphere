@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: healthsphere-api
+    env: node
+    plan: standard
+    buildCommand: cd server && npm install --omit=dev
+    startCommand: cd server && npm start
+    healthCheckPath: /api/system/ready
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
