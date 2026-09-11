@@ -33,6 +33,10 @@ const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+const systemRoutes = require('./routes/systemRoutes');
+
+// Observability & Tracing Middleware
+const { requestLogger } = require('./middlewares/requestLogger');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -43,23 +47,87 @@ const { setIO } = require('./services/realtimeService');
 const app = express();
 const httpServer = createServer(app);
 
+// Request Tracing, Compression, and Response Timing
+app.use(requestLogger);
+const { morganMiddleware } = require('./utils/logger');
+app.use(morganMiddleware);
+const { compressionMiddleware } = require('./middlewares/compression');
+app.use(compressionMiddleware);
+
+
 /*
 ====================================================
-Middlewares
+Middlewares & Security Hardening
 ====================================================
 */
 
-app.use(helmet());
+const { mongoSanitize, xssSanitize, securityHeaders } = require('./middlewares/security');
+const { apiLimiter } = require('./middlewares/rateLimiters');
 
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL || '*',
-    credentials: true,
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org"],
+        connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
   }),
 );
 
+app.use(securityHeaders);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowed = [
+        process.env.CLIENT_URL,
+        'http://localhost:5173',
+        'http://localhost:4000',
+        'http://localhost:80',
+        'http://localhost:3000',
+        'http://localhost',
+      ].filter(Boolean);
+      if (!origin || allowed.includes(origin) || allowed.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-Id', 'Accept'],
+    exposedHeaders: ['X-Request-Id', 'X-Response-Time'],
+  }),
+);
+
+// Lightweight native cookie parser for secure HTTP-only cookies
+app.use((req, _res, next) => {
+  req.cookies = req.cookies || {};
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach((cookie) => {
+      const parts = cookie.split('=');
+      const name = parts[0]?.trim();
+      const val = parts.slice(1).join('=').trim();
+      if (name) req.cookies[name] = decodeURIComponent(val);
+    });
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize);
+app.use(xssSanitize);
+app.use('/api/', apiLimiter);
 
 /*
 ====================================================
@@ -129,6 +197,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/wearables', wearableRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/', systemRoutes);
 /*
 ====================================================
 Socket.IO
@@ -172,50 +242,78 @@ httpServer.listen(PORT, () => {
 
 /*
 ====================================================
-Graceful Shutdown
+Graceful Shutdown & Fault Tolerance
 ====================================================
 */
 
-process.on('SIGINT', async () => {
-  logger.info('Shutting down server...');
+let isShuttingDown = false;
 
-  await mongoose.connection.close();
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-  process.exit(0);
-});
+  logger.info(`Received ${signal}. Initiating graceful shutdown...`);
 
-process.on('SIGTERM', async () => {
-  logger.info('Server terminated.');
+  // Stop accepting new HTTP connections and drain active requests
+  httpServer.close(async (err) => {
+    if (err) {
+      logger.error('Error closing HTTP server', { error: err.message });
+    } else {
+      logger.info('HTTP server closed successfully.');
+    }
 
-  await mongoose.connection.close();
+    try {
+      if (io) {
+        io.close();
+        logger.info('Socket.IO connections closed.');
+      }
 
-  process.exit(0);
-});
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.close(false);
+        logger.info('MongoDB connection closed.');
+      }
+
+      process.exit(0);
+    } catch (cleanupErr) {
+      logger.error('Error during shutdown cleanup', { error: cleanupErr.message });
+      process.exit(1);
+    }
+  });
+
+  // Force termination if graceful drain exceeds 10 seconds
+  const forceTimeout = setTimeout(() => {
+    logger.error('Graceful shutdown timed out (10s threshold). Forcing immediate termination.');
+    process.exit(1);
+  }, 10000);
+
+  if (forceTimeout.unref) {
+    forceTimeout.unref();
+  }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 /*
 ====================================================
-Unhandled Promise Rejections
+Unhandled Promise Rejections & Uncaught Exceptions
 ====================================================
 */
 
 process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled Rejection', {
-    error: reason,
+  logger.error('Unhandled Promise Rejection Detected', {
+    error: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
   });
 });
 
-/*
-====================================================
-Uncaught Exceptions
-====================================================
-*/
-
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', {
+  logger.error('Uncaught Exception Detected - Server Terminating', {
     error: error.message,
     stack: error.stack,
   });
 
+  // Fail fast on fatal uncaught exceptions
   process.exit(1);
 });
 
