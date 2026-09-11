@@ -1,5 +1,11 @@
 require('dotenv').config();
 
+const { validateEnvironment } = require('./config/envValidator');
+const { featureFlags } = require('./config/featureFlags');
+
+// Validate environment secrets and configuration
+validateEnvironment();
+
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -125,6 +131,16 @@ const healthHandler = (_req, res) => {
 
 app.get('/api/healthcheck', healthHandler);
 app.get('/api/v1/healthcheck', healthHandler);
+
+const featureHandler = (_req, res) => {
+  res.status(200).json({
+    success: true,
+    features: featureFlags.getAllFlags(),
+  });
+};
+
+app.get('/api/features', featureHandler);
+app.get('/api/v1/features', featureHandler);
 
 /*
 ====================================================
