@@ -41,6 +41,9 @@ import PredictiveDashboard from './pages/predictive/PredictiveDashboard';
 import NotificationCenter from './pages/notifications/NotificationCenter';
 import AdminAnalyticsDashboard from './pages/admin/AdminAnalyticsDashboard';
 import WearableDashboard from './pages/wearables/WearableDashboard';
+import SecurityDashboard from './pages/security/SecurityDashboard';
+
+
 
 const queryClient = new QueryClient();
 
@@ -104,6 +107,8 @@ const App = () => (
                           <Route path="/wearables" element={<WearableDashboard />} />
                           <Route path="/wearable" element={<WearableDashboard />} />
                           <Route path="/settings" element={<Settings />} />
+                          <Route path="/security" element={<SecurityDashboard />} />
+                          <Route path="/security-dashboard" element={<SecurityDashboard />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />
