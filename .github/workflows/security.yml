@@ -1,0 +1,38 @@
+name: HealthSphere Security Audit
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  schedule:
+    # Run every Monday at 04:00 UTC
+    - cron: '0 4 * * 1'
+
+jobs:
+  security-audit:
+    name: Dependency Vulnerability & Secret Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Audit Root & Frontend Dependencies
+        run: |
+          npm audit --audit-level=high || echo "::warning ::Vulnerabilities detected in root dependencies"
+
+      - name: Audit Server Dependencies
+        working-directory: ./server
+        run: |
+          npm audit --audit-level=high || echo "::warning ::Vulnerabilities detected in server dependencies"

@@ -1,0 +1,108 @@
+name: HealthSphere CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+
+# Cancel redundant workflows for the same branch on rapid pushes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ----------------------------------------------------
+  # 1. Lint and Static Type Verification
+  # ----------------------------------------------------
+  lint-and-typecheck:
+    name: Code Hygiene & Type Safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Frontend & Root Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript Validation (noEmit)
+        run: npx tsc --noEmit
+
+  # ----------------------------------------------------
+  # 2. Automated Test Suite (Frontend & Backend)
+  # ----------------------------------------------------
+  test:
+    name: Comprehensive Healthcare Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Backend Server Dependencies
+        working-directory: ./server
+        run: npm ci || npm install
+
+      - name: Run Vitest Healthcare OS Suites
+        run: npm test -- --run
+
+  # ----------------------------------------------------
+  # 3. Production Build & Artifact Generation
+  # ----------------------------------------------------
+  build:
+    name: Production Web Bundle Build
+    needs: [lint-and-typecheck, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Optimized Production Bundle
+        run: npm run build
+
+      - name: Upload Production Web Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: healthsphere-production-dist
+          path: dist/
+          retention-days: 14
+          if-no-files-found: error
