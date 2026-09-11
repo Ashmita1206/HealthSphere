@@ -174,31 +174,35 @@ Routes
 ====================================================
 */
 
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/health', healthRoutes);
-app.use('/api/reminders', reminderRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/emergency', emergencyRoutes);
-app.use('/api/chat', newChatRoutes);
-app.use('/api/legacy-chat', chatRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/timeline', timelineRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/profile/medical', medicalProfileRoutes);
-app.use('/api/medical-profile', medicalProfileRoutes);
-app.use('/api/doctors', doctorRoutes);
-app.use('/api/records', recordShareRoutes);
-app.use('/api/consultations', consultationRoutes);
-app.use('/api/ai', symptomRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/wearables', wearableRoutes);
-app.use('/api/workflows', workflowRoutes);
-app.use('/api/assistant', assistantRoutes);
-app.use('/api/system', systemRoutes);
+// Register routes for both /api/ and /api/v1/ (API Versioning)
+['/api', '/api/v1'].forEach((prefix) => {
+  app.use(`${prefix}/auth`, authRoutes);
+  app.use(`${prefix}/user`, userRoutes);
+  app.use(`${prefix}/health`, healthRoutes);
+  app.use(`${prefix}/reminders`, reminderRoutes);
+  app.use(`${prefix}/reports`, reportRoutes);
+  app.use(`${prefix}/emergency`, emergencyRoutes);
+  app.use(`${prefix}/chat`, newChatRoutes);
+  app.use(`${prefix}/legacy-chat`, chatRoutes);
+  app.use(`${prefix}/ai`, aiRoutes);
+  app.use(`${prefix}/notifications`, notificationRoutes);
+  app.use(`${prefix}/timeline`, timelineRoutes);
+  app.use(`${prefix}/analytics`, analyticsRoutes);
+  app.use(`${prefix}/profile/medical`, medicalProfileRoutes);
+  app.use(`${prefix}/medical-profile`, medicalProfileRoutes);
+  app.use(`${prefix}/doctors`, doctorRoutes);
+  app.use(`${prefix}/records`, recordShareRoutes);
+  app.use(`${prefix}/consultations`, consultationRoutes);
+  app.use(`${prefix}/ai`, symptomRoutes);
+  app.use(`${prefix}/dashboard`, dashboardRoutes);
+  app.use(`${prefix}/admin`, adminRoutes);
+  app.use(`${prefix}/wearables`, wearableRoutes);
+  app.use(`${prefix}/workflows`, workflowRoutes);
+  app.use(`${prefix}/assistant`, assistantRoutes);
+  app.use(`${prefix}/system`, systemRoutes);
+});
 app.use('/', systemRoutes);
+
 /*
 ====================================================
 Socket.IO
