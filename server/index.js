@@ -54,6 +54,7 @@ const cdssRoutes = require('./routes/cdssRoutes');
 const medicalImagingRoutes = require('./routes/medicalImagingRoutes');
 const hospitalResourceRoutes = require('./routes/hospitalResourceRoutes');
 const populationIntelligenceRoutes = require('./routes/populationIntelligenceRoutes');
+const smartPharmacyRoutes = require('./routes/smartPharmacyRoutes');
 
 // Socket
 const registerChatSocket = require('./sockets/chat.socket');
@@ -182,6 +183,7 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/imaging`, medicalImagingRoutes);
   app.use(`${prefix}/resources`, hospitalResourceRoutes);
   app.use(`${prefix}/population`, populationIntelligenceRoutes);
+  app.use(`${prefix}/pharmacy`, smartPharmacyRoutes);
 });
 /*
 ====================================================
