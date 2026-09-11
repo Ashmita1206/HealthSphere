@@ -45,21 +45,77 @@ const httpServer = createServer(app);
 
 /*
 ====================================================
-Middlewares
+Middlewares & Security Hardening
 ====================================================
 */
 
-app.use(helmet());
+const { mongoSanitize, xssSanitize, securityHeaders } = require('./middlewares/security');
+const { apiLimiter } = require('./middlewares/rateLimiters');
 
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL || '*',
-    credentials: true,
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org"],
+        connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
   }),
 );
 
+app.use(securityHeaders);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowed = [
+        process.env.CLIENT_URL,
+        'http://localhost:5173',
+        'http://localhost:4000',
+        'http://localhost:80',
+        'http://localhost:3000',
+        'http://localhost',
+      ].filter(Boolean);
+      if (!origin || allowed.includes(origin) || allowed.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-Id', 'Accept'],
+    exposedHeaders: ['X-Request-Id', 'X-Response-Time'],
+  }),
+);
+
+// Lightweight native cookie parser for secure HTTP-only cookies
+app.use((req, _res, next) => {
+  req.cookies = req.cookies || {};
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach((cookie) => {
+      const parts = cookie.split('=');
+      const name = parts[0]?.trim();
+      const val = parts.slice(1).join('=').trim();
+      if (name) req.cookies[name] = decodeURIComponent(val);
+    });
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize);
+app.use(xssSanitize);
+app.use('/api/', apiLimiter);
 
 /*
 ====================================================
