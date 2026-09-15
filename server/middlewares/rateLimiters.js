@@ -1,30 +1,53 @@
 const rateLimit = require('express-rate-limit');
 
 /**
- * Authentication rate limiter: 15 requests per 15 minutes
+ * Global API rate limiter: 1000 requests per 15 minutes
+ */
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Global API rate limit exceeded. Please throttle your requests.',
+    },
+  },
+});
+
+/**
+ * Authentication rate limiter: 20 requests per 15 minutes
  */
 const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'AUTH_RATE_LIMIT_EXCEEDED',
+      message: 'Too many authentication attempts. Please try again after 15 minutes.',
+    },
+  },
+});
+
+/**
+ * Sensitive operations rate limiter (password reset, email verification): 15 per 15 minutes
+ */
+const sensitiveLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
-    message: 'Too many authentication attempts. Please try again in 15 minutes.',
-  },
-});
-
-/**
- * Global API rate limiter: 300 requests per 15 minutes
- */
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'API rate limit exceeded. Please slow down your requests.',
+    error: {
+      code: 'SENSITIVE_OP_LIMIT_EXCEEDED',
+      message: 'Too many sensitive operations requested. Please try again later.',
+    },
   },
 });
 
@@ -38,7 +61,10 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     success: false,
-    message: 'AI inference rate limit exceeded. Please wait a minute before querying again.',
+    error: {
+      code: 'AI_RATE_LIMIT_EXCEEDED',
+      message: 'AI inference rate limit exceeded. Please wait a minute before querying again.',
+    },
   },
 });
 
@@ -52,7 +78,10 @@ const chatLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     success: false,
-    message: 'Chat message rate limit exceeded. Please wait a moment.',
+    error: {
+      code: 'CHAT_LIMIT_EXCEEDED',
+      message: 'Chat message rate limit exceeded. Please wait a moment before sending more messages.',
+    },
   },
 });
 
@@ -66,13 +95,17 @@ const emergencyLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     success: false,
-    message: 'Emergency rate threshold reached.',
+    error: {
+      code: 'EMERGENCY_LIMIT_EXCEEDED',
+      message: 'Emergency rate threshold reached.',
+    },
   },
 });
 
 module.exports = {
-  authLimiter,
   apiLimiter,
+  authLimiter,
+  sensitiveLimiter,
   aiLimiter,
   chatLimiter,
   emergencyLimiter,

@@ -1,36 +1,149 @@
 /**
- * HealthSphere Enterprise Redis Performance & Caching Layer
- * Provides high-throughput caching, TTL management, automated invalidation,
- * and dedicated domain sub-caches (Session, AI, Dashboard, Analytics, Notification).
+ * HealthSphere High-Performance Multi-Tier Cache Service
+ * Provides Redis caching with automatic in-memory fallback, TTL expiration, and telemetry.
  */
 
-const Redis = require('ioredis');
 const logger = require('../utils/logger');
 
-class CacheItem {
-  constructor(key, value, ttlSeconds) {
-    this.key = key;
-    this.value = value;
-    this.expiresAt = ttlSeconds ? Date.now() + ttlSeconds * 1000 : null;
+class MemoryStore {
+  constructor(maxItems = 5000) {
+    this.store = new Map();
+    this.timers = new Map();
+    this.maxItems = maxItems;
+    this.hits = 0;
+    this.misses = 0;
+    this.sets = 0;
+    this.deletes = 0;
   }
 
-  isExpired() {
-    return this.expiresAt !== null && Date.now() > this.expiresAt;
+  get(key) {
+    const item = this.store.get(key);
+    if (!item) {
+      this.misses += 1;
+      return null;
+    }
+
+    if (item.expiresAt && item.expiresAt < Date.now()) {
+      this.delete(key);
+      this.misses += 1;
+      return null;
+    }
+
+    // Refresh LRU position
+    this.store.delete(key);
+    this.store.set(key, item);
+
+    this.hits += 1;
+    return item.value;
+  }
+
+  set(key, value, ttlSeconds = 300) {
+    if (this.timers.has(key)) {
+      clearTimeout(this.timers.get(key));
+      this.timers.delete(key);
+    }
+
+    // Immediate expiration if TTL is 0 or negative
+    if (ttlSeconds !== undefined && ttlSeconds <= 0) {
+      this.delete(key);
+      return true;
+    }
+
+    // LRU eviction if maximum capacity reached
+    if (this.store.size >= this.maxItems) {
+      const oldestKey = this.store.keys().next().value;
+      if (oldestKey) this.delete(oldestKey);
+    }
+
+    const expiresAt = (ttlSeconds !== undefined && ttlSeconds > 0)
+      ? Date.now() + ttlSeconds * 1000
+      : null;
+
+    this.store.set(key, { value, expiresAt });
+    this.sets += 1;
+
+    if (expiresAt) {
+      const timer = setTimeout(() => {
+        this.delete(key);
+      }, ttlSeconds * 1000);
+      if (timer.unref) timer.unref();
+      this.timers.set(key, timer);
+    }
+
+    return true;
+  }
+
+  delete(key) {
+    if (this.timers.has(key)) {
+      clearTimeout(this.timers.get(key));
+      this.timers.delete(key);
+    }
+    const had = this.store.delete(key);
+    if (had) this.deletes += 1;
+    return had;
+  }
+
+  del(key) {
+    return this.delete(key);
+  }
+
+  has(key) {
+    const val = this.get(key);
+    return val !== null;
+  }
+
+  flush() {
+    for (const timer of this.timers.values()) {
+      clearTimeout(timer);
+    }
+    this.timers.clear();
+    this.store.clear();
+    this.hits = 0;
+    this.misses = 0;
+    this.sets = 0;
+    this.deletes = 0;
+    return true;
+  }
+
+  invalidatePattern(pattern) {
+    const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
+    let count = 0;
+    for (const key of Array.from(this.store.keys())) {
+      if (regex.test(key)) {
+        this.delete(key);
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  getStats() {
+    const total = this.hits + this.misses;
+    const hitRate = total === 0 ? 0 : Number((this.hits / total).toFixed(3));
+    const hitRatioPct = total === 0 ? 0 : Number(((this.hits / total) * 100).toFixed(2));
+    return {
+      keysCount: this.store.size,
+      size: this.store.size,
+      maxItems: this.maxItems,
+      hits: this.hits,
+      misses: this.misses,
+      hitRate,
+      hitRatioPct,
+      sets: this.sets,
+      deletes: this.deletes,
+    };
   }
 }
 
-class RedisCacheService {
-  constructor(maxMemoryItems = 2000) {
-    this.maxMemoryItems = maxMemoryItems;
-    this.memoryStore = new Map();
-    this.hits = 0;
-    this.misses = 0;
+class CacheService {
+  constructor(maxMemoryItems = 5000) {
+    this.memory = new MemoryStore(maxMemoryItems);
     this.isRedisReady = false;
     this.redisClient = null;
 
-    // Optional Redis initialization if REDIS_URL is provided
     if (process.env.REDIS_URL) {
       try {
+        const Redis = require('ioredis');
         this.redisClient = new Redis(process.env.REDIS_URL, {
           lazyConnect: true,
           maxRetriesPerRequest: 1,
@@ -43,7 +156,7 @@ class RedisCacheService {
           logger.info('Redis performance layer connected successfully');
         });
 
-        this.redisClient.on('error', (_err) => {
+        this.redisClient.on('error', () => {
           this.isRedisReady = false;
         });
 
@@ -55,21 +168,18 @@ class RedisCacheService {
       }
     }
 
-    // Initialize domain-specific sub-caches
-    this.session = this._createSubCache('session', 3600); // 1 hour TTL
-    this.ai = this._createSubCache('ai', 86400); // 24 hours TTL
-    this.dashboard = this._createSubCache('dashboard', 300); // 5 minutes TTL
-    this.analytics = this._createSubCache('analytics', 600); // 10 minutes TTL
-    this.notification = this._createSubCache('notification', 180); // 3 minutes TTL
+    // Sub-caches for dedicated domain areas
+    this.session = this._createSubCache('session', 3600);
+    this.ai = this._createSubCache('ai', 86400);
+    this.dashboard = this._createSubCache('dashboard', 300);
+    this.analytics = this._createSubCache('analytics', 600);
+    this.notification = this._createSubCache('notification', 180);
   }
 
-  /**
-   * Helper factory to create domain namespaces with TTL and invalidation
-   */
-  _createSubCache(namespace, defaultTtlSeconds) {
+  _createSubCache(namespace, defaultTtl) {
     return {
       get: async (key) => this.get(`${namespace}:${key}`),
-      set: async (key, value, ttl = defaultTtlSeconds) => this.set(`${namespace}:${key}`, value, ttl),
+      set: async (key, val, ttl = defaultTtl) => this.set(`${namespace}:${key}`, val, ttl),
       del: async (key) => this.del(`${namespace}:${key}`),
       has: async (key) => this.has(`${namespace}:${key}`),
       invalidate: async (key) => this.del(`${namespace}:${key}`),
@@ -77,76 +187,41 @@ class RedisCacheService {
     };
   }
 
-  /**
-   * Get raw key
-   */
   async get(key) {
     if (this.isRedisReady && this.redisClient) {
       try {
         const raw = await this.redisClient.get(key);
         if (raw !== null) {
-          this.hits += 1;
+          this.memory.hits += 1;
           return JSON.parse(raw);
         }
-        this.misses += 1;
+        this.memory.misses += 1;
         return null;
       } catch (_err) {
-        // Fall back to memory store on redis read error
+        // Fallback to memory
       }
     }
-
-    // In-memory fallback
-    const item = this.memoryStore.get(key);
-    if (!item) {
-      this.misses += 1;
-      return null;
-    }
-
-    if (item.isExpired()) {
-      this.memoryStore.delete(key);
-      this.misses += 1;
-      return null;
-    }
-
-    // Refresh LRU order
-    this.memoryStore.delete(key);
-    this.memoryStore.set(key, item);
-    this.hits += 1;
-    return item.value;
+    return this.memory.get(key);
   }
 
-  /**
-   * Set raw key with TTL
-   */
   async set(key, value, ttlSeconds = 300) {
     if (this.isRedisReady && this.redisClient) {
       try {
         const payload = JSON.stringify(value);
-        if (ttlSeconds) {
+        if (ttlSeconds && ttlSeconds > 0) {
           await this.redisClient.set(key, payload, 'EX', ttlSeconds);
+        } else if (ttlSeconds <= 0) {
+          await this.redisClient.del(key);
         } else {
           await this.redisClient.set(key, payload);
         }
-        return true;
       } catch (_err) {
-        // Fall back to memory
+        // Fallback to memory
       }
     }
-
-    // In-memory LRU eviction
-    if (this.memoryStore.size >= this.maxMemoryItems) {
-      const oldest = this.memoryStore.keys().next().value;
-      if (oldest) this.memoryStore.delete(oldest);
-    }
-
-    const item = new CacheItem(key, value, ttlSeconds);
-    this.memoryStore.set(key, item);
-    return true;
+    return this.memory.set(key, value, ttlSeconds);
   }
 
-  /**
-   * Delete key
-   */
   async del(key) {
     if (this.isRedisReady && this.redisClient) {
       try {
@@ -155,25 +230,31 @@ class RedisCacheService {
         // Ignore
       }
     }
-    return this.memoryStore.delete(key);
+    return this.memory.delete(key);
   }
 
-  /**
-   * Pattern-based invalidation
-   */
-  async invalidatePattern(pattern) {
-    const regexPattern = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-    let evictedCount = 0;
+  async delete(key) {
+    return this.del(key);
+  }
 
-    // Invalidate from memory
-    for (const k of this.memoryStore.keys()) {
-      if (regexPattern.test(k)) {
-        this.memoryStore.delete(k);
-        evictedCount++;
+  async has(key) {
+    const val = await this.get(key);
+    return val !== null;
+  }
+
+  async flush() {
+    if (this.isRedisReady && this.redisClient) {
+      try {
+        await this.redisClient.flushdb();
+      } catch (_e) {
+        // Ignore
       }
     }
+    return this.memory.flush();
+  }
 
-    // Invalidate from Redis if connected
+  async invalidatePattern(pattern) {
+    let evictedCount = 0;
     if (this.isRedisReady && this.redisClient) {
       try {
         const keys = await this.redisClient.keys(pattern);
@@ -185,51 +266,24 @@ class RedisCacheService {
         // Ignore
       }
     }
-
-    return evictedCount;
+    const memCount = this.memory.invalidatePattern(pattern);
+    return evictedCount + memCount;
   }
 
-  /**
-   * Check existence
-   */
-  async has(key) {
-    const val = await this.get(key);
-    return val !== null;
-  }
-
-  /**
-   * Flush all
-   */
-  async flush() {
-    if (this.isRedisReady && this.redisClient) {
-      try {
-        await this.redisClient.flushdb();
-      } catch (_e) {
-        // Ignore
-      }
-    }
-    this.memoryStore.clear();
-    this.hits = 0;
-    this.misses = 0;
-    return true;
-  }
-
-  /**
-   * Performance Metrics
-   */
   getStats() {
-    const total = this.hits + this.misses;
+    const memStats = this.memory.getStats();
     return {
-      size: this.memoryStore.size,
-      maxItems: this.maxMemoryItems,
-      hits: this.hits,
-      misses: this.misses,
-      hitRatioPct: total > 0 ? Number(((this.hits / total) * 100).toFixed(2)) : 0,
+      backend: this.isRedisReady ? 'redis' : 'memory',
       isRedisReady: this.isRedisReady,
+      ...memStats,
     };
   }
 }
 
-const cacheService = new RedisCacheService();
+const defaultCacheService = new CacheService();
 
-module.exports = cacheService;
+// Export default instance while providing named exports and attached properties
+module.exports = defaultCacheService;
+module.exports.cacheService = defaultCacheService;
+module.exports.MemoryStore = MemoryStore;
+module.exports.CacheService = CacheService;

@@ -2,10 +2,12 @@ const jwt = require('jsonwebtoken');
 const Consultation = require('../models/Consultation');
 const Doctor = require('../models/Doctor');
 const ConsultationMessage = require('../models/ConsultationMessage');
+const CareTeamThread = require('../models/CareTeamThread');
 const timelineService = require('../services/timelineService');
 const { createNotification } = require('../services/notificationService');
 const logger = require('../utils/logger');
 const { getJwtSecret } = require('../config/jwt.config');
+const realtimeService = require('../services/realtimeCollaborationService');
 
 // Track active participants per consultation room: { consultationId: Set<string (userId:role)> }
 const activeRoomParticipants = new Map();
@@ -480,6 +482,127 @@ function attachCollaborationHandlers(socketNamespace) {
 
     /*
     ====================================================
+    DOCTOR & STAFF PRESENCE (F36)
+    ====================================================
+    */
+    socket.on('doctor:set_presence', ({ status, department, name }) => {
+      const presence = realtimeService.setStaffPresence(userId, {
+        name: name || socket.user.name || socket.user.email,
+        role: socket.user.role || 'doctor',
+        department: department || 'Emergency Medicine',
+        status: status || 'available',
+        socketId: socket.id,
+      });
+      socketNamespace.emit('doctor:presence_updated', presence);
+    });
+
+    socket.on('doctor:get_presence', () => {
+      socket.emit('doctor:presence_list', realtimeService.getAllStaffPresence());
+    });
+
+    /*
+    ====================================================
+    LIVE PATIENT CHART EDITING LOCKS & CONCURRENCY (F36)
+    ====================================================
+    */
+    socket.on('chart:acquire_lock', ({ patientId, field }) => {
+      if (!patientId || !field) return;
+      const res = realtimeService.acquireChartLock(patientId, field, socket.user);
+      if (res.acquired) {
+        socketNamespace.emit('chart:lock_acquired', res.lock);
+      }
+      socket.emit('chart:lock_result', res);
+    });
+
+    socket.on('chart:release_lock', ({ patientId, field }) => {
+      if (!patientId || !field) return;
+      const res = realtimeService.releaseChartLock(patientId, field, userId);
+      if (res.released) {
+        socketNamespace.emit('chart:lock_released', { patientId, field, userId });
+      }
+      socket.emit('chart:release_result', res);
+    });
+
+    /*
+    ====================================================
+    SHARED CLINICAL NOTES COLLABORATION (F36)
+    ====================================================
+    */
+    socket.on('note:join_session', ({ noteId }) => {
+      if (!noteId) return;
+      const room = `note:${noteId}`;
+      socket.join(room);
+      socket.to(room).emit('note:user_joined', {
+        userId,
+        userName: socket.user.name || socket.user.email || 'Clinician',
+        role: socket.user.role || 'doctor',
+      });
+    });
+
+    socket.on('note:typing', ({ noteId, section, isTyping }) => {
+      if (!noteId) return;
+      socket.to(`note:${noteId}`).emit('note:typing_status', {
+        userId,
+        userName: socket.user.name || socket.user.email || 'Clinician',
+        role: socket.user.role || 'doctor',
+        section,
+        isTyping: Boolean(isTyping),
+      });
+    });
+
+    socket.on('note:patch_update', ({ noteId, section, value, version }) => {
+      if (!noteId) return;
+      socket.to(`note:${noteId}`).emit('note:field_patched', {
+        noteId,
+        section,
+        value,
+        version,
+        updatedBy: userId,
+        updaterName: socket.user.name || socket.user.email || 'Clinician',
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    /*
+    ====================================================
+    CARE TEAM DISCUSSION THREADS (F36)
+    ====================================================
+    */
+    socket.on('careteam:join_case', ({ threadId }) => {
+      if (!threadId) return;
+      socket.join(`careteam:${threadId}`);
+    });
+
+    socket.on('careteam:send_message', async ({ threadId, content, urgency }) => {
+      try {
+        if (!threadId || !content) return;
+        const thread = await CareTeamThread.findById(threadId);
+        if (!thread) return;
+
+        const msg = {
+          senderId: userId,
+          senderName: socket.user.name || socket.user.email || 'Dr. Specialist',
+          senderRole: socket.user.role || 'doctor',
+          content: String(content).trim(),
+          urgency: urgency || 'routine',
+          createdAt: new Date(),
+        };
+
+        thread.messages.push(msg);
+        thread.lastActivityAt = new Date();
+        await thread.save();
+
+        socketNamespace.to(`careteam:${threadId}`).emit('careteam:new_message', {
+          threadId,
+          message: msg,
+        });
+      } catch (err) {
+        logger.error('Careteam socket message error', { error: err.message });
+      }
+    });
+
+    /*
+    ====================================================
     DISCONNECT HANDLER
     ====================================================
     */
@@ -497,6 +620,12 @@ function attachCollaborationHandlers(socketNamespace) {
           role: socket.userRole,
           disconnectedAt: new Date().toISOString(),
         });
+      }
+
+      // Update staff presence on disconnect
+      const presenceUpdate = realtimeService.removeStaffSocket(userId, socket.id);
+      if (presenceUpdate) {
+        socketNamespace.emit('doctor:presence_updated', presenceUpdate);
       }
 
       logger.info('Collaboration socket disconnected', { socketId: socket.id, userId });

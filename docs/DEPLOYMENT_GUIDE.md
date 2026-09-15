@@ -69,6 +69,7 @@ REDIS_URL=redis://redis:6379
 
 # AI Services (Clinical Decision Support)
 GEMINI_API_KEY=your_google_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
 AI_PROVIDER=gemini
 AI_MODEL=gemini-flash-latest
 
@@ -155,7 +156,19 @@ docker compose logs -f backend
 
 ---
 
-## 5. MongoDB Atlas Configuration
+## 5. SSL / TLS Certificate Automation (Let's Encrypt)
+
+To terminate SSL at the Nginx edge:
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d healthsphere.yourdomain.com
+```
+
+Certbot automatically configures HTTP-to-HTTPS redirects and schedules certificate renewal crons.
+
+---
+
+## 6. MongoDB Atlas Configuration
 
 For enterprise deployments with multi-region high availability:
 
@@ -173,21 +186,21 @@ For enterprise deployments with multi-region high availability:
 
 ---
 
-## 6. Backup & Disaster Recovery Strategy
+## 7. Backup & Disaster Recovery Strategy
 
 HealthSphere provides automated backup and restore utilities in the `scripts/` directory:
 
-### 6.1 Automated Daily Backups
+### 7.1 Automated Daily Backups
 Configure a cron job to take daily automated dumps:
 ```bash
 # Edit crontab
 crontab -e
 
-# Run daily backup at 02:00 UTC and retain for 30 days
+# Run daily backup at 02:00 UTC and retain for 14-30 days
 0 2 * * * /path/to/HealthSphere/scripts/backup-db.sh >> /var/log/healthsphere_backup.log 2>&1
 ```
 
-### 6.2 Restoring from Backup
+### 7.2 Restoring from Backup
 ```bash
 # Restore specific archive with SHA256 integrity check
 ./scripts/restore-db.sh /var/backups/healthsphere/healthsphere_backup_20260911_020000.tar.gz
@@ -195,10 +208,27 @@ crontab -e
 
 ---
 
-## 7. Pre-Deployment & Post-Deployment Checklist
+## 8. Zero-Downtime Rolling Update Workflow
+
+```bash
+cd /opt/healthsphere
+git fetch origin main
+git checkout main
+
+# Rebuild images without bringing down live services
+docker compose build backend frontend
+
+# Restart services with minimal downtime
+docker compose up -d --no-deps --build backend
+docker compose up -d --no-deps --build frontend
+```
+
+---
+
+## 9. Pre-Deployment & Post-Deployment Checklist
 
 ### Pre-Deployment
-- [x] All 50+ unit and integration tests pass (`npm test`)
+- [x] All unit and integration tests pass (`npm test`)
 - [x] TypeScript validation completes with zero errors (`npx tsc --noEmit`)
 - [x] Production bundle builds successfully (`npm run build`)
 - [x] `JWT_SECRET` generated with 64 cryptographically secure random bytes
@@ -208,8 +238,7 @@ crontab -e
 
 ### Post-Deployment
 - [ ] Verify HTTP to HTTPS redirection
-- [ ] Confirm `/api/system/health` returns `HTTP 200` with `status: "healthy"`
-- [ ] Confirm `/api/system/ready` returns `HTTP 200` with `status: "ready"`
+- [ ] Confirm `/health/liveness` and `/health/readiness` return `HTTP 200`
 - [ ] Test user signup, login, and token refresh
 - [ ] Verify WebSocket real-time connection in browser console
 - [ ] Check structured logs in `/var/log/nginx/` or container logs

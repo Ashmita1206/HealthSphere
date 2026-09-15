@@ -1,11 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const presence = require('../../server/services/presenceService');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PresenceService } = require('../../server/services/presenceService');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const realtime = require('../../server/services/realtimeService');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { registerRealtimeInfrastructureSocket } = require('../../server/sockets/realtimeInfrastructure.socket');
 
 describe('F43 — Real-Time Infrastructure & Presence System Suite', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const presence = require('../../server/services/presenceService');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const realtime = require('../../server/services/realtimeService');
-
   beforeEach(() => {
     presence.reset();
   });
@@ -91,5 +95,124 @@ describe('F43 — Real-Time Infrastructure & Presence System Suite', () => {
     // Returns false cleanly when ioInstance is not yet bound in unit tests without crashing
     const streamed = realtime.streamLiveNotification('pat-1', { title: 'Test Alert' });
     expect(typeof streamed).toBe('boolean');
+  });
+});
+
+describe('F38 — Real-Time Infrastructure', () => {
+  let instancePresence: any;
+
+  beforeEach(() => {
+    instancePresence = new PresenceService();
+  });
+
+  describe('Doctor & Patient Presence Tracking', () => {
+    it('registers doctor connection with AVAILABLE status', () => {
+      const doctor = { id: 'doc-101', name: 'Dr. John Watson', role: 'doctor' };
+      const state = instancePresence.registerConnection('sock-1', doctor);
+
+      expect(state.userId).toBe('doc-101');
+      expect(state.role).toBe('doctor');
+      expect(state.status).toBe('AVAILABLE');
+      expect(state.socketId).toBe('sock-1');
+    });
+
+    it('registers patient connection with ONLINE status', () => {
+      const patient = { id: 'pat-202', name: 'Sherlock Holmes', role: 'patient' };
+      const state = instancePresence.registerConnection('sock-2', patient);
+
+      expect(state.userId).toBe('pat-202');
+      expect(state.role).toBe('patient');
+      expect(state.status).toBe('ONLINE');
+    });
+
+    it('updates doctor status to BUSY_IN_CONSULTATION and preserves metadata', () => {
+      const doctor = { id: 'doc-101', name: 'Dr. John Watson', role: 'doctor' };
+      instancePresence.registerConnection('sock-1', doctor);
+
+      const updated = instancePresence.updateStatus('doc-101', 'BUSY_IN_CONSULTATION', {
+        activeConsultationId: 'c-999',
+      });
+
+      expect(updated.status).toBe('BUSY_IN_CONSULTATION');
+      expect(updated.metadata.activeConsultationId).toBe('c-999');
+    });
+
+    it('filters online doctors and patients', () => {
+      instancePresence.registerConnection('sock-1', { id: 'd1', role: 'doctor', name: 'Dr. A' });
+      instancePresence.registerConnection('sock-2', { id: 'd2', role: 'doctor', name: 'Dr. B' });
+      instancePresence.registerConnection('sock-3', { id: 'p1', role: 'patient', name: 'Patient X' });
+
+      instancePresence.updateStatus('d2', 'OFFLINE');
+
+      const activeDocs = instancePresence.getOnlineDoctors();
+      expect(activeDocs).toHaveLength(1);
+      expect(activeDocs[0].userId).toBe('d1');
+
+      const activePatients = instancePresence.getOnlinePatients();
+      expect(activePatients).toHaveLength(1);
+      expect(activePatients[0].userId).toBe('p1');
+    });
+
+    it('records heartbeat timestamps', () => {
+      instancePresence.registerConnection('sock-1', { id: 'u1', role: 'doctor' });
+      const initial = instancePresence.users.get('u1').lastHeartbeat;
+
+      const ok = instancePresence.heartbeat('u1');
+      expect(ok).toBe(true);
+      expect(instancePresence.users.get('u1').lastHeartbeat).toBeGreaterThanOrEqual(initial);
+    });
+
+    it('cleans up presence and room memberships on socket disconnect', () => {
+      instancePresence.registerConnection('sock-1', { id: 'doc-1', role: 'doctor' });
+      instancePresence.joinConsultation('room-42', 'doc-1');
+
+      const left = instancePresence.removeConnection('sock-1');
+      expect(left.status).toBe('OFFLINE');
+      expect(instancePresence.consultationRooms.get('room-42').has('doc-1')).toBe(false);
+    });
+  });
+
+  describe('Consultation Room Orchestration', () => {
+    it('manages consultation room participants', () => {
+      instancePresence.joinConsultation('room-1', 'user-A');
+      instancePresence.joinConsultation('room-1', 'user-B');
+
+      let members = instancePresence.joinConsultation('room-1', 'user-C');
+      expect(members).toEqual(['user-A', 'user-B', 'user-C']);
+
+      members = instancePresence.leaveConsultation('room-1', 'user-B');
+      expect(members).toEqual(['user-A', 'user-C']);
+    });
+  });
+
+  describe('Connection Recovery & Missed Events Replay', () => {
+    it('buffers events and replays missed events based on lastEventId', () => {
+      const e1 = instancePresence.bufferEventForUser('u100', 'notification:new', { text: 'Report Ready' });
+      const e2 = instancePresence.bufferEventForUser('u100', 'consultation:invite', { id: 'c-1' });
+      const e3 = instancePresence.bufferEventForUser('u100', 'chat:message', { text: 'Hello' });
+
+      // Client reconnected claiming they saw e1
+      const missed = instancePresence.getMissedEvents('u100', e1.id);
+      expect(missed).toHaveLength(2);
+      expect(missed[0].id).toBe(e2.id);
+      expect(missed[1].id).toBe(e3.id);
+
+      // Client reconnected with unknown ID gets all buffered events
+      const allMissed = instancePresence.getMissedEvents('u100', null);
+      expect(allMissed).toHaveLength(3);
+    });
+  });
+
+  describe('Socket Handler Registration', () => {
+    it('registers realtime infrastructure middleware and connection listeners', () => {
+      const mockIo = {
+        use: vi.fn(),
+        on: vi.fn(),
+      };
+
+      registerRealtimeInfrastructureSocket(mockIo);
+      expect(mockIo.use).toHaveBeenCalled();
+      expect(mockIo.on).toHaveBeenCalledWith('connection', expect.any(Function));
+    });
   });
 });

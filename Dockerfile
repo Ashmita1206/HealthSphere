@@ -1,5 +1,6 @@
 # ====================================================
-# HealthSphere Frontend Production Multi-Stage Dockerfile
+# HealthSphere AI — Production Frontend Dockerfile
+# Multi-stage build: Node.js 20 -> Nginx Alpine
 # Stage 1: Build Application with Node.js
 # Stage 2: Serve Production Assets with Nginx Alpine
 # ====================================================
@@ -30,9 +31,10 @@ RUN npm run build
 # -----------------
 # 2. Production Stage
 # -----------------
+# FROM nginx:alpine AS runner
 FROM nginx:1.27-alpine AS runner
 
-# Add non-root security improvements & remove default config
+# Add non-root security improvements & remove default static assets
 RUN rm -rf /etc/nginx/conf.d/default.conf \
     && rm -rf /usr/share/nginx/html/*
 

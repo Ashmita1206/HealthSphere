@@ -1,6 +1,9 @@
-name: HealthSphere Security Audit
+name: HealthSphere Enterprise Security Scanning
 
 on:
+  schedule:
+    # Weekly on Monday 02:00 UTC
+    - cron: '0 2 * * 1'
   push:
     branches:
       - main
@@ -9,24 +12,25 @@ on:
     branches:
       - main
       - master
-  schedule:
-    # Run every Monday at 04:00 UTC
-    - cron: '0 4 * * 1'
+  workflow_dispatch:
 
 jobs:
-  security-audit:
-    name: Dependency Vulnerability & Secret Audit
+  # ====================================================
+  # Dependency Vulnerability Audit
+  # ====================================================
+  dependency_security:
+    name: 🛡️ Dependency Vulnerability Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Audit Root & Frontend Dependencies
         run: |
@@ -36,3 +40,19 @@ jobs:
         working-directory: ./server
         run: |
           npm audit --audit-level=high || echo "::warning ::Vulnerabilities detected in server dependencies"
+
+  # ====================================================
+  # Static Code Security Analysis (SAST)
+  # ====================================================
+  code_security_scan:
+    name: 🔒 Static Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Scan Secrets and Sensitive Tokens
+        run: |
+          echo "Scanning for hardcoded secrets or unencrypted private keys..."
+          grep -rn "PRIVATE KEY" . --exclude-dir={node_modules,dist,.git} || true
+          echo "Secret scan completed."

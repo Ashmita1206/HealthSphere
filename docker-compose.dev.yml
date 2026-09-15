@@ -3,10 +3,12 @@
 # Services with Hot Reloading and Local Port Bindings
 # ====================================================
 
+version: '3.8'
+
 services:
   mongodb:
     image: mongo:7.0
-    container_name: healthsphere-dev-mongodb
+    container_name: healthsphere_dev_mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
@@ -15,7 +17,7 @@ services:
     volumes:
       - dev_mongodb_data:/data/db
     networks:
-      - healthsphere-dev-network
+      - healthsphere_dev_net
     healthcheck:
       test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' || exit 1"]
       interval: 10s
@@ -24,18 +26,18 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    container_name: healthsphere-dev-redis
+    container_name: healthsphere_dev_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - dev_redis_data:/data
     networks:
-      - healthsphere-dev-network
+      - healthsphere_dev_net
 
   backend:
     image: node:20-alpine
-    container_name: healthsphere-dev-backend
+    container_name: healthsphere_dev_backend
     working_dir: /app
     ports:
       - "4000:4000"
@@ -45,7 +47,8 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/healthsphere_dev
       REDIS_URL: redis://redis:6379
       CLIENT_URL: http://localhost:5173
-      JWT_SECRET: dev-secret-key-healthsphere-local
+      JWT_SECRET: dev_jwt_secret_healthsphere_2026
+      LOG_LEVEL: debug
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -54,11 +57,11 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - healthsphere-dev-network
+      - healthsphere_dev_net
 
   frontend:
     image: node:20-alpine
-    container_name: healthsphere-dev-frontend
+    container_name: healthsphere_dev_frontend
     working_dir: /app
     ports:
       - "5173:5173"
@@ -73,12 +76,14 @@ services:
     depends_on:
       - backend
     networks:
-      - healthsphere-dev-network
+      - healthsphere_dev_net
 
 networks:
-  healthsphere-dev-network:
+  healthsphere_dev_net:
     driver: bridge
 
 volumes:
   dev_mongodb_data:
+    driver: local
   dev_redis_data:
+    driver: local

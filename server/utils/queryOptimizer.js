@@ -32,7 +32,7 @@ function parseQueryParams(query = {}) {
   // Filtering: exclude reserved control parameters
   const filter = {};
   const excludedParams = ['page', 'limit', 'sort', 'fields', 'populate', '_'];
-  
+
   for (const [key, value] of Object.entries(query)) {
     if (excludedParams.includes(key)) continue;
 
@@ -45,7 +45,6 @@ function parseQueryParams(query = {}) {
         }
       }
     } else if (typeof value === 'string') {
-      // Clean string filter
       filter[key] = value.trim();
     } else {
       filter[key] = value;
@@ -97,6 +96,46 @@ async function executePaginatedQuery(model, queryOptions = {}, customFilter = {}
 }
 
 /**
+ * Standardized high-performance pagination with .lean() execution
+ */
+async function paginateQuery(model, filter = {}, options = {}) {
+  const page = Math.max(1, parseInt(options.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(options.limit, 10) || 20));
+  const skip = (page - 1) * limit;
+  const sort = options.sort || { createdAt: -1 };
+  const select = options.select || '';
+
+  const startTime = Date.now();
+
+  const [docs, total] = await Promise.all([
+    model
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .select(select)
+      .lean({ virtuals: true }),
+    model.countDocuments(filter),
+  ]);
+
+  const executionTimeMs = Date.now() - startTime;
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    docs,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+      executionTimeMs,
+    },
+  };
+}
+
+/**
  * Optimized Aggregation Pipeline with Facet
  */
 function buildFacetAggregationPipeline(matchCriteria = {}, sort = { createdAt: -1 }, page = 1, limit = 20) {
@@ -133,6 +172,7 @@ module.exports = {
   parseQueryParams,
   buildPaginatedResponse,
   executePaginatedQuery,
+  paginateQuery,
   buildFacetAggregationPipeline,
   executeBulkWrite,
 };

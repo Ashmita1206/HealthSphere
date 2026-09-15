@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ====================================================
-# HealthSphere Database Restore Utility
+# HealthSphere AI — Production Database Restore Script
 # Restores from an authenticated compressed mongodump archive.
 # ====================================================
 
@@ -12,17 +12,18 @@ if [ "$#" -lt 1 ]; then
 fi
 
 ARCHIVE_PATH="$1"
-DROP_FLAG="${2:-}"
+DROP_FLAG="${2:---drop}"
+MONGO_URI="${MONGODB_URI:-mongodb://localhost:27017/healthsphere}"
 
 if [ ! -f "${ARCHIVE_PATH}" ]; then
-  echo "Error: File not found: ${ARCHIVE_PATH}"
+  echo "❌ Error: File not found: ${ARCHIVE_PATH}"
   exit 1
 fi
 
-if [ -z "${MONGODB_URI:-}" ]; then
-  echo "Error: MONGODB_URI environment variable is required."
-  exit 1
-fi
+echo "===================================================="
+echo "Initiating HealthSphere Database Restoration"
+echo "Target Archive: ${ARCHIVE_PATH}"
+echo "===================================================="
 
 # Verify SHA256 checksum if available
 if [ -f "${ARCHIVE_PATH}.sha256" ]; then
@@ -30,19 +31,20 @@ if [ -f "${ARCHIVE_PATH}.sha256" ]; then
   sha256sum -c "${ARCHIVE_PATH}.sha256"
 fi
 
-TEMP_EXTRACT_DIR=$(mktemp -d)
+TEMP_RESTORE_DIR="/tmp/healthsphere_restore_$(date +%s)"
+mkdir -p "${TEMP_RESTORE_DIR}"
 
 echo "==> Extracting archive..."
-tar -xzf "${ARCHIVE_PATH}" -C "${TEMP_EXTRACT_DIR}"
+tar -xzf "${ARCHIVE_PATH}" -C "${TEMP_RESTORE_DIR}"
 
 echo "==> Restoring MongoDB database..."
 if [ "${DROP_FLAG}" == "--drop" ]; then
   echo "Warning: --drop specified. Existing collections will be replaced."
-  mongorestore --uri="${MONGODB_URI}" --gzip --drop "${TEMP_EXTRACT_DIR}"
+  mongorestore --uri="${MONGO_URI}" --gzip --drop "${TEMP_RESTORE_DIR}"
 else
-  mongorestore --uri="${MONGODB_URI}" --gzip "${TEMP_EXTRACT_DIR}"
+  mongorestore --uri="${MONGO_URI}" --gzip "${TEMP_RESTORE_DIR}"
 fi
 
-rm -rf "${TEMP_EXTRACT_DIR}"
+rm -rf "${TEMP_RESTORE_DIR}"
 
-echo "==> Restore completed successfully."
+echo "✅ Database restored successfully."

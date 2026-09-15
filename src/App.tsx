@@ -2,7 +2,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, HashRouter } from 'react-router-dom';
+import { Routes, Route, HashRouter } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { NotificationProvider } from '@/context/NotificationContext';
@@ -47,6 +47,11 @@ const PredictiveDashboard = lazy(() => import('./pages/predictive/PredictiveDash
 const NotificationCenter = lazy(() => import('./pages/notifications/NotificationCenter'));
 const AdminAnalyticsDashboard = lazy(() => import('./pages/admin/AdminAnalyticsDashboard'));
 const WearableDashboard = lazy(() => import('./pages/wearables/WearableDashboard'));
+const SecurityDashboard = lazy(() => import('./pages/security/SecurityDashboard'));
+const CareTeamWorkspace = lazy(() => import('./pages/collaboration/CareTeamWorkspace'));
+const OfflinePlatformDashboard = lazy(() => import('./pages/offline/OfflinePlatformDashboard'));
+const PerformanceDashboard = lazy(() => import('./pages/admin/PerformanceDashboard'));
+const MonitoringOpsDashboard = lazy(() => import('./pages/admin/MonitoringOpsDashboard'));
 
 const queryClient = new QueryClient();
 
@@ -94,10 +99,7 @@ const App = () => (
                             <Route path="/doctor" element={<DoctorPortal />} />
                             <Route path="/telemedicine" element={<TelemedicineRoom />} />
                             <Route path="/telemedicine/:consultationId" element={<TelemedicineRoom />} />
-                            <Route
-                              path="/blood-organ/info"
-                              element={<BloodOrganInfo />}
-                            />
+                            <Route path="/blood-organ/info" element={<BloodOrganInfo />} />
                             <Route path="/reminders" element={<Reminders />} />
                             <Route path="/timeline" element={<Timeline />} />
                             <Route path="/blood-donation" element={<BloodDonation />} />
@@ -111,6 +113,16 @@ const App = () => (
                             <Route path="/wearables" element={<WearableDashboard />} />
                             <Route path="/wearable" element={<WearableDashboard />} />
                             <Route path="/settings" element={<Settings />} />
+                            <Route path="/security" element={<SecurityDashboard />} />
+                            <Route path="/security-dashboard" element={<SecurityDashboard />} />
+                            <Route path="/collaboration" element={<CareTeamWorkspace />} />
+                            <Route path="/care-team" element={<CareTeamWorkspace />} />
+                            <Route path="/offline" element={<OfflinePlatformDashboard />} />
+                            <Route path="/pwa" element={<OfflinePlatformDashboard />} />
+                            <Route path="/admin/performance" element={<PerformanceDashboard />} />
+                            <Route path="/performance" element={<PerformanceDashboard />} />
+                            <Route path="/admin/monitoring" element={<MonitoringOpsDashboard />} />
+                            <Route path="/admin/diagnostics" element={<MonitoringOpsDashboard />} />
                           </Route>
 
                           <Route path="*" element={<NotFound />} />

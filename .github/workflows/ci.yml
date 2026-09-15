@@ -1,4 +1,4 @@
-name: HealthSphere CI Pipeline
+name: HealthSphere Enterprise CI/CD Pipeline
 
 on:
   push:
@@ -13,22 +13,20 @@ on:
       - master
       - develop
 
-# Cancel redundant workflows for the same branch on rapid pushes
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ----------------------------------------------------
-  # 1. Lint and Static Type Verification
-  # ----------------------------------------------------
+  # ====================================================
+  # Stage 1: Quality Checks & Hygiene
+  # ====================================================
   lint-and-typecheck:
-    name: Code Hygiene & Type Safety
+    name: 🔍 Code Hygiene & Type Safety
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js 20
@@ -38,7 +36,11 @@ jobs:
           cache: 'npm'
 
       - name: Install Frontend & Root Dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --legacy-peer-deps || npm ci
+
+      - name: Install Backend Server Dependencies
+        working-directory: ./server
+        run: npm ci || npm install
 
       - name: Run ESLint
         run: npm run lint
@@ -46,45 +48,24 @@ jobs:
       - name: Run TypeScript Validation (noEmit)
         run: npx tsc --noEmit
 
-  # ----------------------------------------------------
-  # 2. Automated Test Suite (Frontend & Backend)
-  # ----------------------------------------------------
+  quality_checks:
+    name: 🔍 Quality Checks Gate
+    needs: [lint-and-typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quality Verification
+        run: echo "Quality and type safety gates passed successfully."
+
+  # ====================================================
+  # Stage 2: Automated Test Suites
+  # ====================================================
   test:
-    name: Comprehensive Healthcare Test Suite
+    name: 🧪 Comprehensive Healthcare Test Suite
+    needs: [quality_checks]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Frontend Dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Install Backend Server Dependencies
-        working-directory: ./server
-        run: npm ci || npm install
-
-      - name: Run Vitest Healthcare OS Suites
-        run: npm test -- --run
-
-  # ----------------------------------------------------
-  # 3. Production Build & Artifact Generation
-  # ----------------------------------------------------
-  build:
-    name: Production Web Bundle Build
-    needs: [lint-and-typecheck, test]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout Repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js 20
@@ -94,10 +75,44 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --legacy-peer-deps || npm ci
+
+      - name: Run Vitest Production Test Suites
+        run: npm test -- --run --no-file-parallelism
+
+  automated_testing:
+    name: 🧪 Automated Testing Gate
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Testing Verification
+        run: echo "Automated test suites passed successfully."
+
+  # ====================================================
+  # Stage 3: Production Build & Artifacts
+  # ====================================================
+  build:
+    name: 📦 Production Web Bundle Build
+    needs: [automated_testing]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps || npm ci
 
       - name: Build Optimized Production Bundle
         run: npm run build
+        env:
+          NODE_ENV: production
 
       - name: Upload Production Web Artifacts
         uses: actions/upload-artifact@v4
@@ -106,3 +121,57 @@ jobs:
           path: dist/
           retention-days: 14
           if-no-files-found: error
+
+  production_build:
+    name: 📦 Production Build Gate
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Verification
+        run: echo "Production bundle built and archived successfully."
+
+  # ====================================================
+  # Stage 4: Docker Container Builds
+  # ====================================================
+  docker_validation:
+    name: 🐳 Docker Container Validation
+    needs: [production_build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.backend
+          push: false
+          tags: healthsphere-backend:test
+
+      - name: Build Frontend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: healthsphere-frontend:test
+
+  # ====================================================
+  # Stage 5: Deployment Ready Gate
+  # ====================================================
+  deployment_ready:
+    name: 🚀 Deployment Ready Gate
+    needs: [docker_validation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verification Confirmation
+        run: |
+          echo "===================================================="
+          echo "HealthSphere AI Healthcare OS passed all CI gates!"
+          echo "All tests, TypeScript checks, and Docker builds OK."
+          echo "Status: READY FOR PRODUCTION DEPLOYMENT"
+          echo "===================================================="
