@@ -18,10 +18,13 @@ import {
   User,
   Settings,
   Stethoscope,
+
+
   Video,
   Brain,
   Watch,
   BarChart3,
+
 } from "lucide-react";
 import { SidebarBrand } from "./SidebarBrand";
 import { SidebarCollapseButton } from "./SidebarCollapseButton";
@@ -59,6 +62,7 @@ const navGroups: NavGroupData[] = [
       { icon: Pill, label: "Medicines", href: "/medicines" },
       { icon: FileText, label: "Medical OCR", href: "/medical-reports", badge: "AI" },
       { icon: History, label: "Health Timeline", href: "/timeline" },
+      { icon: Stethoscope, label: "Doctor Portal", href: "/doctors" },
     ],
   },
   {
@@ -212,9 +216,9 @@ export function Sidebar({ isOpen, onClose, onCollapsedChange }: SidebarProps) {
 
   return (
     <>
-      {/* ============================================================ */}
+      {/* ==== */}
       {/*  DESKTOP SIDEBAR                                              */}
-      {/* ============================================================ */}
+      {/* ==== */}
       <motion.aside
         aria-label="Primary navigation"
         className="hidden lg:flex flex-col fixed inset-y-0 left-0 z-30 bg-white border-r border-[#E5E7EB] overflow-hidden"
@@ -253,9 +257,9 @@ export function Sidebar({ isOpen, onClose, onCollapsedChange }: SidebarProps) {
         <SidebarFooter collapsed={collapsed} onClose={onClose} />
       </motion.aside>
 
-      {/* ============================================================ */}
+      {/* ==== */}
       {/*  MOBILE DRAWER                                                */}
-      {/* ============================================================ */}
+      {/* ==== */}
       <AnimatePresence>
         {isOpen && (
           <>

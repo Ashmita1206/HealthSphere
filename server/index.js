@@ -44,6 +44,11 @@ const timelineRoutes = require('./routes/timelineRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const medicalProfileRoutes = require('./routes/medicalProfileRoutes');
 const doctorRoutes = require('./routes/doctorRoutes');
+
+const shareRoutes = require('./routes/shareRoutes');
+
+// Socket
+
 const recordShareRoutes = require('./routes/recordShareRoutes');
 const consultationRoutes = require('./routes/consultationRoutes');
 const symptomRoutes = require('./routes/symptomRoutes');
@@ -73,6 +78,7 @@ const monitoringController = require('./controllers/monitoringController');
 const monitoringService = require('./services/monitoringService');
 
 // Sockets
+
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
 const registerCollaborationSocket = require('./sockets/collaboration.socket');
@@ -83,9 +89,9 @@ const app = express();
 const httpServer = createServer(app);
 
 /*
-====================================================
+===
 Middlewares & Security Layer
-====================================================
+===
 */
 
 app.use(requestIdMiddleware);
@@ -145,9 +151,9 @@ app.use('/api/auth', authLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 /*
-====================================================
+===
 Database Connection
-====================================================
+===
 */
 
 async function connectDatabase() {
@@ -169,9 +175,9 @@ async function connectDatabase() {
 connectDatabase();
 
 /*
-====================================================
+===
 Health Probes & Prometheus Metrics
-====================================================
+===
 */
 
 // Request duration & metrics interceptor
@@ -213,10 +219,28 @@ app.get('/api/features', featureHandler);
 app.get('/api/v1/features', featureHandler);
 
 /*
-====================================================
+===
 Routes (API v1 & Legacy Prefix Aliasing)
-====================================================
+===
 */
+
+
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/health', healthRoutes);
+app.use('/api/reminders', reminderRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/emergency', emergencyRoutes);
+app.use('/api/chat', newChatRoutes);
+app.use('/api/legacy-chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/timeline', timelineRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/profile/medical', medicalProfileRoutes);
+app.use('/api/medical-profile', medicalProfileRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/share', shareRoutes);
 
 const apiPrefixes = ['/api', '/api/v1'];
 
@@ -264,10 +288,11 @@ apiPrefixes.forEach((prefix) => {
 
 app.use('/', systemRoutes);
 
+
 /*
-====================================================
+===
 Socket.IO
-====================================================
+===
 */
 
 const io = new Server(httpServer, {
@@ -289,17 +314,17 @@ registerRealtimeInfrastructureSocket(io);
 setIO(io);
 
 /*
-====================================================
+===
 Error Handler
-====================================================
+===
 */
 
 app.use(apiErrorFormatter);
 
 /*
-====================================================
+===
 Server Initialization
-====================================================
+===
 */
 
 const PORT = process.env.PORT || 4000;
@@ -311,9 +336,9 @@ httpServer.listen(PORT, () => {
 });
 
 /*
-====================================================
+===
 Graceful Shutdown & Fault Tolerance
-====================================================
+===
 */
 
 let isShuttingDown = false;
@@ -363,9 +388,9 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 /*
-====================================================
+===
 Unhandled Promise Rejections & Uncaught Exceptions
-====================================================
+===
 */
 
 process.on('unhandledRejection', (reason) => {

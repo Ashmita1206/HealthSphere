@@ -9,6 +9,8 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { TimelineProvider } from '@/context/TimelineContext';
 import { AnalyticsProvider } from '@/context/AnalyticsContext';
 import { MedicalProfileProvider } from '@/context/MedicalProfileContext';
+import { DoctorProvider } from '@/context/DoctorContext';
+import { ShareProvider } from '@/context/ShareContext';
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -21,6 +23,14 @@ import LoginPage from './pages/auth/Login';
 import RegisterPage from './pages/auth/Register';
 import Dashboard from './pages/dashboard';
 import NotFound from './pages/NotFound';
+
+import AIChat from './pages/AIChat';
+import MedicalReports from './pages/MedicalReports';
+import AIVision from './pages/AIVision';
+import AIHealthScore from './pages/AIHealthScore';
+import DoctorPortalPage from './pages/doctors';
+import SharedViewerPage from './pages/share/SharedViewerPage';
+
 
 // Lazy-loaded clinical workspaces and feature dashboards
 const Profile = lazy(() => import('./pages/profile'));
@@ -53,6 +63,7 @@ const OfflinePlatformDashboard = lazy(() => import('./pages/offline/OfflinePlatf
 const PerformanceDashboard = lazy(() => import('./pages/admin/PerformanceDashboard'));
 const MonitoringOpsDashboard = lazy(() => import('./pages/admin/MonitoringOpsDashboard'));
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -64,6 +75,64 @@ const App = () => (
             <TimelineProvider>
               <AnalyticsProvider>
                 <MedicalProfileProvider>
+
+                  <DoctorProvider>
+                    <ShareProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <Sonner />
+                        <HashRouter>
+                          <Routes>
+                            {/* Public routes */}
+                            <Route element={<Layout />}>
+                              <Route path="/" element={<Landing />} />
+                              <Route path="/about" element={<About />} />
+                              <Route path="/contact" element={<Contact />} />
+                              <Route path="/privacy" element={<Privacy />} />
+                              <Route path="/terms" element={<Terms />} />
+                            </Route>
+
+                            {/* Public Shared Medical Record Viewer */}
+                            <Route path="/shared/:token" element={<SharedViewerPage />} />
+                            <Route path="/share/access/:token" element={<SharedViewerPage />} />
+
+                            {/* Auth routes */}
+                            <Route path="/auth/login" element={<LoginPage />} />
+                            <Route path="/auth/register" element={<RegisterPage />} />
+
+                            {/* Protected routes */}
+                            <Route element={<Layout showSidebar />}>
+                              <Route path="/dashboard" element={<Dashboard />} />
+                              <Route path="/ai-chat" element={<AIChat />} />
+                              <Route path="/chat" element={<AIChat />} />
+                              <Route path="/medical-reports" element={<MedicalReports />} />
+                              <Route path="/ai-vision" element={<AIVision />} />
+                              <Route path="/ai-health-score" element={<AIHealthScore />} />
+                              <Route path="/profile" element={<Profile />} />
+                              <Route path="/medicines" element={<Medicines />} />
+                              <Route path="/reports" element={<Reports />} />
+                              <Route path="/appointments" element={<Appointments />} />
+                              <Route path="/doctors" element={<DoctorPortalPage />} />
+                              <Route path="/share" element={<DoctorPortalPage />} />
+                              <Route path="/doctor-portal" element={<DoctorPortalPage />} />
+                              <Route
+                                path="/blood-organ/info"
+                                element={<BloodOrganInfo />}
+                              />
+                              <Route path="/reminders" element={<Reminders />} />
+                              <Route path="/timeline" element={<Timeline />} />
+                              <Route path="/blood-donation" element={<BloodDonation />} />
+                              <Route path="/emergency" element={<Emergency />} />
+                              <Route path="/settings" element={<Settings />} />
+                            </Route>
+
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </HashRouter>
+                      </TooltipProvider>
+                    </ShareProvider>
+                  </DoctorProvider>
+
                   <TooltipProvider>
                     <Toaster />
                     <Sonner />
@@ -130,6 +199,7 @@ const App = () => (
                       </Suspense>
                     </HashRouter>
                   </TooltipProvider>
+
                 </MedicalProfileProvider>
               </AnalyticsProvider>
             </TimelineProvider>
