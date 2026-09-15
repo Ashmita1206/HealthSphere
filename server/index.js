@@ -1,5 +1,11 @@
 require('dotenv').config();
 
+const { validateEnvironment } = require('./config/envValidator');
+const { featureFlags } = require('./config/featureFlags');
+
+// Validate environment secrets and configuration
+validateEnvironment();
+
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -9,8 +15,19 @@ const mongoose = require('mongoose');
 
 const logger = require('./utils/logger');
 const { errorHandler } = require('./middlewares/errorHandler');
+const {
+  requestIdMiddleware,
+  mongoSanitize,
+  xssProtection,
+  configureCors,
+  apiErrorFormatter,
+} = require('./middlewares/security');
+const { apiLimiter, authLimiter } = require('./middlewares/rateLimiters');
+const { compressionMiddleware } = require('./middlewares/compression');
+const { requestLoggerMiddleware } = require('./middlewares/requestLogger');
 
 // Routes
+const monitoringRoutes = require('./routes/monitoringRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const healthRoutes = require('./routes/healthRoutes');
@@ -33,6 +50,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+
 const securityRoutes = require('./routes/securityRoutes');
 const collaborationRoutes = require('./routes/collaborationRoutes');
 const syncRoutes = require('./routes/syncRoutes');
@@ -40,36 +58,60 @@ const performanceRoutes = require('./routes/performanceRoutes');
 const monitoringRoutes = require('./routes/monitoringRoutes');
 const monitoringController = require('./controllers/monitoringController');
 const monitoringService = require('./services/monitoringService');
+
+const cdssRoutes = require('./routes/cdssRoutes');
+const medicalImagingRoutes = require('./routes/medicalImagingRoutes');
+const hospitalResourceRoutes = require('./routes/hospitalResourceRoutes');
+const populationIntelligenceRoutes = require('./routes/populationIntelligenceRoutes');
+const smartPharmacyRoutes = require('./routes/smartPharmacyRoutes');
+const labInformationRoutes = require('./routes/labInformationRoutes');
+const billingInsuranceRoutes = require('./routes/billingInsuranceRoutes');
+const clinicalResearchRoutes = require('./routes/clinicalResearchRoutes');
+const healthcareAutomationRoutes = require('./routes/healthcareAutomationRoutes');
+const enterpriseCommandCenterRoutes = require('./routes/enterpriseCommandCenterRoutes');
+
+// Socket
+
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
 const registerCollaborationSocket = require('./sockets/collaboration.socket');
+const { registerRealtimeInfrastructureSocket } = require('./sockets/realtimeInfrastructure.socket');
 const { setIO } = require('./services/realtimeService');
 
 const app = express();
 const httpServer = createServer(app);
 
 /*
-====================================================
-Middlewares
-====================================================
+===
+Middlewares & Security Layer
+===
 */
 
-app.use(helmet());
-
+app.use(requestIdMiddleware);
+app.use(requestLoggerMiddleware);
+app.use(compressionMiddleware());
+app.use(monitoringRoutes);
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL || '*',
-    credentials: true,
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   }),
 );
-
+app.use(cors(configureCors()));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize);
+app.use(xssProtection);
+
+// Global & Auth Rate Limiters
+app.use('/api', apiLimiter);
+app.use('/api/v1', apiLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/v1/auth', authLimiter);
 
 /*
-====================================================
+===
 Database
-====================================================
+===
 */
 
 async function connectDatabase() {
@@ -93,10 +135,11 @@ async function connectDatabase() {
 connectDatabase();
 
 /*
-====================================================
+===
 Health Probes & Prometheus Metrics (F39)
-====================================================
+===
 */
+
 
 // Request duration & metrics interceptor
 app.use((req, res, next) => {
@@ -113,16 +156,34 @@ app.get('/health/readiness', monitoringController.getReadiness);
 app.get('/metrics', monitoringController.getPrometheusMetrics);
 
 app.get('/api/healthcheck', (_req, res) => {
+
+const healthHandler = (_req, res) => {
+
   res.status(200).json({
     success: true,
     message: 'HealthSphere Backend Running 🚀',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
   });
-});
+};
+
+app.get('/api/healthcheck', healthHandler);
+app.get('/api/v1/healthcheck', healthHandler);
+
+const featureHandler = (_req, res) => {
+  res.status(200).json({
+    success: true,
+    features: featureFlags.getAllFlags(),
+  });
+};
+
+app.get('/api/features', featureHandler);
+app.get('/api/v1/features', featureHandler);
 
 /*
-====================================================
-Routes
-====================================================
+===
+Routes (API v1 & Legacy Prefix Aliasing)
+===
 */
 
 app.use('/api/auth', authRoutes);
@@ -153,10 +214,49 @@ app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/monitoring', monitoringRoutes);
+
+const apiPrefixes = ['/api', '/api/v1'];
+
+apiPrefixes.forEach((prefix) => {
+  app.use(`${prefix}/auth`, authRoutes);
+  app.use(`${prefix}/user`, userRoutes);
+  app.use(`${prefix}/health`, healthRoutes);
+  app.use(`${prefix}/reminders`, reminderRoutes);
+  app.use(`${prefix}/reports`, reportRoutes);
+  app.use(`${prefix}/emergency`, emergencyRoutes);
+  app.use(`${prefix}/chat`, newChatRoutes);
+  app.use(`${prefix}/legacy-chat`, chatRoutes);
+  app.use(`${prefix}/ai`, aiRoutes);
+  app.use(`${prefix}/notifications`, notificationRoutes);
+  app.use(`${prefix}/timeline`, timelineRoutes);
+  app.use(`${prefix}/analytics`, analyticsRoutes);
+  app.use(`${prefix}/profile/medical`, medicalProfileRoutes);
+  app.use(`${prefix}/medical-profile`, medicalProfileRoutes);
+  app.use(`${prefix}/doctors`, doctorRoutes);
+  app.use(`${prefix}/records`, recordShareRoutes);
+  app.use(`${prefix}/consultations`, consultationRoutes);
+  app.use(`${prefix}/ai`, symptomRoutes);
+  app.use(`${prefix}/dashboard`, dashboardRoutes);
+  app.use(`${prefix}/admin`, adminRoutes);
+  app.use(`${prefix}/wearables`, wearableRoutes);
+  app.use(`${prefix}/workflows`, workflowRoutes);
+  app.use(`${prefix}/assistant`, assistantRoutes);
+  app.use(`${prefix}/cdss`, cdssRoutes);
+  app.use(`${prefix}/imaging`, medicalImagingRoutes);
+  app.use(`${prefix}/resources`, hospitalResourceRoutes);
+  app.use(`${prefix}/population`, populationIntelligenceRoutes);
+  app.use(`${prefix}/pharmacy`, smartPharmacyRoutes);
+  app.use(`${prefix}/lab`, labInformationRoutes);
+  app.use(`${prefix}/billing`, billingInsuranceRoutes);
+  app.use(`${prefix}/research`, clinicalResearchRoutes);
+  app.use(`${prefix}/automation`, healthcareAutomationRoutes);
+  app.use(`${prefix}/command-center`, enterpriseCommandCenterRoutes);
+});
+
 /*
-====================================================
+===
 Socket.IO
-====================================================
+===
 */
 
 const io = new Server(httpServer, {
@@ -170,20 +270,21 @@ const io = new Server(httpServer, {
 registerChatSocket(io);
 registerNotificationSocket(io);
 registerCollaborationSocket(io);
+registerRealtimeInfrastructureSocket(io);
 setIO(io);
 
 /*
-====================================================
+===
 Error Handler
-====================================================
+===
 */
 
-app.use(errorHandler);
+app.use(apiErrorFormatter);
 
 /*
-====================================================
+===
 Server
-====================================================
+===
 */
 
 const PORT = process.env.PORT || 4000;
@@ -195,9 +296,9 @@ httpServer.listen(PORT, () => {
 });
 
 /*
-====================================================
+===
 Graceful Shutdown
-====================================================
+===
 */
 
 process.on('SIGINT', async () => {
@@ -217,9 +318,9 @@ process.on('SIGTERM', async () => {
 });
 
 /*
-====================================================
+===
 Unhandled Promise Rejections
-====================================================
+===
 */
 
 process.on('unhandledRejection', (reason) => {
@@ -229,9 +330,9 @@ process.on('unhandledRejection', (reason) => {
 });
 
 /*
-====================================================
+===
 Uncaught Exceptions
-====================================================
+===
 */
 
 process.on('uncaughtException', (error) => {
