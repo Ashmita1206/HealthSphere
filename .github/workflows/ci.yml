@@ -4,10 +4,14 @@ on:
   push:
     branches:
       - main
+      - master
+      - develop
       - 'feature/**'
   pull_request:
     branches:
       - main
+      - master
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,11 +19,12 @@ concurrency:
 
 jobs:
   # ====================================================
-  # Stage 1: Quality Checks (Install, Lint & TypeCheck)
+  # Stage 1: Quality Checks & Hygiene
   # ====================================================
-  quality_checks:
-    name: 🔍 Quality & Type Safety
+  lint-and-typecheck:
+    name: 🔍 Code Hygiene & Type Safety
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -30,26 +35,35 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Frontend Dependencies
-        run: npm ci
+      - name: Install Frontend & Root Dependencies
+        run: npm ci --legacy-peer-deps || npm ci
 
-      - name: Install Backend Dependencies
-        working-directory: server
-        run: npm ci
-
-      - name: Verify TypeScript Safety
-        run: npx tsc --noEmit
+      - name: Install Backend Server Dependencies
+        working-directory: ./server
+        run: npm ci || npm install
 
       - name: Run ESLint
         run: npm run lint
 
-  # ====================================================
-  # Stage 2: Automated Tests
-  # ====================================================
-  automated_testing:
-    name: 🧪 Automated Test Suite
+      - name: Run TypeScript Validation (noEmit)
+        run: npx tsc --noEmit
+
+  quality_checks:
+    name: 🔍 Quality Checks Gate
+    needs: [lint-and-typecheck]
     runs-on: ubuntu-latest
-    needs: quality_checks
+    steps:
+      - name: Quality Verification
+        run: echo "Quality and type safety gates passed successfully."
+
+  # ====================================================
+  # Stage 2: Automated Test Suites
+  # ====================================================
+  test:
+    name: 🧪 Comprehensive Healthcare Test Suite
+    needs: [quality_checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -61,18 +75,27 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps || npm ci
 
       - name: Run Vitest Production Test Suites
-        run: npm test -- --no-file-parallelism
+        run: npm test -- --run --no-file-parallelism
+
+  automated_testing:
+    name: 🧪 Automated Testing Gate
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Testing Verification
+        run: echo "Automated test suites passed successfully."
 
   # ====================================================
-  # Stage 3: Production Build
+  # Stage 3: Production Build & Artifacts
   # ====================================================
-  production_build:
-    name: 📦 Production Bundle Build
+  build:
+    name: 📦 Production Web Bundle Build
+    needs: [automated_testing]
     runs-on: ubuntu-latest
-    needs: automated_testing
+    timeout-minutes: 15
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -84,27 +107,36 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps || npm ci
 
-      - name: Build Optimized Frontend Bundle
+      - name: Build Optimized Production Bundle
         run: npm run build
         env:
           NODE_ENV: production
 
-      - name: Archive Production Build Artifacts
+      - name: Upload Production Web Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: healthsphere-dist
+          name: healthsphere-production-dist
           path: dist/
-          retention-days: 7
+          retention-days: 14
+          if-no-files-found: error
+
+  production_build:
+    name: 📦 Production Build Gate
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Verification
+        run: echo "Production bundle built and archived successfully."
 
   # ====================================================
   # Stage 4: Docker Container Builds
   # ====================================================
   docker_validation:
     name: 🐳 Docker Container Validation
+    needs: [production_build]
     runs-on: ubuntu-latest
-    needs: production_build
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -133,8 +165,8 @@ jobs:
   # ====================================================
   deployment_ready:
     name: 🚀 Deployment Ready Gate
+    needs: [docker_validation]
     runs-on: ubuntu-latest
-    needs: [quality_checks, automated_testing, production_build, docker_validation]
     steps:
       - name: Verification Confirmation
         run: |

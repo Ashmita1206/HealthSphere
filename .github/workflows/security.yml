@@ -2,13 +2,16 @@ name: HealthSphere Enterprise Security Scanning
 
 on:
   schedule:
-    - cron: '0 2 * * 1' # Weekly on Monday 02:00 UTC
+    # Weekly on Monday 02:00 UTC
+    - cron: '0 2 * * 1'
   push:
     branches:
       - main
+      - master
   pull_request:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -18,21 +21,25 @@ jobs:
   dependency_security:
     name: 🛡️ Dependency Vulnerability Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Audit Frontend Dependencies
-        run: npm audit --audit-level=high || true
+      - name: Audit Root & Frontend Dependencies
+        run: |
+          npm audit --audit-level=high || echo "::warning ::Vulnerabilities detected in root dependencies"
 
-      - name: Audit Backend Dependencies
-        working-directory: server
-        run: npm audit --audit-level=high || true
+      - name: Audit Server Dependencies
+        working-directory: ./server
+        run: |
+          npm audit --audit-level=high || echo "::warning ::Vulnerabilities detected in server dependencies"
 
   # ====================================================
   # Static Code Security Analysis (SAST)

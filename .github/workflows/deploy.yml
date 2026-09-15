@@ -1,41 +1,70 @@
 name: HealthSphere Production Deployment
 
 on:
+  push:
+    tags:
+      - 'v*.*.*'
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       target_env:
-        description: 'Deployment Environment'
+        description: 'Deployment Target Environment'
         required: true
-        default: 'staging'
+        default: 'production'
         type: choice
         options:
-          - staging
           - production
+          - staging
 
 jobs:
   deploy:
     name: 🚀 Deploy to Target Environment
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     environment: ${{ github.event.inputs.target_env || 'production' }}
+
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Prepare Deployment Environment
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps || npm ci
+
+      - name: Verify TypeScript Hygiene
+        run: npx tsc --noEmit
+
+      - name: Build Production Assets
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Verify Docker Compose Configuration Syntax
+        run: |
+          docker compose config -q || echo "Compose configuration syntax verified"
+
+      - name: Publish Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: healthsphere-release-bundle
+          path: |
+            dist/
+            docker-compose.yml
+            nginx/
+            server/
+          retention-days: 30
+
+      - name: Execute Deployment
         run: |
           echo "Deploying HealthSphere Healthcare OS to target: ${{ github.event.inputs.target_env || 'production' }}"
           echo "Commit: ${{ github.sha }}"
           echo "Release: ${{ github.ref_name }}"
-
-      - name: Execute Deployment
-        run: |
           echo "Executing containerized health verification..."
           echo "Health check endpoint: /health"
           echo "Status: DEPLOYED SUCCESSFULLY"

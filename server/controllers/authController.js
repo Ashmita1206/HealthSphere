@@ -3,6 +3,12 @@ const User = require('../models/User');
 const Session = require('../models/Session');
 const LoginHistory = require('../models/LoginHistory');
 const {
+  generateTokens,
+  verifyRefreshToken,
+  setAuthCookies,
+  clearAuthCookies,
+} = require('../services/tokenService');
+const {
   generateAccessToken,
   createSession,
   rotateRefreshToken,
@@ -12,6 +18,11 @@ const {
   createEmailVerificationToken,
   hashToken,
 } = require('../services/authService');
+
+let logAuditEvent = null;
+try {
+  logAuditEvent = require('../services/auditService').logAuditEvent;
+} catch (_e) {}
 
 async function signup(req, res, next) {
   try {
@@ -24,24 +35,49 @@ async function signup(req, res, next) {
     if (exists) return res.status(409).json({ message: 'Email already registered' });
 
     const hashed = await bcrypt.hash(password, 10);
+    const assignedRole = role && ['patient', 'doctor', 'nurse', 'admin'].includes(role) ? role : 'patient';
     const user = new User({
       name: userName,
       email: email.toLowerCase(),
       password: hashed,
-      role: role && ['patient', 'doctor', 'nurse', 'admin'].includes(role) ? role : 'patient',
+      role: assignedRole,
     });
 
-    const verificationToken = createEmailVerificationToken(user);
+    let verificationToken = null;
+    if (typeof createEmailVerificationToken === 'function') {
+      verificationToken = createEmailVerificationToken(user);
+    }
     await user.save();
 
-    const accessToken = generateAccessToken(user);
-    const { rawRefreshToken } = await createSession(user, req);
+    let rawRefreshToken = null;
+    try {
+      const sessionResult = await createSession(user, req);
+      rawRefreshToken = sessionResult.rawRefreshToken;
+    } catch (_e) {}
+
+    const { accessToken, refreshToken: fallbackRefreshToken } = generateTokens(user._id, user.role || assignedRole);
+    const finalRefreshToken = rawRefreshToken || fallbackRefreshToken;
+
+    setAuthCookies(res, { accessToken, refreshToken: finalRefreshToken });
+
+    if (logAuditEvent) {
+      await logAuditEvent({
+        userId: user._id,
+        action: 'AUTH_SIGNUP_SUCCESS',
+        resource: 'User',
+        role: user.role || assignedRole,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        status: 'success',
+        details: { email: user.email },
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       success: true,
       token: accessToken,
       accessToken,
-      refreshToken: rawRefreshToken,
+      refreshToken: finalRefreshToken,
       emailVerificationToken: verificationToken,
       user: {
         id: user._id,
@@ -65,13 +101,13 @@ async function login(req, res, next) {
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      await handleFailedLogin(null, req, 'User does not exist');
+      await handleFailedLogin(null, req, 'User does not exist').catch(() => {});
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    if (user.isAccountLocked()) {
+    if (user.isAccountLocked && user.isAccountLocked()) {
       const minutesRemaining = Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000));
-      await handleFailedLogin(user, req, 'Account locked');
+      await handleFailedLogin(user, req, 'Account locked').catch(() => {});
       return res.status(423).json({
         success: false,
         message: `Account is temporarily locked due to excessive failed attempts. Try again in ${minutesRemaining} minute(s).`,
@@ -81,20 +117,53 @@ async function login(req, res, next) {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      await handleFailedLogin(user, req, 'Incorrect password');
+      await handleFailedLogin(user, req, 'Incorrect password').catch(() => {});
+      if (logAuditEvent) {
+        await logAuditEvent({
+          userId: user._id,
+          action: 'AUTH_LOGIN_FAILED',
+          resource: 'User',
+          role: user.role || 'patient',
+          ipAddress: req.ip || req.connection?.remoteAddress,
+          userAgent: req.headers['user-agent'],
+          status: 'failed',
+          details: { reason: 'bad_password' },
+        }).catch(() => {});
+      }
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    await handleSuccessfulLogin(user, req);
+    await handleSuccessfulLogin(user, req).catch(() => {});
 
-    const accessToken = generateAccessToken(user);
-    const { rawRefreshToken } = await createSession(user, req);
+    let rawRefreshToken = null;
+    try {
+      const sessionResult = await createSession(user, req);
+      rawRefreshToken = sessionResult.rawRefreshToken;
+    } catch (_e) {}
+
+    const { accessToken, refreshToken: fallbackRefreshToken } = generateTokens(user._id, user.role || 'patient');
+    const finalRefreshToken = rawRefreshToken || fallbackRefreshToken;
+
+    setAuthCookies(res, { accessToken, refreshToken: finalRefreshToken });
+
+    if (logAuditEvent) {
+      await logAuditEvent({
+        userId: user._id,
+        action: 'AUTH_LOGIN_SUCCESS',
+        resource: 'User',
+        role: user.role || 'patient',
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        status: 'success',
+        details: { email: user.email },
+      }).catch(() => {});
+    }
 
     res.json({
       success: true,
       token: accessToken,
       accessToken,
-      refreshToken: rawRefreshToken,
+      refreshToken: finalRefreshToken,
       user: {
         id: user._id,
         email: user.email,
@@ -110,26 +179,70 @@ async function login(req, res, next) {
 
 async function refreshTokenHandler(req, res, next) {
   try {
-    const combinedToken = req.body.refreshToken || req.headers['x-refresh-token'];
-    if (!combinedToken) {
-      return res.status(400).json({ message: 'Refresh token is required' });
+    const headerToken = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : null;
+    const incomingToken = req.body?.refreshToken || req.cookies?.refreshToken || req.headers?.['x-refresh-token'] || headerToken;
+
+    if (!incomingToken) {
+      return res.status(400).json({ success: false, message: 'Refresh token is required' });
     }
 
-    const result = await rotateRefreshToken(combinedToken);
+    // Try rotateRefreshToken first if session token format
+    if (incomingToken.includes('.')) {
+      try {
+        const result = await rotateRefreshToken(incomingToken);
+        setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
+        return res.json({
+          success: true,
+          token: result.accessToken,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          user: result.user,
+        });
+      } catch (err) {
+        return res.status(401).json({
+          success: false,
+          message: err.message || 'Token refresh failed',
+        });
+      }
+    }
+
+    // Standard JWT refresh token
+    const decoded = verifyRefreshToken(incomingToken);
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User session not found' });
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id, user.role || 'patient');
+    setAuthCookies(res, { accessToken, refreshToken: newRefreshToken });
+
+    if (logAuditEvent) {
+      await logAuditEvent({
+        userId: user._id,
+        action: 'AUTH_TOKEN_REFRESH_SUCCESS',
+        resource: 'Session',
+        role: user.role || 'patient',
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        status: 'success',
+      }).catch(() => {});
+    }
+
     res.json({
       success: true,
-      token: result.accessToken,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      user: result.user,
+      token: accessToken,
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: { id: user._id, email: user.email, name: user.name, role: user.role || 'patient' },
     });
   } catch (error) {
-    res.status(401).json({
-      success: false,
-      message: error.message || 'Token refresh failed',
-    });
+    res.status(401).json({ success: false, message: 'Invalid or expired refresh token', error: error.message });
   }
 }
+
+const refresh = refreshTokenHandler;
 
 async function getSessions(req, res, next) {
   try {
@@ -162,7 +275,7 @@ async function revokeSessionHandler(req, res, next) {
     }
 
     session.isRevoked = true;
-    session.revokedReason = req.body.reason || 'User initiated manual revocation';
+    session.revokedReason = req.body?.reason || 'User initiated manual revocation';
     await session.save();
 
     res.json({ success: true, message: 'Session revoked successfully' });
@@ -173,13 +286,26 @@ async function revokeSessionHandler(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    const token = req.body.refreshToken || req.headers['x-refresh-token'];
+    clearAuthCookies(res);
+    const token = req.body?.refreshToken || req.headers?.['x-refresh-token'];
     if (token && token.includes('.')) {
       const [sessionId] = token.split('.');
       await Session.findByIdAndUpdate(sessionId, {
         isRevoked: true,
         revokedReason: 'User logged out',
-      });
+      }).catch(() => {});
+    }
+
+    if (req.user?._id && logAuditEvent) {
+      await logAuditEvent({
+        userId: req.user._id,
+        action: 'AUTH_LOGOUT',
+        resource: 'Session',
+        role: req.user.role || 'patient',
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        status: 'success',
+      }).catch(() => {});
     }
 
     res.json({ success: true, message: 'Logged out successfully' });
@@ -211,7 +337,6 @@ async function forgotPassword(req, res, next) {
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      // Return success to avoid email enumeration
       return res.json({
         success: true,
         message: 'If the email exists in our system, a password reset link has been dispatched.',
@@ -224,7 +349,7 @@ async function forgotPassword(req, res, next) {
     res.json({
       success: true,
       message: 'Password reset token generated successfully',
-      resetToken, // Returned for dev/test workflows; in prod sent via secure email
+      resetToken,
     });
   } catch (error) {
     next(error);
@@ -255,7 +380,6 @@ async function resetPassword(req, res, next) {
     user.lockUntil = null;
     await user.save();
 
-    // Revoke all existing sessions upon password reset
     await Session.updateMany({ userId: user._id }, { isRevoked: true, revokedReason: 'Password was changed' });
 
     res.json({ success: true, message: 'Password reset successful. Please log in with your new password.' });
@@ -293,6 +417,7 @@ async function verifyEmail(req, res, next) {
 module.exports = {
   signup,
   login,
+  refresh,
   refreshTokenHandler,
   getSessions,
   revokeSessionHandler,

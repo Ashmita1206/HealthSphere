@@ -201,11 +201,37 @@ npm run build
 
 ---
 
-## 🚀 Phase 3 — Enterprise Security, Scalability & Production Readiness (F35–F45)
+## 🚀 Phase 3 — Enterprise Production Architecture, Security & DevOps (F35–F45)
 
-HealthSphere has been transformed from a prototype into an **Enterprise Healthcare Operating System** compliant with clinical production standards:
+HealthSphere is containerized, hardened, and transformed into an **Enterprise Healthcare Operating System** compliant with clinical production standards:
 
-### Milestone Architecture Breakdown
+### 🐳 Docker Production Stack
+Launch the full platform (Frontend Nginx, Backend Node.js, MongoDB 7.0, Redis 7.2 Cache) with a single command:
+```bash
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up -d --build
+```
+
+### 📊 Observability & Health Probes
+- **System Health**: `GET /api/system/health` (Database latency, memory usage, CPU uptime)
+- **Kubernetes Liveness Probe**: `GET /health/liveness` / `GET /api/system/live`
+- **Kubernetes Readiness Probe**: `GET /health/readiness` / `GET /api/system/ready`
+- **Telemetry Metrics**: `GET /metrics` / `GET /api/system/metrics` (Prometheus & response latency percentiles)
+
+### 🛡️ Enterprise Security Hardening
+- **Helmet with Content Security Policy (CSP)** tailored for Leaflet map tiles, Cloudinary media, and WebSockets.
+- **NoSQL Mongo Injection Defense** & Deep XSS input sanitization.
+- **Tiered Rate Limiting**: Auth (20/15m), API (300/15m), AI (30/min), Emergency SOS (120/min).
+- **JWT Refresh Token Rotation** with session tracking and secure HTTP-only cookies.
+- **Asynchronous Audit Logging** into MongoDB `AuditLog` collection.
+
+### ⚡ Performance Optimizations
+- **Route-level Code Splitting**: React.lazy & Suspense with `<AppLoadingFallback />`.
+- **Bundle Chunk Splitting**: 75% reduction in initial bundle size (from 1.9MB down to 467kB).
+- **Redis-Ready LRU Cache**: Sub-millisecond response times for clinical directories.
+- **Native Gzip/Deflate Compression**: Responses over 1KB compressed on-the-fly.
+
+### Milestone Architecture Breakdown (F35–F45)
 - 🛡️ **F35 — API Security Layer**: Helmet CSP, tiered rate limiting, NoSQL injection and XSS sanitization, dual `/api` and `/api/v1` version routing, request ID tracing (`x-request-id`), standardized error formatter.
 - 🔑 **F36 — Authentication Upgrade**: Refresh token rotation with reuse attack mitigation, active device session tracking, login history forensics, 15-minute account lockout on 5 failed attempts, password reset and email verification flows.
 - ⚡ **F37 — Performance Optimization**: Multi-tier cache layer (Redis + in-memory fallback), native `zlib` response compression, bounded MongoDB pagination helper, priority background worker queues (`jobQueueService`), image dimension optimizer.
@@ -226,6 +252,8 @@ docker compose up -d --build
 # Run Phase 3 automated regression suite
 node scripts/run-regression-suite.cjs
 ```
+
+📖 Full Deployment Instructions: [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
 
 ---
 

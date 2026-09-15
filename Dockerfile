@@ -1,40 +1,56 @@
 # ====================================================
 # HealthSphere AI — Production Frontend Dockerfile
 # Multi-stage build: Node.js 20 -> Nginx Alpine
+# Stage 1: Build Application with Node.js
+# Stage 2: Serve Production Assets with Nginx Alpine
 # ====================================================
 
-# Stage 1: Build Frontend Assets
+# -----------------
+# 1. Build Stage
+# -----------------
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency manifests
-COPY package.json package-lock.json ./
-RUN npm ci
+# Accept build arguments for environment variables
+ARG VITE_API_URL
+ARG VITE_SOCKET_URL
 
-# Copy source code and configuration
-COPY . .
-
-# Build production bundle
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
 ENV NODE_ENV=production
+
+# Install build dependencies
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+# Copy source code and build
+COPY . .
 RUN npm run build
 
-# Stage 2: Serve with Nginx Alpine
-FROM nginx:alpine AS runner
+# -----------------
+# 2. Production Stage
+# -----------------
+# FROM nginx:alpine AS runner
+FROM nginx:1.27-alpine AS runner
 
-# Remove default nginx static assets
-RUN rm -rf /usr/share/nginx/html/*
-
-# Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Add non-root security improvements & remove default static assets
+RUN rm -rf /etc/nginx/conf.d/default.conf \
+    && rm -rf /usr/share/nginx/html/*
 
 # Copy custom Nginx configuration
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# Copy compiled assets from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
+# Expose HTTP and HTTPS ports
+EXPOSE 80 443
 
+# Healthcheck to ensure Nginx is actively serving
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
+# Start Nginx in foreground
 CMD ["nginx", "-g", "daemon off;"]

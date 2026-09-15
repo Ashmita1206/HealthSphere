@@ -1,16 +1,17 @@
-const { cacheService } = require('../services/cacheService');
-
 /**
- * Route level caching middleware for Express
- * @param {Object} options
- * @param {number} options.ttl - TTL in seconds (default: 60)
- * @param {Function} [options.keyGenerator] - Custom cache key generator (req) => string
+ * HealthSphere API Response Caching Middleware
+ * Automatically caches idempotent GET requests and attaches X-Cache header
  */
-function cacheMiddleware(options = {}) {
-  const ttl = options.ttl || 60;
-  const keyGenerator = options.keyGenerator || ((req) => {
+
+const defaultCacheService = require('../services/cacheService');
+
+function createCacheHandler(options = {}) {
+  const ttl = typeof options === 'number' ? options : (options.ttl || 60);
+  const keyGenerator = (typeof options === 'object' && options.keyGenerator) || ((req) => {
     const userScope = req.user ? `user:${req.user._id || req.user.id}` : 'anon';
-    return `http-cache:${userScope}:${req.originalUrl || req.url}`;
+    const queryStr = req.query ? JSON.stringify(req.query) : '';
+    const path = req.baseUrl ? `${req.baseUrl}${req.path}` : (req.originalUrl || req.url || req.path);
+    return `http-cache:${userScope}:${path}:${queryStr}`;
   });
 
   return async (req, res, next) => {
@@ -19,21 +20,40 @@ function cacheMiddleware(options = {}) {
       return next();
     }
 
+    // Bypass cache if client explicitly requests no-cache
+    if (req.headers && req.headers['cache-control'] === 'no-cache') {
+      if (typeof res.setHeader === 'function') {
+        res.setHeader('X-Cache', 'BYPASS');
+        res.setHeader('x-cache', 'BYPASS');
+      }
+      return next();
+    }
+
     const key = keyGenerator(req);
+
     try {
-      const cached = await cacheService.get(key);
-      if (cached) {
-        res.setHeader('x-cache', 'HIT');
+      const cached = await defaultCacheService.get(key);
+      if (cached !== null && cached !== undefined) {
+        if (typeof res.setHeader === 'function') {
+          res.setHeader('X-Cache', 'HIT');
+          res.setHeader('x-cache', 'HIT');
+        }
+        if (typeof res.status === 'function') {
+          return res.status(200).json(cached);
+        }
         return res.json(cached);
       }
 
-      res.setHeader('x-cache', 'MISS');
+      if (typeof res.setHeader === 'function') {
+        res.setHeader('X-Cache', 'MISS');
+        res.setHeader('x-cache', 'MISS');
+      }
 
       // Intercept res.json to capture response payload
       const originalJson = res.json.bind(res);
       res.json = (body) => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          cacheService.set(key, body, ttl).catch(() => {});
+        if (res.statusCode === undefined || (res.statusCode >= 200 && res.statusCode < 300)) {
+          defaultCacheService.set(key, body, ttl).catch(() => {});
         }
         return originalJson(body);
       };
@@ -45,4 +65,15 @@ function cacheMiddleware(options = {}) {
   };
 }
 
-module.exports = { cacheMiddleware };
+function cacheResponse(ttlSeconds = 60) {
+  return createCacheHandler(ttlSeconds);
+}
+
+function cacheMiddleware(options = {}) {
+  return createCacheHandler(options);
+}
+
+module.exports = {
+  cacheResponse,
+  cacheMiddleware,
+};

@@ -1,0 +1,148 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "HealthSphere Enterprise Healthcare Operating System API",
+    "description": "Production-grade, HIPAA-compliant REST and Real-Time APIs for HealthSphere AI OS.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "HealthSphere Engineering Team",
+      "email": "api@healthsphere.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "API Version 1 (Production Enterprise Gateway)"
+    },
+    {
+      "url": "/api",
+      "description": "Standard API Root (Backwards Compatible)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT Bearer token obtained via /api/v1/auth/login"
+      },
+      "CsrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "Double-submit cookie CSRF validation token for state-changing requests"
+      }
+    },
+    "schemas": {
+      "PaginationMetadata": {
+        "type": "object",
+        "properties": {
+          "totalItems": { "type": "integer", "example": 142 },
+          "totalPages": { "type": "integer", "example": 8 },
+          "currentPage": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 20 },
+          "hasNextPage": { "type": "boolean", "example": true },
+          "hasPrevPage": { "type": "boolean", "example": false }
+        }
+      },
+      "SystemHealth": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["healthy", "degraded"], "example": "healthy" },
+          "service": { "type": "string", "example": "healthsphere-healthcare-os" },
+          "uptimeSeconds": { "type": "integer", "example": 18240 },
+          "database": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "example": "connected" },
+              "latencyMs": { "type": "number", "example": 4.2 }
+            }
+          },
+          "cpu": {
+            "type": "object",
+            "properties": {
+              "cores": { "type": "integer", "example": 8 },
+              "loadAvg": { "type": "array", "items": { "type": "number" } }
+            }
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "rssMB": { "type": "number", "example": 142.5 },
+              "heapUsedMB": { "type": "number", "example": 68.2 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/system/health": {
+      "get": {
+        "summary": "Health Diagnostics Probe",
+        "description": "Returns system health, CPU load average, database connectivity, and memory metrics.",
+        "responses": {
+          "200": {
+            "description": "System operational",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SystemHealth" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/metrics": {
+      "get": {
+        "summary": "Operational Performance Telemetry",
+        "description": "Returns latency percentiles (p50, p95, p99), error rates, and request throughput.",
+        "responses": {
+          "200": {
+            "description": "Metrics retrieved successfully"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Clinical User Authentication",
+        "description": "Authenticates user credentials and issues JWT access token and secure HTTP-only refresh cookie.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authentication successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/reports": {
+      "get": {
+        "summary": "List Patient Medical Reports (Paginated)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "default": "-createdAt" } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated list of medical reports" }
+        }
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@ const Joi = require('joi');
 const {
   signup,
   login,
+  refresh,
   refreshTokenHandler,
   getSessions,
   revokeSessionHandler,
@@ -30,7 +31,7 @@ const loginSchema = Joi.object({
 });
 
 const refreshSchema = Joi.object({
-  refreshToken: Joi.string().required(),
+  refreshToken: Joi.string().allow('', null).optional(),
 });
 
 const forgotPasswordSchema = Joi.object({
@@ -49,7 +50,7 @@ const verifyEmailSchema = Joi.object({
 // Primary auth endpoints
 router.post('/signup', authLimiter, validate(signupSchema), signup);
 router.post('/login', authLimiter, validate(loginSchema), login);
-router.post('/refresh', authLimiter, validate(refreshSchema), refreshTokenHandler);
+router.post('/refresh', authLimiter, validate(refreshSchema), refreshTokenHandler || refresh);
 router.post('/logout', logout);
 
 // Session and Device management (Protected)

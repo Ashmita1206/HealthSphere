@@ -124,6 +124,9 @@ function broadcastPrescriptionUpdate(consultationId, prescriptionData) {
   });
 }
 
+const presenceService = require('./presenceService');
+
+
 /**
  * Broadcast consultation message
  */
@@ -132,6 +135,40 @@ function broadcastConsultationMessage(consultationId, message) {
 
   const room = `consultation:${consultationId.toString()}`;
   broadcastToRoom(room, 'new_message', message);
+}
+
+/**
+ * Enhanced consultation WebRTC signaling helper
+ */
+function broadcastConsultationSignal(consultationId, senderId, signalData) {
+
+  if (!consultationId || !ioInstance) return;
+
+  const room = `consultation:${consultationId.toString()}`;
+  ioInstance.to(room).emit('consultation_signal', {
+    consultationId,
+    senderId,
+    signal: signalData,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Stream low-latency notification with acknowledgment support
+ */
+function streamLiveNotification(userId, notification, options = {}) {
+  if (!userId || !ioInstance) return false;
+
+  const userRoom = `user:${userId.toString()}`;
+  const payload = {
+    notification,
+    trackId: options.trackId || `notif-stream-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    requireAck: !!options.requireAck,
+  };
+
+  ioInstance.to(userRoom).emit('notification_stream', payload);
+  return true;
 }
 
 module.exports = {
@@ -144,4 +181,8 @@ module.exports = {
   broadcastConsultationStatus,
   broadcastPrescriptionUpdate,
   broadcastConsultationMessage,
+  broadcastConsultationSignal,
+  streamLiveNotification,
+  presenceService,
 };
+

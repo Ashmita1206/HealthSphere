@@ -14,17 +14,19 @@ const helmet = require('helmet');
 const mongoose = require('mongoose');
 
 const logger = require('./utils/logger');
-const { errorHandler } = require('./middlewares/errorHandler');
+const { morganMiddleware } = require('./utils/logger');
 const {
   requestIdMiddleware,
   mongoSanitize,
+  xssSanitize,
   xssProtection,
+  securityHeaders,
   configureCors,
   apiErrorFormatter,
 } = require('./middlewares/security');
 const { apiLimiter, authLimiter } = require('./middlewares/rateLimiters');
 const { compressionMiddleware } = require('./middlewares/compression');
-const { requestLoggerMiddleware } = require('./middlewares/requestLogger');
+const { requestLogger } = require('./middlewares/requestLogger');
 
 // Routes
 const monitoringRoutes = require('./routes/monitoringRoutes');
@@ -50,15 +52,11 @@ const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
-
+const systemRoutes = require('./routes/systemRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const collaborationRoutes = require('./routes/collaborationRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
-const monitoringRoutes = require('./routes/monitoringRoutes');
-const monitoringController = require('./controllers/monitoringController');
-const monitoringService = require('./services/monitoringService');
-
 const cdssRoutes = require('./routes/cdssRoutes');
 const medicalImagingRoutes = require('./routes/medicalImagingRoutes');
 const hospitalResourceRoutes = require('./routes/hospitalResourceRoutes');
@@ -70,8 +68,11 @@ const clinicalResearchRoutes = require('./routes/clinicalResearchRoutes');
 const healthcareAutomationRoutes = require('./routes/healthcareAutomationRoutes');
 const enterpriseCommandCenterRoutes = require('./routes/enterpriseCommandCenterRoutes');
 
-// Socket
+// Controllers & Services
+const monitoringController = require('./controllers/monitoringController');
+const monitoringService = require('./services/monitoringService');
 
+// Sockets
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
 const registerCollaborationSocket = require('./sockets/collaboration.socket');
@@ -82,25 +83,60 @@ const app = express();
 const httpServer = createServer(app);
 
 /*
-===
+====================================================
 Middlewares & Security Layer
-===
+====================================================
 */
 
 app.use(requestIdMiddleware);
-app.use(requestLoggerMiddleware);
+app.use(requestLogger);
+if (morganMiddleware) {
+  app.use(morganMiddleware);
+}
 app.use(compressionMiddleware());
 app.use(monitoringRoutes);
+
 app.use(
   helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com', 'https://*.tile.openstreetmap.org'],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+      },
+    },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
   }),
 );
+
+app.use(securityHeaders);
 app.use(cors(configureCors()));
+
+// Lightweight native cookie parser for secure HTTP-only cookies
+app.use((req, _res, next) => {
+  req.cookies = req.cookies || {};
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach((cookie) => {
+      const parts = cookie.split('=');
+      const name = parts[0]?.trim();
+      const val = parts.slice(1).join('=').trim();
+      if (name) req.cookies[name] = decodeURIComponent(val);
+    });
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(mongoSanitize);
-app.use(xssProtection);
+app.use(xssSanitize || xssProtection);
 
 // Global & Auth Rate Limiters
 app.use('/api', apiLimiter);
@@ -109,9 +145,9 @@ app.use('/api/auth', authLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 /*
-===
-Database
-===
+====================================================
+Database Connection
+====================================================
 */
 
 async function connectDatabase() {
@@ -121,13 +157,11 @@ async function connectDatabase() {
     }
 
     await mongoose.connect(process.env.MONGODB_URI);
-
     logger.info('MongoDB Connected Successfully');
   } catch (error) {
     logger.error('MongoDB Connection Failed', {
       error: error.message,
     });
-
     process.exit(1);
   }
 }
@@ -135,17 +169,18 @@ async function connectDatabase() {
 connectDatabase();
 
 /*
-===
-Health Probes & Prometheus Metrics (F39)
-===
+====================================================
+Health Probes & Prometheus Metrics
+====================================================
 */
-
 
 // Request duration & metrics interceptor
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
-    monitoringService.recordRequest(req.method, req.path, res.statusCode, Date.now() - start);
+    if (monitoringService && typeof monitoringService.recordRequest === 'function') {
+      monitoringService.recordRequest(req.method, req.path, res.statusCode, Date.now() - start);
+    }
   });
   next();
 });
@@ -155,10 +190,7 @@ app.get('/health/liveness', monitoringController.getLiveness);
 app.get('/health/readiness', monitoringController.getReadiness);
 app.get('/metrics', monitoringController.getPrometheusMetrics);
 
-app.get('/api/healthcheck', (_req, res) => {
-
 const healthHandler = (_req, res) => {
-
   res.status(200).json({
     success: true,
     message: 'HealthSphere Backend Running 🚀',
@@ -181,39 +213,10 @@ app.get('/api/features', featureHandler);
 app.get('/api/v1/features', featureHandler);
 
 /*
-===
+====================================================
 Routes (API v1 & Legacy Prefix Aliasing)
-===
+====================================================
 */
-
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/health', healthRoutes);
-app.use('/api/reminders', reminderRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/emergency', emergencyRoutes);
-app.use('/api/chat', newChatRoutes);
-app.use('/api/legacy-chat', chatRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/timeline', timelineRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/profile/medical', medicalProfileRoutes);
-app.use('/api/medical-profile', medicalProfileRoutes);
-app.use('/api/doctors', doctorRoutes);
-app.use('/api/records', recordShareRoutes);
-app.use('/api/consultations', consultationRoutes);
-app.use('/api/ai', symptomRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/wearables', wearableRoutes);
-app.use('/api/workflows', workflowRoutes);
-app.use('/api/assistant', assistantRoutes);
-app.use('/api/security', securityRoutes);
-app.use('/api/collaboration', collaborationRoutes);
-app.use('/api/sync', syncRoutes);
-app.use('/api/performance', performanceRoutes);
-app.use('/api/monitoring', monitoringRoutes);
 
 const apiPrefixes = ['/api', '/api/v1'];
 
@@ -241,6 +244,12 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/wearables`, wearableRoutes);
   app.use(`${prefix}/workflows`, workflowRoutes);
   app.use(`${prefix}/assistant`, assistantRoutes);
+  app.use(`${prefix}/system`, systemRoutes);
+  app.use(`${prefix}/security`, securityRoutes);
+  app.use(`${prefix}/collaboration`, collaborationRoutes);
+  app.use(`${prefix}/sync`, syncRoutes);
+  app.use(`${prefix}/performance`, performanceRoutes);
+  app.use(`${prefix}/monitoring`, monitoringRoutes);
   app.use(`${prefix}/cdss`, cdssRoutes);
   app.use(`${prefix}/imaging`, medicalImagingRoutes);
   app.use(`${prefix}/resources`, hospitalResourceRoutes);
@@ -253,10 +262,12 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/command-center`, enterpriseCommandCenterRoutes);
 });
 
+app.use('/', systemRoutes);
+
 /*
-===
+====================================================
 Socket.IO
-===
+====================================================
 */
 
 const io = new Server(httpServer, {
@@ -265,6 +276,10 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  pingInterval: 25000,
+  pingTimeout: 20000,
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e6,
 });
 
 registerChatSocket(io);
@@ -274,17 +289,17 @@ registerRealtimeInfrastructureSocket(io);
 setIO(io);
 
 /*
-===
+====================================================
 Error Handler
-===
+====================================================
 */
 
 app.use(apiErrorFormatter);
 
 /*
-===
-Server
-===
+====================================================
+Server Initialization
+====================================================
 */
 
 const PORT = process.env.PORT || 4000;
@@ -296,51 +311,75 @@ httpServer.listen(PORT, () => {
 });
 
 /*
-===
-Graceful Shutdown
-===
+====================================================
+Graceful Shutdown & Fault Tolerance
+====================================================
 */
 
-process.on('SIGINT', async () => {
-  logger.info('Shutting down server...');
+let isShuttingDown = false;
 
-  await mongoose.connection.close();
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-  process.exit(0);
-});
+  logger.info(`Received ${signal}. Initiating graceful shutdown...`);
 
-process.on('SIGTERM', async () => {
-  logger.info('Server terminated.');
+  httpServer.close(async (err) => {
+    if (err) {
+      logger.error('Error closing HTTP server', { error: err.message });
+    } else {
+      logger.info('HTTP server closed successfully.');
+    }
 
-  await mongoose.connection.close();
+    try {
+      if (io) {
+        io.close();
+        logger.info('Socket.IO connections closed.');
+      }
 
-  process.exit(0);
-});
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.close(false);
+        logger.info('MongoDB connection closed.');
+      }
+
+      process.exit(0);
+    } catch (cleanupErr) {
+      logger.error('Error during shutdown cleanup', { error: cleanupErr.message });
+      process.exit(1);
+    }
+  });
+
+  const forceTimeout = setTimeout(() => {
+    logger.error('Graceful shutdown timed out (10s threshold). Forcing immediate termination.');
+    process.exit(1);
+  }, 10000);
+
+  if (forceTimeout.unref) {
+    forceTimeout.unref();
+  }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 /*
-===
-Unhandled Promise Rejections
-===
+====================================================
+Unhandled Promise Rejections & Uncaught Exceptions
+====================================================
 */
 
 process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled Rejection', {
-    error: reason,
+  logger.error('Unhandled Promise Rejection Detected', {
+    error: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
   });
 });
 
-/*
-===
-Uncaught Exceptions
-===
-*/
-
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', {
+  logger.error('Uncaught Exception Detected - Server Terminating', {
     error: error.message,
     stack: error.stack,
   });
-
   process.exit(1);
 });
 
