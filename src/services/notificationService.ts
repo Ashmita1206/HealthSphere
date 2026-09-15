@@ -13,19 +13,41 @@ export interface AppNotification {
   severity?: 'info' | 'healthy' | 'attention' | 'critical' | 'low' | 'normal' | 'high';
   priority?: 'low' | 'normal' | 'high' | 'critical' | 'info' | 'healthy' | 'attention';
   route: string;
-  metadata?: Record<string, unknown>;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
-export interface PushSubscriptionPayload {
-  endpoint: string;
-  keys: {
-    p256dh?: string;
-    auth?: string;
-  };
-  expirationTime?: string | null;
-}
+// Initial mock notifications for initial state
+const initialNotifications: AppNotification[] = [
+  {
+    id: 'notif-1',
+    type: 'report',
+    title: 'Lab Analysis Baseline Ready',
+    message: 'Your Blood Panel CBC OCR report has been analyzed by HealthSphere AI.',
+    timestamp: '10 mins ago',
+    read: false,
+    severity: 'info',
+    route: '/reports',
+  },
+  {
+    id: 'notif-2',
+    type: 'medication',
+    title: 'Medicine Reminder',
+    message: 'Time for Metformin 500mg (Post Lunch). Take with 250ml water.',
+    timestamp: '1 hour ago',
+    read: false,
+    severity: 'attention',
+    route: '/medicines',
+  },
+  {
+    id: 'notif-3',
+    type: 'appointment',
+    title: 'Upcoming Appointment',
+    message: 'Dr. Sarah Jenkins consultation scheduled for tomorrow at 10:00 AM.',
+    timestamp: '3 hours ago',
+    read: true,
+    severity: 'info',
+    route: '/appointments',
+  },
+];
 
 type NotificationListener = (notifications: AppNotification[]) => void;
 type ConnectionListener = (connected: boolean) => void;
@@ -71,8 +93,8 @@ class NotificationService {
       const items = Array.isArray(response?.data)
         ? response.data
         : Array.isArray(response)
-        ? (response as unknown as AppNotification[])
-        : [];
+          ? (response as unknown as AppNotification[])
+          : [];
 
       this.notifications = items;
       this.notifyListeners();

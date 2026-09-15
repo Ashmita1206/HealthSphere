@@ -18,5 +18,29 @@ async function protect(req, res, next) {
   }
 }
 
-module.exports = { protect };
+/**
+ * Role-Based Access Control (RBAC) middleware
+ * Allowed roles: 'super_admin', 'admin', 'doctor', 'patient', 'support'
+ */
+function authorizeRoles(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required' });
+    }
+
+    const userRole = req.user.role || 'patient';
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: Access restricted. Requires one of [${allowedRoles.join(', ')}]`,
+        currentRole: userRole,
+      });
+    }
+
+    next();
+  };
+}
+
+module.exports = { protect, authorizeRoles };
+
 

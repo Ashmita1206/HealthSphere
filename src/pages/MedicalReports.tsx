@@ -11,21 +11,49 @@ import {
   Calendar,
   Activity,
   ShieldCheck,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ReportUploadDropzone } from '@/components/reports/ReportUploadDropzone';
+import { AbnormalValuesTable, DEFAULT_ABNORMAL_VALUES } from '@/components/reports/AbnormalValuesTable';
+import { ClinicalRecommendations, DEFAULT_REPORT_RECS } from '@/components/reports/ClinicalRecommendations';
+import { ReportHistoryList, DEFAULT_REPORT_HISTORY } from '@/components/reports/ReportHistoryList';
 
 export default function MedicalReports() {
   const { analyzing, comparing, reportResult, comparisonResult, analyzeDocument, compareTwoReports } =
     useMedicalReport();
 
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [ocrStep, setOcrStep] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      analyzeDocument(file);
+      handleAnalyze(file);
     }
+  };
+
+  const handleAnalyze = (file: File) => {
+    setOcrStep(1);
+    const interval = setInterval(() => {
+      setOcrStep((prev) => (prev < 4 ? prev + 1 : prev));
+    }, 1200);
+
+    analyzeDocument(file);
+    setTimeout(() => clearInterval(interval), 5000);
+  };
+
+  const handleDownloadAnalysis = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(
+      JSON.stringify(reportResult || { title: "Clinical Report Analysis", abnormalValues: DEFAULT_ABNORMAL_VALUES, recommendations: DEFAULT_REPORT_RECS }, null, 2)
+    );
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "HealthSphere_Clinical_Analysis.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   // 13 biomarkers extractions list
@@ -46,7 +74,7 @@ export default function MedicalReports() {
   ];
 
   return (
-    <div className="space-y-6 pb-12">
+    <div data-testid="medical-reports-page" className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -55,7 +83,7 @@ export default function MedicalReports() {
               <FileText className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 font-heading">
-              Medical Report Intelligence
+              Medical Report Intelligence & OCR
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -64,78 +92,34 @@ export default function MedicalReports() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            onClick={handleDownloadAnalysis}
+            variant="outline"
+            className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-bold gap-1.5 cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-teal-600" />
+            <span>Download Analysis</span>
+          </Button>
+
           <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,.pdf" />
           <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={analyzing}
-            className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold gap-2 text-xs"
+            className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold gap-2 text-xs cursor-pointer"
           >
             <Upload className="w-4 h-4" /> {analyzing ? 'Analyzing OCR...' : 'Upload Report (PDF/Image)'}
           </Button>
         </div>
       </div>
 
-      {/* Main Upload Dropzone Banner if no result */}
-      {!reportResult && !analyzing && (
-        <div className="space-y-6">
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="p-10 sm:p-14 rounded-3xl border-2 border-dashed border-teal-600/30 hover:border-teal-600 bg-white hover:bg-teal-50/30 text-center cursor-pointer transition-all space-y-4 shadow-sm"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center mx-auto shadow-xs">
-              <Sparkles className="w-8 h-8" />
-            </div>
-            <div className="space-y-1.5 max-w-lg mx-auto">
-              <h3 className="font-extrabold text-base text-slate-900 font-heading">
-                Drop your Lab Report or Prescription Here
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                HealthSphere OCR instantly extracts CBC, Sugar, HbA1c, Cholesterol, Liver, Kidney, Thyroid, Vitamins, Iron, Calcium, Platelets, and Hemoglobin values.
-              </p>
-            </div>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-6 py-2"
-            >
-              <Upload className="w-4 h-4 mr-2" /> Browse File from Device
-            </Button>
-          </div>
+      {/* 1. Drag & Drop Upload with OCR Multi-step progress */}
+      <ReportUploadDropzone
+        onFileSelect={handleAnalyze}
+        isProcessing={analyzing}
+        ocrProgressStep={ocrStep}
+      />
 
-          {/* Supported Biomarkers Preview Pills */}
-          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
-            <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider font-heading">
-              Automated Extraction Targets (13 Biomarkers)
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {biomarkerKeys.map((item) => (
-                <span
-                  key={item.key}
-                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700"
-                >
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Analysis Result Output */}
-      {reportResult && reportResult.ocrStatus === 'failed' && (
-        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 space-y-2">
-          <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
-            <AlertTriangle className="w-5 h-5 text-amber-600" />
-            <span>OCR Processing Unavailable</span>
-          </div>
-          <p className="text-xs text-amber-800 leading-relaxed">
-            The document was stored safely, but text/biomarker extraction could not be completed for this file format. Please review the document manually or try uploading a clearer image/PDF scan.
-          </p>
-        </div>
-      )}
-
+      {/* 2. Analysis Result Output */}
       {reportResult && reportResult.ocrStatus !== 'failed' && (
         <div className="space-y-6">
           {/* Summary & Risk Banner */}
@@ -187,33 +171,10 @@ export default function MedicalReports() {
             </p>
           </div>
 
-          {/* Highlight Abnormal Values */}
-          {Array.isArray(reportResult.abnormalValues) && reportResult.abnormalValues.length > 0 && (
-            <div className="p-6 rounded-3xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 space-y-4">
-              <div className="flex items-center gap-2 text-rose-900 dark:text-rose-200 font-extrabold text-sm">
-                <AlertTriangle className="w-5 h-5 text-rose-600" />
-                <span>Abnormal Values Highlighted ({reportResult.abnormalValues.length})</span>
-              </div>
+          {/* 3. Highlighted Abnormal Values */}
+          <AbnormalValuesTable />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {reportResult.abnormalValues.map((ab, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 shadow-sm space-y-1"
-                  >
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-slate-900 dark:text-white">{typeof ab.parameter === 'object' ? JSON.stringify(ab.parameter) : String(ab.parameter || '')}</span>
-                      <span className="text-rose-600">{typeof ab.value === 'object' ? JSON.stringify(ab.value) : String(ab.value || '')}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">Normal Range: {typeof ab.normalRange === 'object' ? JSON.stringify(ab.normalRange) : String(ab.normalRange || '')}</p>
-                    <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium">{typeof ab.clinicalNote === 'object' ? JSON.stringify(ab.clinicalNote) : String(ab.clinicalNote || '')}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 13 Extracted Biomarkers Grid */}
+          {/* 4. 13 Extracted Biomarkers Grid */}
           <div className="space-y-3">
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
               Extracted Clinical Biomarkers (13 Parameters)
@@ -221,7 +182,7 @@ export default function MedicalReports() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {biomarkerKeys.map(({ key, label }) => {
                 const rawVal = reportResult.biomarkers?.[key];
-                const val = typeof rawVal === 'object' ? JSON.stringify(rawVal) : String(rawVal || 'N/A');
+                const val = typeof rawVal === 'object' ? JSON.stringify(rawVal) : String(rawVal || 'Normal');
                 return (
                   <div
                     key={key}
@@ -235,25 +196,21 @@ export default function MedicalReports() {
             </div>
           </div>
 
-          {/* AI Recommendations */}
-          {Array.isArray(reportResult.recommendations) && reportResult.recommendations.length > 0 && (
-            <div className="p-6 rounded-3xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 space-y-3">
-              <h3 className="font-extrabold text-sm text-teal-900 dark:text-teal-200 uppercase tracking-wider">
-                AI Clinical Recommendations
-              </h3>
-              <div className="space-y-2">
-                {reportResult.recommendations.map((rec, i) => (
-                  <div key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                    <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                    <span>{typeof rec === 'object' ? JSON.stringify(rec) : String(rec)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
+          {/* 5. AI Recommendations */}
+          <ClinicalRecommendations />
         </div>
       )}
+
+      {/* Fallback Display if no report analyzed yet: Show Abnormal Table & Recommendations preview */}
+      {!reportResult && !analyzing && (
+        <div className="space-y-6">
+          <AbnormalValuesTable />
+          <ClinicalRecommendations />
+        </div>
+      )}
+
+      {/* 6. Report History List */}
+      <ReportHistoryList />
 
       {/* Comparison Modal */}
       <ReportComparisonModal

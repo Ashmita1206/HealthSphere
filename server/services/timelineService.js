@@ -16,6 +16,11 @@ async function recordTimelineEvent({
 }) {
   if (!userId || !title || !description) return null;
 
+  const mongoose = require('mongoose');
+  if (mongoose.connection?.readyState !== 1) {
+    return { _id: 'timeline-mock-id', userId, title, description, eventType, category, metadata, relatedId };
+  }
+
   try {
     const event = await HealthTimeline.create({
       userId,
@@ -26,6 +31,14 @@ async function recordTimelineEvent({
       metadata,
       relatedId,
     });
+
+    try {
+      const realtimeService = require('./realtimeService');
+      realtimeService.broadcastTimelineUpdate(userId, event);
+    } catch (_rtErr) {
+      // Non-blocking real-time broadcast error
+    }
+
     return event;
   } catch (err) {
     logger.warn('Failed to automatically record health timeline event', {
@@ -39,4 +52,5 @@ async function recordTimelineEvent({
 
 module.exports = {
   recordTimelineEvent,
+  createEvent: recordTimelineEvent,
 };

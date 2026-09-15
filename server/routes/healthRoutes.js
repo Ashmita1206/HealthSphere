@@ -4,6 +4,7 @@ const { protect } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validate");
 const { chatLimiter } = require("../middlewares/rateLimiters");
 const c = require("../controllers/healthController");
+const hic = require("../controllers/healthIntelligenceController");
 
 const medicineUpdateSchema = Joi.object({
   name: Joi.string().trim().min(1).max(200),
@@ -65,6 +66,9 @@ router.post("/donation-requests", c.createDonationRequest);
 router.put("/donation-requests/:id", validate(donationRequestUpdateSchema), c.updateDonationRequest);
 router.delete("/donation-requests/:id", c.deleteDonationRequest);
 router.get("/insights", c.getInsights);
+router.get("/intelligence", hic.getHealthIntelligence);
+router.get("/scores", hic.getHealthScores);
+router.get("/trends", hic.getHealthTrends);
 router.post("/doses/toggle", c.toggleDose);
 router.get("/doses/today", c.getTodayDoses);
 router.post(

@@ -18,6 +18,13 @@ import {
   User,
   Settings,
   Stethoscope,
+
+
+  Video,
+  Brain,
+  Watch,
+  BarChart3,
+
 } from "lucide-react";
 import { SidebarBrand } from "./SidebarBrand";
 import { SidebarCollapseButton } from "./SidebarCollapseButton";
@@ -49,9 +56,10 @@ const navGroups: NavGroupData[] = [
     title: "CARE",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+      { icon: Stethoscope, label: "Doctor Portal", href: "/doctor-portal", badge: "MD" },
+      { icon: Video, label: "Telemedicine", href: "/telemedicine", badge: "LIVE" },
       { icon: Calendar, label: "Appointments", href: "/appointments" },
       { icon: Pill, label: "Medicines", href: "/medicines" },
-      { icon: FileText, label: "Medical Reports", href: "/reports" },
       { icon: FileText, label: "Medical OCR", href: "/medical-reports", badge: "AI" },
       { icon: History, label: "Health Timeline", href: "/timeline" },
       { icon: Stethoscope, label: "Doctor Portal", href: "/doctors" },
@@ -61,14 +69,18 @@ const navGroups: NavGroupData[] = [
     title: "INTELLIGENCE",
     items: [
       { icon: MessageSquareText, label: "AI Assistant", href: "/ai-chat", badge: "AI" },
+      { icon: Brain, label: "Predictive AI", href: "/predictive", badge: "AI" },
+      { icon: Watch, label: "Wearables & IoT", href: "/wearables", badge: "BLE" },
       { icon: Eye, label: "AI Vision", href: "/ai-vision" },
       { icon: Heart, label: "AI Health Score", href: "/ai-health-score" },
     ],
   },
   {
-    title: "SUPPORT",
+    title: "SYSTEM & SUPPORT",
     items: [
       { icon: AlertTriangle, label: "Emergency 24/7", href: "/emergency", alert: true },
+      { icon: Bell, label: "Notifications", href: "/notifications" },
+      { icon: BarChart3, label: "Admin Analytics", href: "/admin/analytics", badge: "OS" },
       { icon: Droplets, label: "Blood & Organ", href: "/blood-donation" },
       { icon: Bell, label: "Reminders", href: "/reminders", badge: "2" },
     ],
@@ -204,9 +216,9 @@ export function Sidebar({ isOpen, onClose, onCollapsedChange }: SidebarProps) {
 
   return (
     <>
-      {/* ============================================================ */}
+      {/* ==== */}
       {/*  DESKTOP SIDEBAR                                              */}
-      {/* ============================================================ */}
+      {/* ==== */}
       <motion.aside
         aria-label="Primary navigation"
         className="hidden lg:flex flex-col fixed inset-y-0 left-0 z-30 bg-white border-r border-[#E5E7EB] overflow-hidden"
@@ -245,9 +257,9 @@ export function Sidebar({ isOpen, onClose, onCollapsedChange }: SidebarProps) {
         <SidebarFooter collapsed={collapsed} onClose={onClose} />
       </motion.aside>
 
-      {/* ============================================================ */}
+      {/* ==== */}
       {/*  MOBILE DRAWER                                                */}
-      {/* ============================================================ */}
+      {/* ==== */}
       <AnimatePresence>
         {isOpen && (
           <>
