@@ -1,4 +1,12 @@
 const router = require('express').Router();
+
+const { protect } = require('../middlewares/authMiddleware');
+const c = require('../controllers/monitoringController');
+
+// Diagnostic endpoints requiring authentication
+router.get('/diagnostics', protect, c.getDiagnostics);
+router.get('/crashes', protect, c.getCrashLogs);
+
 const mongoose = require('mongoose');
 const { metricsRegistry } = require('../utils/metrics');
 const AuditLog = require('../models/AuditLog');
@@ -97,5 +105,6 @@ router.get('/api/admin/audit-logs', protect, authorizeRoles('admin', 'superadmin
     next(err);
   }
 });
+
 
 module.exports = router;

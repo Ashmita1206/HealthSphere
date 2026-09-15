@@ -41,7 +41,11 @@ import PredictiveDashboard from './pages/predictive/PredictiveDashboard';
 import NotificationCenter from './pages/notifications/NotificationCenter';
 import AdminAnalyticsDashboard from './pages/admin/AdminAnalyticsDashboard';
 import WearableDashboard from './pages/wearables/WearableDashboard';
-
+import SecurityDashboard from './pages/security/SecurityDashboard';
+import CareTeamWorkspace from './pages/collaboration/CareTeamWorkspace';
+import OfflinePlatformDashboard from './pages/offline/OfflinePlatformDashboard';
+import PerformanceDashboard from './pages/admin/PerformanceDashboard';
+import MonitoringOpsDashboard from './pages/admin/MonitoringOpsDashboard';
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -104,6 +108,16 @@ const App = () => (
                           <Route path="/wearables" element={<WearableDashboard />} />
                           <Route path="/wearable" element={<WearableDashboard />} />
                           <Route path="/settings" element={<Settings />} />
+                          <Route path="/security" element={<SecurityDashboard />} />
+                          <Route path="/security-dashboard" element={<SecurityDashboard />} />
+                          <Route path="/collaboration" element={<CareTeamWorkspace />} />
+                          <Route path="/care-team" element={<CareTeamWorkspace />} />
+                          <Route path="/offline" element={<OfflinePlatformDashboard />} />
+                          <Route path="/pwa" element={<OfflinePlatformDashboard />} />
+                          <Route path="/admin/performance" element={<PerformanceDashboard />} />
+                          <Route path="/performance" element={<PerformanceDashboard />} />
+                          <Route path="/admin/monitoring" element={<MonitoringOpsDashboard />} />
+                          <Route path="/admin/diagnostics" element={<MonitoringOpsDashboard />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />

@@ -50,6 +50,15 @@ const adminRoutes = require('./routes/adminRoutes');
 const wearableRoutes = require('./routes/wearableRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+
+const securityRoutes = require('./routes/securityRoutes');
+const collaborationRoutes = require('./routes/collaborationRoutes');
+const syncRoutes = require('./routes/syncRoutes');
+const performanceRoutes = require('./routes/performanceRoutes');
+const monitoringRoutes = require('./routes/monitoringRoutes');
+const monitoringController = require('./controllers/monitoringController');
+const monitoringService = require('./services/monitoringService');
+
 const cdssRoutes = require('./routes/cdssRoutes');
 const medicalImagingRoutes = require('./routes/medicalImagingRoutes');
 const hospitalResourceRoutes = require('./routes/hospitalResourceRoutes');
@@ -62,6 +71,7 @@ const healthcareAutomationRoutes = require('./routes/healthcareAutomationRoutes'
 const enterpriseCommandCenterRoutes = require('./routes/enterpriseCommandCenterRoutes');
 
 // Socket
+
 const registerChatSocket = require('./sockets/chat.socket');
 const registerNotificationSocket = require('./sockets/notification.socket');
 const registerCollaborationSocket = require('./sockets/collaboration.socket');
@@ -72,9 +82,9 @@ const app = express();
 const httpServer = createServer(app);
 
 /*
-====================================================
+===
 Middlewares & Security Layer
-====================================================
+===
 */
 
 app.use(requestIdMiddleware);
@@ -99,9 +109,9 @@ app.use('/api/auth', authLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 /*
-====================================================
+===
 Database
-====================================================
+===
 */
 
 async function connectDatabase() {
@@ -125,12 +135,30 @@ async function connectDatabase() {
 connectDatabase();
 
 /*
-====================================================
-Health Check
-====================================================
+===
+Health Probes & Prometheus Metrics (F39)
+===
 */
 
+
+// Request duration & metrics interceptor
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    monitoringService.recordRequest(req.method, req.path, res.statusCode, Date.now() - start);
+  });
+  next();
+});
+
+app.get('/health', monitoringController.getHealth);
+app.get('/health/liveness', monitoringController.getLiveness);
+app.get('/health/readiness', monitoringController.getReadiness);
+app.get('/metrics', monitoringController.getPrometheusMetrics);
+
+app.get('/api/healthcheck', (_req, res) => {
+
 const healthHandler = (_req, res) => {
+
   res.status(200).json({
     success: true,
     message: 'HealthSphere Backend Running 🚀',
@@ -153,10 +181,39 @@ app.get('/api/features', featureHandler);
 app.get('/api/v1/features', featureHandler);
 
 /*
-====================================================
+===
 Routes (API v1 & Legacy Prefix Aliasing)
-====================================================
+===
 */
+
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/health', healthRoutes);
+app.use('/api/reminders', reminderRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/emergency', emergencyRoutes);
+app.use('/api/chat', newChatRoutes);
+app.use('/api/legacy-chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/timeline', timelineRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/profile/medical', medicalProfileRoutes);
+app.use('/api/medical-profile', medicalProfileRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/records', recordShareRoutes);
+app.use('/api/consultations', consultationRoutes);
+app.use('/api/ai', symptomRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/wearables', wearableRoutes);
+app.use('/api/workflows', workflowRoutes);
+app.use('/api/assistant', assistantRoutes);
+app.use('/api/security', securityRoutes);
+app.use('/api/collaboration', collaborationRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/performance', performanceRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
 const apiPrefixes = ['/api', '/api/v1'];
 
@@ -195,10 +252,11 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/automation`, healthcareAutomationRoutes);
   app.use(`${prefix}/command-center`, enterpriseCommandCenterRoutes);
 });
+
 /*
-====================================================
+===
 Socket.IO
-====================================================
+===
 */
 
 const io = new Server(httpServer, {
@@ -216,17 +274,17 @@ registerRealtimeInfrastructureSocket(io);
 setIO(io);
 
 /*
-====================================================
+===
 Error Handler
-====================================================
+===
 */
 
 app.use(apiErrorFormatter);
 
 /*
-====================================================
+===
 Server
-====================================================
+===
 */
 
 const PORT = process.env.PORT || 4000;
@@ -238,9 +296,9 @@ httpServer.listen(PORT, () => {
 });
 
 /*
-====================================================
+===
 Graceful Shutdown
-====================================================
+===
 */
 
 process.on('SIGINT', async () => {
@@ -260,9 +318,9 @@ process.on('SIGTERM', async () => {
 });
 
 /*
-====================================================
+===
 Unhandled Promise Rejections
-====================================================
+===
 */
 
 process.on('unhandledRejection', (reason) => {
@@ -272,9 +330,9 @@ process.on('unhandledRejection', (reason) => {
 });
 
 /*
-====================================================
+===
 Uncaught Exceptions
-====================================================
+===
 */
 
 process.on('uncaughtException', (error) => {
