@@ -5,7 +5,6 @@ const doctorSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-
       default: null,
     },
     doctorId: {
@@ -31,31 +30,12 @@ const doctorSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
-
-      required: true,
-      unique: true,
-      index: true,
-    },
-
     specialization: {
       type: String,
       required: true,
       trim: true,
       index: true,
     },
-
-    hospital: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    experience: {
-      type: Number,
-      default: 0,
-    },
-    qualification: {
-      type: String,
-
     qualification: {
       type: String,
       required: true,
@@ -70,7 +50,6 @@ const doctorSchema = new mongoose.Schema(
     hospital: {
       type: String,
       required: true,
-
       trim: true,
       default: '',
     },
@@ -80,25 +59,19 @@ const doctorSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-
-
     consultationFee: {
       type: Number,
       default: 0,
       min: 0,
     },
-
     availability: {
       type: [String],
       default: ['Monday - Friday: 09:00 - 17:00'],
     },
-
     profileImage: {
       type: String,
       default: '',
     },
-
-
     verified: {
       type: Boolean,
       default: true,
@@ -111,15 +84,10 @@ const doctorSchema = new mongoose.Schema(
 
 // Search text index for flexible doctor discovery
 doctorSchema.index({
-
   fullName: 'text',
   specialization: 'text',
   hospital: 'text',
-
-  specialization: 'text',
-  hospital: 'text',
   qualification: 'text',
-
 });
 
-module.exports = mongoose.model('Doctor', doctorSchema);
+module.exports = mongoose.models.Doctor || mongoose.model('Doctor', doctorSchema);

@@ -3,6 +3,13 @@ const router = express.Router();
 
 const Doctor = require('../models/Doctor');
 const { protect } = require('../middlewares/authMiddleware');
+const {
+  createDoctorProfile,
+  getMyDoctorProfile,
+  updateDoctorProfile,
+  getAllDoctors,
+  getDoctorById,
+} = require('../controllers/doctorController');
 
 const SEED_DOCTORS = [
   {
@@ -77,8 +84,15 @@ const SEED_DOCTORS = [
   },
 ];
 
-// All routes are protected
+// All routes are protected by JWT authentication
 router.use(protect);
+
+/**
+ * Doctor Profile Specific Routes
+ */
+router.post('/profile', createDoctorProfile);
+router.get('/profile', getMyDoctorProfile);
+router.put('/profile', updateDoctorProfile);
 
 /**
  * GET /api/doctors
@@ -270,25 +284,5 @@ router.delete('/:id', async (req, res, next) => {
     next(err);
   }
 });
-
-const { protect } = require('../middlewares/authMiddleware');
-const {
-  createDoctorProfile,
-  getMyDoctorProfile,
-  updateDoctorProfile,
-  getAllDoctors,
-  getDoctorById,
-} = require('../controllers/doctorController');
-
-// All doctor routes are protected by JWT authentication
-router.use(protect);
-
-router.post('/profile', createDoctorProfile);
-router.get('/profile', getMyDoctorProfile);
-router.put('/profile', updateDoctorProfile);
-
-router.get('/', getAllDoctors);
-router.get('/:id', getDoctorById);
-
 
 module.exports = router;
