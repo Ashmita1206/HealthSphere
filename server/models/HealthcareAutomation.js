@@ -66,6 +66,6 @@ const OrchestrationJobSchema = new mongoose.Schema({
 });
 
 module.exports = {
-  AutomationRule: mongoose.model('AutomationRule', AutomationRuleSchema),
-  OrchestrationJob: mongoose.model('OrchestrationJob', OrchestrationJobSchema)
+  AutomationRule: mongoose.models.AutomationRule || mongoose.model('AutomationRule', AutomationRuleSchema),
+  OrchestrationJob: mongoose.models.OrchestrationJob || mongoose.model('OrchestrationJob', OrchestrationJobSchema)
 };

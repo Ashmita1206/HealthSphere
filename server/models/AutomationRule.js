@@ -87,4 +87,4 @@ const automationRuleSchema = new mongoose.Schema(
 
 automationRuleSchema.index({ userId: 1, enabled: 1, trigger: 1 });
 
-module.exports = mongoose.model('AutomationRule', automationRuleSchema);
+module.exports = mongoose.models.AutomationRule || mongoose.model('AutomationRule', automationRuleSchema);
