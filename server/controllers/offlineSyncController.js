@@ -1,8 +1,8 @@
 const Medicine = require('../models/Medicine');
 const Appointment = require('../models/Appointment');
-const TimelineEvent = require('../models/TimelineEvent');
+const HealthTimeline = require('../models/HealthTimeline');
 const Report = require('../models/Report');
-const Emergency = require('../models/Emergency');
+const MedicalProfile = require('../models/MedicalProfile');
 const logger = require('../utils/logger');
 
 /**
@@ -12,26 +12,26 @@ async function getBootstrapSnapshot(req, res) {
   try {
     const userId = req.user.id || req.user._id;
 
-    const [medicines, appointments, timeline, reports, emergency] = await Promise.all([
+    const [medicines, appointments, timeline, reports, profile] = await Promise.all([
       Medicine.find({ userId }).sort({ createdAt: -1 }).limit(100),
       Appointment.find({ patientId: userId }).sort({ date: -1 }).limit(50),
-      TimelineEvent.find({ userId }).sort({ date: -1 }).limit(100),
+      HealthTimeline.find({ userId }).sort({ createdAt: -1 }).limit(100),
       Report.find({ userId }).sort({ createdAt: -1 }).limit(50),
-      Emergency.findOne({ userId }),
+      MedicalProfile.findOne({ userId }),
     ]);
 
     const emergencyProfile = {
-      patientName: req.user.name || 'Patient',
-      bloodGroup: emergency?.bloodGroup || 'O+',
-      allergies: emergency?.allergies || ['Penicillin (mild)'],
-      chronicConditions: emergency?.chronicConditions || ['Hypertension'],
-      medications: emergency?.medications || ['Amlodipine 5mg'],
-      emergencyContacts: emergency?.emergencyContacts || [
+      patientName: req.user.name || profile?.fullName || 'Patient',
+      bloodGroup: profile?.bloodGroup || 'O+',
+      allergies: profile?.allergies || ['Penicillin (mild)'],
+      chronicConditions: profile?.chronicDiseases || ['Hypertension'],
+      medications: profile?.currentMedications || ['Amlodipine 5mg'],
+      emergencyContacts: profile?.emergencyContacts || [
         { name: 'Primary Guardian', relationship: 'Spouse', phone: '+1 (555) 019-2834' },
       ],
-      organDonor: emergency?.organDonor ?? true,
-      dnrStatus: emergency?.dnrStatus ?? false,
-      lastUpdated: new Date().toISOString(),
+      organDonor: profile?.organDonor ?? true,
+      dnrStatus: false,
+      lastUpdated: profile?.updatedAt?.toISOString() || new Date().toISOString(),
     };
 
     return res.status(200).json({
