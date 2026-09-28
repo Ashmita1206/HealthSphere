@@ -22,11 +22,11 @@ async function getSessions(req, res, next) {
       success: true,
       data: sessions.map((s) => ({
         id: s._id,
-        browser: s.device?.browser,
-        os: s.device?.os,
-        deviceType: s.device?.deviceType,
-        ipAddress: s.device?.ipAddress,
-        location: s.device?.location,
+        browser: s.device?.browser || s.browser || 'Unknown Browser',
+        os: s.device?.os || s.os || 'Unknown OS',
+        deviceType: s.device?.deviceType || s.deviceType || 'unknown',
+        ipAddress: s.device?.ipAddress || s.ipAddress || '127.0.0.1',
+        location: s.device?.location || 'Local Network',
         lastActive: s.lastActive,
         isCurrent: req.session?._id ? String(req.session._id) === String(s._id) : false,
       })),
@@ -107,15 +107,26 @@ async function getLoginHistory(req, res, next) {
     const history = await sessionService.getLoginHistory(req.user._id, 25);
     res.json({
       success: true,
-      data: history.map((h) => ({
-        id: h._id,
-        email: h.email,
-        ipAddress: h.ipAddress,
-        device: h.device,
-        status: h.status,
-        reason: h.reason,
-        createdAt: h.createdAt,
-      })),
+      data: history.map((h) => {
+        let status = 'failed';
+        if (h.status === 'SUCCESS' || h.status === 'success') status = 'success';
+        else if (h.status === 'ACCOUNT_LOCKED' || h.status === 'locked') status = 'locked';
+
+        const deviceStr = typeof h.device === 'string'
+          ? h.device
+          : `${h.device?.browser || 'Unknown Browser'} on ${h.device?.os || 'Unknown OS'}`;
+
+        return {
+          id: h._id,
+          email: h.email,
+          ipAddress: h.ipAddress,
+          device: deviceStr,
+          status,
+          rawStatus: h.status,
+          reason: h.failureReason || h.reason || (status === 'success' ? 'Normal Login' : 'Authentication Failed'),
+          createdAt: h.attemptedAt || h.createdAt,
+        };
+      }),
     });
   } catch (err) {
     next(err);
@@ -259,7 +270,10 @@ async function getSecurityAlerts(req, res, next) {
   try {
     // Generate intelligent security telemetry alerts
     const history = await sessionService.getLoginHistory(req.user._id, 10);
-    const failedAttempts = history.filter((h) => h.status === 'failed').length;
+    const failedAttempts = history.filter((h) => {
+      const s = String(h.status).toUpperCase();
+      return s === 'FAILED_CREDENTIALS' || s === 'ACCOUNT_LOCKED' || s === 'FAILED' || s === 'LOCKED';
+    }).length;
 
     const alerts = [];
     if (failedAttempts > 2) {

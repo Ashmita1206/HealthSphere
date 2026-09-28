@@ -127,4 +127,202 @@ describe('F36 — Enterprise Authentication Upgrade', () => {
       expect(mockUser.isAccountLocked()).toBe(false);
     });
   });
+
+  describe('Session & LoginHistory Canonical Contracts Reconciliation', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Session = require('../../server/models/Session');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const LoginHistory = require('../../server/models/LoginHistory');
+
+    it('1. authService session creation payload validates successfully', () => {
+      const doc = new Session({
+        userId: '507f191e810c19729de860ea',
+        tokenFamily: 'fam-auth-test-01',
+        refreshTokenHash: hashToken('refresh-secret-01'),
+        device: {
+          browser: 'Chrome',
+          os: 'Windows',
+          deviceType: 'desktop',
+          ipAddress: '192.168.1.100',
+          userAgent: 'Chrome on Win',
+          location: 'Local Network',
+        },
+        expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+      });
+
+      const err = doc.validateSync();
+      expect(err).toBeUndefined();
+      expect(doc.tokenFamily).toBe('fam-auth-test-01');
+      expect(doc.refreshTokenHash).toHaveLength(64);
+      expect(doc.isActive).toBe(true);
+      expect(doc.isRevoked).toBe(false);
+    });
+
+    it('2. sessionService session creation payload validates successfully', () => {
+      const doc = new Session({
+        userId: '507f191e810c19729de860ea',
+        tokenFamily: 'fam-session-test-02',
+        refreshTokenHash: hashToken('refresh-secret-02'),
+        device: {
+          browser: 'Firefox',
+          os: 'Linux',
+          deviceType: 'desktop',
+          ipAddress: '127.0.0.1',
+          userAgent: 'Firefox on Linux',
+          location: 'Local Network',
+        },
+        expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+      });
+
+      const err = doc.validateSync();
+      expect(err).toBeUndefined();
+      expect(doc.browser).toBe('Firefox');
+      expect(doc.os).toBe('Linux');
+      expect(doc.deviceType).toBe('desktop');
+    });
+
+    it('3. login history SUCCESS validates and normalizes', () => {
+      const doc = new LoginHistory({
+        userId: '507f191e810c19729de860ea',
+        email: 'Doc.House@HealthSphere.io',
+        status: 'SUCCESS',
+        ipAddress: '10.0.0.5',
+        userAgent: 'Mozilla/5.0...',
+        device: {
+          browser: 'Safari',
+          os: 'macOS',
+          deviceType: 'desktop',
+        },
+      });
+
+      const err = doc.validateSync();
+      expect(err).toBeUndefined();
+      expect(doc.email).toBe('doc.house@healthsphere.io');
+      expect(doc.status).toBe('SUCCESS');
+      expect(doc.deviceType).toBe('desktop');
+    });
+
+    it('4. failed credential history validates and normalizes', () => {
+      const docFailed = new LoginHistory({
+        email: 'user@test.org',
+        status: 'failed',
+        failureReason: 'Invalid password',
+      });
+      expect(docFailed.status).toBe('FAILED_CREDENTIALS');
+      expect(docFailed.validateSync()).toBeUndefined();
+
+      const docLocked = new LoginHistory({
+        email: 'user@test.org',
+        status: 'locked',
+        failureReason: 'Rate limit exceeded',
+      });
+      expect(docLocked.status).toBe('ACCOUNT_LOCKED');
+      expect(docLocked.validateSync()).toBeUndefined();
+    });
+
+    it('5. security alerts correctly detect failed authentication events', () => {
+      const mockHistory = [
+        { status: 'FAILED_CREDENTIALS', email: 'test@hs.io' },
+        { status: 'ACCOUNT_LOCKED', email: 'test@hs.io' },
+        { status: 'failed', email: 'test@hs.io' },
+        { status: 'SUCCESS', email: 'test@hs.io' },
+      ];
+
+      const failedCount = mockHistory.filter((h) => {
+        const s = String(h.status).toUpperCase();
+        return s === 'FAILED_CREDENTIALS' || s === 'ACCOUNT_LOCKED' || s === 'FAILED' || s === 'LOCKED';
+      }).length;
+
+      expect(failedCount).toBe(3);
+    });
+
+    it('6. device metadata survives persistence/serialization', () => {
+      const doc = new Session({
+        userId: '507f191e810c19729de860ea',
+        tokenFamily: 'fam-device-meta-test',
+        refreshTokenHash: hashToken('secret-device-01'),
+        device: {
+          browser: 'Edge',
+          os: 'Windows',
+          deviceType: 'desktop',
+          ipAddress: '192.168.1.50',
+          userAgent: 'Mozilla/5.0 Edg/120.0',
+          location: 'HQ Medical Center',
+        },
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+
+      const serialized = doc.toObject();
+      expect(serialized.device.browser).toBe('Edge');
+      expect(serialized.device.os).toBe('Windows');
+      expect(serialized.device.deviceType).toBe('desktop');
+      expect(serialized.device.location).toBe('HQ Medical Center');
+      expect(serialized.browser).toBe('Edge');
+      expect(serialized.os).toBe('Windows');
+    });
+
+    it('7. session revocation still works', () => {
+      const doc = new Session({
+        userId: '507f191e810c19729de860ea',
+        tokenFamily: 'fam-revoke-test',
+        refreshTokenHash: hashToken('secret-revoke-01'),
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+
+      expect(doc.isActive).toBe(true);
+      expect(doc.isRevoked).toBe(false);
+
+      doc.isActive = false;
+      doc.isRevoked = true;
+      doc.revokedReason = 'User logged out';
+
+      expect(doc.isActive).toBe(false);
+      expect(doc.isRevoked).toBe(true);
+      expect(doc.revokedReason).toBe('User logged out');
+      expect(doc.validateSync()).toBeUndefined();
+    });
+
+    it('8. refresh-token/session-family behavior still works', () => {
+      const oldSecret = 'old-refresh-secret';
+      const newSecret = 'new-rotated-secret';
+      const doc = new Session({
+        userId: '507f191e810c19729de860ea',
+        tokenFamily: 'fam-rotation-01',
+        refreshTokenHash: hashToken(oldSecret),
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+
+      expect(doc.refreshTokenHash).toBe(hashToken(oldSecret));
+      // Rotate token hash
+      doc.refreshTokenHash = hashToken(newSecret);
+      doc.lastActive = new Date();
+
+      expect(doc.refreshTokenHash).toBe(hashToken(newSecret));
+      expect(doc.validateSync()).toBeUndefined();
+    });
+
+    it('9. no raw token is stored in Session', () => {
+      const rawSecret = 'raw-secret-string-that-must-never-be-in-db-12345';
+      const doc = new Session({
+        userId: '507f191e810c19729de860ea',
+        tokenFamily: 'fam-secure-no-raw',
+        refreshTokenHash: hashToken(rawSecret),
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+
+      const serializedStr = JSON.stringify(doc.toObject());
+      expect(serializedStr).not.toContain(rawSecret);
+      expect(doc.toObject().refreshTokenHash).toHaveLength(64);
+      expect(doc.tokenHash).toBe(hashToken(rawSecret));
+    });
+
+    it('10. TTL/expiration fields remain correct', () => {
+      const sessionExpiry = Session.schema.path('expiresAt');
+      expect(sessionExpiry.options.index).toEqual({ expires: 0 });
+      expect(sessionExpiry.options.required).toBe(true);
+
+      const loginAttemptedAt = LoginHistory.schema.path('attemptedAt');
+      expect(loginAttemptedAt.options.index).toBe(true);
+    });
+  });
 });

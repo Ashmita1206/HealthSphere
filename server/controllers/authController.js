@@ -252,6 +252,7 @@ async function getSessions(req, res, next) {
     const sessions = await Session.find({
       userId,
       isRevoked: false,
+      isActive: true,
       expiresAt: { $gt: new Date() },
     })
       .select('-refreshTokenHash -tokenFamily')
@@ -275,6 +276,7 @@ async function revokeSessionHandler(req, res, next) {
     }
 
     session.isRevoked = true;
+    session.isActive = false;
     session.revokedReason = req.body?.reason || 'User initiated manual revocation';
     await session.save();
 
@@ -292,6 +294,7 @@ async function logout(req, res, next) {
       const [sessionId] = token.split('.');
       await Session.findByIdAndUpdate(sessionId, {
         isRevoked: true,
+        isActive: false,
         revokedReason: 'User logged out',
       }).catch(() => {});
     }
@@ -320,7 +323,7 @@ async function getLoginHistory(req, res, next) {
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     const history = await LoginHistory.find({ userId })
-      .sort({ attemptedAt: -1 })
+      .sort({ attemptedAt: -1, createdAt: -1 })
       .limit(20)
       .lean();
 
@@ -380,7 +383,7 @@ async function resetPassword(req, res, next) {
     user.lockUntil = null;
     await user.save();
 
-    await Session.updateMany({ userId: user._id }, { isRevoked: true, revokedReason: 'Password was changed' });
+    await Session.updateMany({ userId: user._id }, { isRevoked: true, isActive: false, revokedReason: 'Password was changed' });
 
     res.json({ success: true, message: 'Password reset successful. Please log in with your new password.' });
   } catch (error) {

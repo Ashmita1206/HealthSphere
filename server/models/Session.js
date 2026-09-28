@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const sessionSchema = new mongoose.Schema(
   {
+    // User who owns this session
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -9,66 +10,88 @@ const sessionSchema = new mongoose.Schema(
       index: true,
     },
 
-    tokenHash: {
-
+    // Used to group tokens belonging to the same login session (refresh token family)
     tokenFamily: {
-
       type: String,
       required: true,
       index: true,
     },
 
-    device: {
-      browser: { type: String, default: 'Unknown' },
-      os: { type: String, default: 'Unknown' },
-      deviceType: { type: String, default: 'desktop' },
-      ipAddress: { type: String, default: '127.0.0.1' },
-      userAgent: { type: String, default: 'Unknown' },
-      location: { type: String, default: 'Local Network' },
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-      index: true,
-    },
-
+    // Refresh token SHA-256 hash (never raw token)
     refreshTokenHash: {
       type: String,
       required: true,
       index: true,
     },
+
+    // Canonical structured device metadata
+    device: {
+      browser: {
+        type: String,
+        default: 'Unknown Browser',
+      },
+      os: {
+        type: String,
+        default: 'Unknown OS',
+      },
+      deviceType: {
+        type: String,
+        enum: ['desktop', 'mobile', 'tablet', 'bot', 'unknown'],
+        default: 'unknown',
+      },
+      ipAddress: {
+        type: String,
+        default: '127.0.0.1',
+      },
+      userAgent: {
+        type: String,
+        default: 'Unknown Client',
+      },
+      location: {
+        type: String,
+        default: 'Local Network',
+      },
+    },
+
+    // Direct access helper fields with synchronous fallback to device subdocument
     userAgent: {
       type: String,
-      default: 'Unknown Client',
+      default: function () {
+        return this.device?.userAgent || 'Unknown Client';
+      },
     },
     deviceType: {
       type: String,
       enum: ['desktop', 'mobile', 'tablet', 'bot', 'unknown'],
-      default: 'unknown',
+      default: function () {
+        return this.device?.deviceType || 'unknown';
+      },
     },
     browser: {
       type: String,
-      default: 'Unknown Browser',
+      default: function () {
+        return this.device?.browser || 'Unknown Browser';
+      },
     },
     os: {
       type: String,
-      default: 'Unknown OS',
+      default: function () {
+        return this.device?.os || 'Unknown OS';
+      },
     },
     ipAddress: {
       type: String,
-      default: '127.0.0.1',
+      default: function () {
+        return this.device?.ipAddress || '127.0.0.1';
+      },
     },
 
-    lastActive: {
-      type: Date,
-      default: Date.now,
+    // Active & Revocation flags
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
     },
-
-    expiresAt: {
-      type: Date,
-      required: true,
-      index: { expires: 0 }, // TTL index automatically evicts expired sessions
-
     isRevoked: {
       type: Boolean,
       default: false,
@@ -78,27 +101,38 @@ const sessionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    // Last time this session was used
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
+
+    // MongoDB TTL automatically removes expired sessions
     expiresAt: {
       type: Date,
       required: true,
-      index: { expires: 0 }, // MongoDB TTL index to auto-clean expired sessions
-
+      index: {
+        expires: 0,
+      },
     },
   },
   {
     timestamps: true,
-
     bufferCommands: false,
     autoIndex: false,
   }
 );
 
-module.exports = mongoose.models.Session || mongoose.model('Session', sessionSchema);
+// Virtual for tokenHash backward-compatibility mapping to refreshTokenHash
+sessionSchema.virtual('tokenHash')
+  .get(function () {
+    return this.refreshTokenHash;
+  })
+  .set(function (val) {
+    this.refreshTokenHash = val;
+  });
 
-    autoIndex: false,
-    bufferCommands: false,
-  },
-);
-
-module.exports = mongoose.model('Session', sessionSchema);
-
+module.exports =
+  mongoose.models.Session ||
+  mongoose.model('Session', sessionSchema);

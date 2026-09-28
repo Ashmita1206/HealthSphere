@@ -65,11 +65,21 @@ async function createSession(user, req) {
     userId: user._id || user.id,
     tokenFamily,
     refreshTokenHash,
+    device: {
+      browser,
+      os,
+      deviceType,
+      ipAddress,
+      userAgent,
+      location: 'Local Network',
+    },
     userAgent,
     deviceType,
     browser,
     os,
     ipAddress,
+    isActive: true,
+    isRevoked: false,
     expiresAt,
   });
 
@@ -97,7 +107,7 @@ async function rotateRefreshToken(combinedToken) {
   if (session.isRevoked) {
     await Session.updateMany(
       { tokenFamily: session.tokenFamily },
-      { isRevoked: true, revokedReason: 'Suspected token reuse attack' },
+      { isRevoked: true, isActive: false, revokedReason: 'Suspected token reuse attack' },
     );
     throw new Error('Revoked session token detected. All associated family sessions invalidated.');
   }
@@ -106,13 +116,14 @@ async function rotateRefreshToken(combinedToken) {
     // Hash mismatch
     await Session.updateMany(
       { tokenFamily: session.tokenFamily },
-      { isRevoked: true, revokedReason: 'Token family tamper detected' },
+      { isRevoked: true, isActive: false, revokedReason: 'Token family tamper detected' },
     );
     throw new Error('Security violation: token hash mismatch');
   }
 
   if (session.expiresAt < new Date()) {
     session.isRevoked = true;
+    session.isActive = false;
     session.revokedReason = 'Session expired';
     await session.save();
     throw new Error('Refresh token has expired. Please log in again.');
@@ -147,7 +158,7 @@ async function rotateRefreshToken(combinedToken) {
 async function recordLoginHistory({ userId, email, status, req, failureReason = null }) {
   const userAgent = req?.headers?.['user-agent'] || 'Unknown';
   const ipAddress = req?.ip || req?.connection?.remoteAddress || '127.0.0.1';
-  const { deviceType } = parseUserAgent(userAgent);
+  const { deviceType, browser, os } = parseUserAgent(userAgent);
 
   return LoginHistory.create({
     userId: userId || null,
@@ -155,8 +166,14 @@ async function recordLoginHistory({ userId, email, status, req, failureReason = 
     status,
     ipAddress,
     userAgent,
+    device: {
+      browser,
+      os,
+      deviceType,
+    },
     deviceType,
     failureReason,
+    attemptedAt: new Date(),
   });
 }
 

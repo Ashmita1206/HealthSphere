@@ -162,7 +162,9 @@ describe('F35 Enterprise Security Platform', () => {
     it('detects tampering and throws error on ciphertext alteration', () => {
       const enc = encryptTest('Confidential Clinical Note');
       const parts = enc.combined.split(':');
-      const tamperedEncrypted = parts[2].slice(0, -2) + 'ff';
+      const lastByte = parts[2].slice(-2);
+      const tamperedByte = lastByte === 'ff' ? '00' : 'ff';
+      const tamperedEncrypted = parts[2].slice(0, -2) + tamperedByte;
       const tamperedCombined = `${parts[0]}:${parts[1]}:${tamperedEncrypted}`;
 
       expect(() => decryptTest(tamperedCombined)).toThrow();

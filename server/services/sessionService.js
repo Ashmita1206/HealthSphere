@@ -38,14 +38,17 @@ async function createSession(userId, refreshToken, req) {
     const ipAddress = req?.ip || req?.connection?.remoteAddress || '127.0.0.1';
     const { browser, os, deviceType } = parseUserAgent(userAgent);
 
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const rawToken = refreshToken || crypto.randomBytes(40).toString('hex');
+    const refreshTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const tokenFamily = crypto.randomUUID();
     const deviceFingerprint = crypto.createHash('sha256').update(`${userId}:${browser}:${os}`).digest('hex').slice(0, 16);
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const session = await Session.create({
       userId,
-      tokenHash,
+      tokenFamily,
+      refreshTokenHash,
       device: {
         browser,
         os,
@@ -54,6 +57,13 @@ async function createSession(userId, refreshToken, req) {
         userAgent,
         location: 'Local Network',
       },
+      browser,
+      os,
+      deviceType,
+      ipAddress,
+      userAgent,
+      isActive: true,
+      isRevoked: false,
       expiresAt,
     });
 
@@ -84,7 +94,12 @@ async function createSession(userId, refreshToken, req) {
  */
 async function getActiveSessions(userId) {
   try {
-    return await Session.find({ userId, isActive: true }).sort({ lastActive: -1 });
+    return await Session.find({
+      userId,
+      isActive: true,
+      isRevoked: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ lastActive: -1 });
   } catch (_e) {
     return [];
   }
@@ -97,7 +112,7 @@ async function revokeSession(sessionId, userId) {
   try {
     const updated = await Session.findOneAndUpdate(
       { _id: sessionId, userId },
-      { isActive: false },
+      { isActive: false, isRevoked: true, revokedReason: 'User revoked session' },
       { new: true }
     );
 
@@ -120,12 +135,16 @@ async function revokeSession(sessionId, userId) {
  */
 async function revokeAllOtherSessions(currentSessionId, userId) {
   try {
-    const query = { userId, isActive: true };
+    const query = { userId, isActive: true, isRevoked: false };
     if (currentSessionId) {
       query._id = { $ne: currentSessionId };
     }
 
-    const result = await Session.updateMany(query, { isActive: false });
+    const result = await Session.updateMany(query, {
+      isActive: false,
+      isRevoked: true,
+      revokedReason: 'User revoked other sessions',
+    });
 
     await logAuditEvent({
       userId,
@@ -174,17 +193,27 @@ async function untrustDevice(deviceId, userId) {
 /**
  * Records a login attempt into login history
  */
-async function recordLoginAttempt({ userId, email, ipAddress, userAgent, status = 'success', reason = 'Normal Login' }) {
+async function recordLoginAttempt({ userId, email, ipAddress, userAgent, status = 'SUCCESS', reason = 'Normal Login' }) {
   try {
-    const { browser, os } = parseUserAgent(userAgent);
+    const { browser, os, deviceType } = parseUserAgent(userAgent);
+    const upperStatus = String(status).toUpperCase();
+    const isSuccess = upperStatus === 'SUCCESS';
+
     return await LoginHistory.create({
-      userId,
-      email,
+      userId: userId || null,
+      email: email ? email.toLowerCase() : 'unknown',
       ipAddress: ipAddress || '127.0.0.1',
       userAgent: userAgent || 'Unknown',
-      device: `${browser} on ${os}`,
-      status,
+      device: {
+        browser,
+        os,
+        deviceType,
+      },
+      deviceType,
+      status: isSuccess ? 'SUCCESS' : (upperStatus === 'LOCKED' || upperStatus === 'ACCOUNT_LOCKED' ? 'ACCOUNT_LOCKED' : 'FAILED_CREDENTIALS'),
       reason,
+      failureReason: isSuccess ? null : reason,
+      attemptedAt: new Date(),
     });
   } catch (err) {
     logger.warn('Failed to record login history', { error: err.message });
@@ -197,7 +226,7 @@ async function recordLoginAttempt({ userId, email, ipAddress, userAgent, status 
  */
 async function getLoginHistory(userId, limit = 20) {
   try {
-    return await LoginHistory.find({ userId }).sort({ createdAt: -1 }).limit(limit);
+    return await LoginHistory.find({ userId }).sort({ attemptedAt: -1, createdAt: -1 }).limit(limit);
   } catch (_e) {
     return [];
   }
