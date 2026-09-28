@@ -1,6 +1,6 @@
 const router = require('express').Router();
+const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 
-const { protect } = require('../middlewares/authMiddleware');
 const c = require('../controllers/monitoringController');
 
 // Diagnostic endpoints requiring authentication
@@ -10,7 +10,7 @@ router.get('/crashes', protect, c.getCrashLogs);
 const mongoose = require('mongoose');
 const { metricsRegistry } = require('../utils/metrics');
 const AuditLog = require('../models/AuditLog');
-const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
+
 
 /**
  * Health Endpoints for Production Kubernetes / Orchestrators

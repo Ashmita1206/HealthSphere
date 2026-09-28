@@ -72,7 +72,7 @@ function validateEnvironment(customEnv) {
       jwtSecret.toLowerCase().includes(pattern)
     );
     if (isKnownInsecure && isProd) {
-      errors.push('Security Violation: Insecure default development JWT_SECRET used in production');
+      errors.push('Security Violation: Known insecure default development JWT_SECRET used in production');
     }
   }
 

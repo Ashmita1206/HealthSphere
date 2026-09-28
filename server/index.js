@@ -224,24 +224,6 @@ Routes (API v1 & Legacy Prefix Aliasing)
 ===
 */
 
-
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/health', healthRoutes);
-app.use('/api/reminders', reminderRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/emergency', emergencyRoutes);
-app.use('/api/chat', newChatRoutes);
-app.use('/api/legacy-chat', chatRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/timeline', timelineRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/profile/medical', medicalProfileRoutes);
-app.use('/api/medical-profile', medicalProfileRoutes);
-app.use('/api/doctors', doctorRoutes);
-app.use('/api/share', shareRoutes);
-
 const apiPrefixes = ['/api', '/api/v1'];
 
 apiPrefixes.forEach((prefix) => {
@@ -254,6 +236,8 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/chat`, newChatRoutes);
   app.use(`${prefix}/legacy-chat`, chatRoutes);
   app.use(`${prefix}/ai`, aiRoutes);
+  app.use(`${prefix}/ai`, symptomRoutes);
+  app.use(`${prefix}/symptoms`, symptomRoutes);
   app.use(`${prefix}/notifications`, notificationRoutes);
   app.use(`${prefix}/timeline`, timelineRoutes);
   app.use(`${prefix}/analytics`, analyticsRoutes);
@@ -261,8 +245,8 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/medical-profile`, medicalProfileRoutes);
   app.use(`${prefix}/doctors`, doctorRoutes);
   app.use(`${prefix}/records`, recordShareRoutes);
+  app.use(`${prefix}/share`, shareRoutes);
   app.use(`${prefix}/consultations`, consultationRoutes);
-  app.use(`${prefix}/ai`, symptomRoutes);
   app.use(`${prefix}/dashboard`, dashboardRoutes);
   app.use(`${prefix}/admin`, adminRoutes);
   app.use(`${prefix}/wearables`, wearableRoutes);
