@@ -5,7 +5,7 @@ This document outlines the architectural layers, container topology, security pe
 
 ---
 
-## 1. System Context Diagram (C4 Level 1)
+## 1. System Topology & Context Diagram (C4 Level 1)
 
 ```mermaid
 C4Context
