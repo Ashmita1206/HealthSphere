@@ -4,7 +4,7 @@ const Medicine = require('../models/Medicine');
 const Appointment = require('../models/Appointment');
 const Reminder = require('../models/Reminder');
 const DoseLog = require('../models/DoseLog');
-const { Donor, DonationRequest } = require('../models/Donation');
+const { Donor, DonationRequest, DonationRecord } = require('../models/Donation');
 const { getAIHealthResponse } = require('../services/ai.service');
 const { computeRiskFromText } = require('../services/riskEngine');
 const {
@@ -488,6 +488,55 @@ async function deleteDonationRequest(req, res, next) {
     next(e);
   }
 }
+
+const mapDonationRecord = (d) => ({
+  id: d._id ? d._id.toString() : d.id,
+  donationDate: d.donationDate ? new Date(d.donationDate).toISOString() : new Date().toISOString(),
+  facility: d.facility || 'HealthSphere Central Blood Bank',
+  units: d.units || 1,
+  status: d.status || 'completed',
+  bloodType: d.bloodType || '',
+  notes: d.notes || '',
+});
+
+async function listMyDonations(req, res, next) {
+  try {
+    const rows = await DonationRecord.find({ userId: req.user._id }).sort({ donationDate: -1, createdAt: -1 });
+    res.status(200).json(rows.map(mapDonationRecord));
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function createMyDonation(req, res, next) {
+  try {
+    const { donationDate, facility, units, status, bloodType, notes } = req.body || {};
+    const record = await DonationRecord.create({
+      userId: req.user._id,
+      donationDate: donationDate || Date.now(),
+      facility: facility || 'HealthSphere Central Blood Bank',
+      units: units || 1,
+      status: status || 'completed',
+      bloodType,
+      notes,
+    });
+    recordTimelineEvent({
+      userId: req.user._id,
+      eventType: 'donation',
+      category: 'donation',
+      title: 'Blood Donation Logged',
+      description: `Donated ${record.units} unit(s) at ${record.facility}`,
+      relatedId: record._id,
+    }).catch(() => {});
+    res.status(201).json(mapDonationRecord(record));
+  } catch (e) {
+    if (e.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed', details: e.message });
+    }
+    next(e);
+  }
+}
+
 async function chat(req, res, next) {
   try {
     const lastMessage =
@@ -628,6 +677,8 @@ module.exports = {
   createDonationRequest,
   updateDonationRequest,
   deleteDonationRequest,
+  listMyDonations,
+  createMyDonation,
   chat,
   getInsights,
   toggleDose,
