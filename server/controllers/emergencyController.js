@@ -81,7 +81,10 @@ async function fetchOverpassResponse(url, query) {
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "HealthSphere-Medical-OS/1.0 (contact@healthsphere.org)",
+      },
       body: query,
       signal: controller.signal,
     });
@@ -96,8 +99,18 @@ async function fetchOverpassResponse(url, query) {
 
 async function nearbyHospitals(req, res, next) {
   try {
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
+    const rawLat = req.query.lat;
+    const rawLng = req.query.lng;
+    if (rawLat === undefined || rawLng === undefined || Number.isNaN(Number(rawLat)) || Number.isNaN(Number(rawLng))) {
+      return res.json({
+        locations: [],
+        error: null,
+        message: "Provide lat and lng query parameters to discover live nearby facilities",
+      });
+    }
+
+    const lat = Number(rawLat);
+    const lng = Number(rawLng);
     const radius = Number(req.query.radius || 5000);
 
     const query = `
@@ -127,7 +140,10 @@ async function nearbyHospitals(req, res, next) {
     }
 
     if (!data || !data.elements) {
-      throw new Error(lastError?.message || "Unable to fetch nearby hospitals");
+      return res.json({
+        locations: [],
+        error: lastError?.message || "Live geospatial provider temporarily unreachable",
+      });
     }
 
     const locations = data.elements
