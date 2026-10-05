@@ -76,4 +76,4 @@ medicalShareSchema.methods.isAccessible = function () {
   return this.status === 'active' && !this.isExpired();
 };
 
-module.exports = mongoose.model('MedicalShare', medicalShareSchema);
+module.exports = (mongoose.models.MedicalShare || mongoose.model('MedicalShare', medicalShareSchema));

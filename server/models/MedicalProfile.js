@@ -181,4 +181,4 @@ MedicalProfileSchema.pre('save', function (next) {
   next();
 });
 
-module.exports = mongoose.model('MedicalProfile', MedicalProfileSchema);
+module.exports = (mongoose.models.MedicalProfile || mongoose.model('MedicalProfile', MedicalProfileSchema));

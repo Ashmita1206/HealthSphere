@@ -62,4 +62,4 @@ const wearableReadingSchema = new mongoose.Schema(
 
 wearableReadingSchema.index({ userId: 1, metricType: 1, recordedAt: -1 });
 
-module.exports = mongoose.model('WearableReading', wearableReadingSchema);
+module.exports = (mongoose.models.WearableReading || mongoose.model('WearableReading', wearableReadingSchema));

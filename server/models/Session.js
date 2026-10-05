@@ -134,5 +134,4 @@ sessionSchema.virtual('tokenHash')
   });
 
 module.exports =
-  mongoose.models.Session ||
-  mongoose.model('Session', sessionSchema);
+  mongoose.models.Session || mongoose.model('Session', sessionSchema);

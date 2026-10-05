@@ -658,10 +658,10 @@ export default function BloodDonationPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingAction?.type === 'delete'
-                ? `${pendingAction.request.patientName ?? 'This request'} will be permanently deleted.`
+                ? `${pendingAction.request?.patientName ?? 'This request'} will be permanently deleted.`
                 : pendingAction?.type === 'cancel'
-                  ? `${pendingAction.request.patientName} request will be cancelled.`
-                  : `${pendingAction.request.patientName} request will be marked as fulfilled.`}
+                  ? `${pendingAction?.request?.patientName ?? 'This'} request will be cancelled.`
+                  : `${pendingAction?.request?.patientName ?? 'This'} request will be marked as fulfilled.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

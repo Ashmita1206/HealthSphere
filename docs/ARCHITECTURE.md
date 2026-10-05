@@ -47,7 +47,7 @@ graph TD
     AuthEngine[JWT Rotation & Session Manager]
     RestAPI[Express.js Dual API Router: /api & /api/v1]
     RealtimeHub[Socket.IO Infrastructure Hub]
-    WorkerQueue[Background Async Job Queue]
+    WorkerQueue[BullMQ Background Async Job Queue]
     PrometheusRegistry[Metrics & Prometheus Exporter]
   end
 
@@ -134,3 +134,12 @@ HealthSphere coordinates 4 distinct socket namespaces and rooms:
 3. **Automated Disaster Recovery**:
    - `scripts/backup-db.sh` runs automated daily snapshots with gzip compression and 14-day rolling retention.
    - `scripts/restore-db.sh` enables one-command database recovery with integrity checks.
+
+---
+
+## 6. HIPAA Security & Compliance Standards
+
+HealthSphere adheres strictly to HIPAA Title II Administrative Simplification and Security Rule requirements:
+- **Encryption in Transit & at Rest**: Enforced TLS 1.3 for all HTTP/WebSocket transport; AES-256-GCM encryption for all PHI (Protected Health Information).
+- **Audit Controls (§ 164.312(b))**: Immutable audit log recording all reads, writes, exports, and emergency break-glass operations with cryptographic correlation IDs.
+- **Access Control & Zero Trust (§ 164.312(a))**: Scoped, expiring doctor share tokens and patient-directed revocation ensure strict minimum-necessary disclosure.

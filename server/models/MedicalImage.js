@@ -100,4 +100,4 @@ const medicalImageSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model('MedicalImage', medicalImageSchema);
+module.exports = (mongoose.models.MedicalImage || mongoose.model('MedicalImage', medicalImageSchema));

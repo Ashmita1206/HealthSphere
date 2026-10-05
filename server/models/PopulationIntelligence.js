@@ -52,5 +52,5 @@ const OutbreakForecastSchema = new mongoose.Schema({
 });
 
 module.exports = {
-  OutbreakForecast: mongoose.model('OutbreakForecast', OutbreakForecastSchema)
+  OutbreakForecast: (mongoose.models.OutbreakForecast || mongoose.model('OutbreakForecast', OutbreakForecastSchema))
 };

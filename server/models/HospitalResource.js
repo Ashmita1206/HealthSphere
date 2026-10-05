@@ -76,4 +76,4 @@ const HospitalResourceSnapshotSchema = new mongoose.Schema({
   bufferCommands: false
 });
 
-module.exports = mongoose.model('HospitalResourceSnapshot', HospitalResourceSnapshotSchema);
+module.exports = (mongoose.models.HospitalResourceSnapshot || mongoose.model('HospitalResourceSnapshot', HospitalResourceSnapshotSchema));

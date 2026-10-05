@@ -48,4 +48,4 @@ const emergencyIncidentSchema = new mongoose.Schema(
 
 emergencyIncidentSchema.index({ userId: 1, status: 1, createdAt: -1 });
 
-module.exports = mongoose.model('EmergencyIncident', emergencyIncidentSchema);
+module.exports = (mongoose.models.EmergencyIncident || mongoose.model('EmergencyIncident', emergencyIncidentSchema));

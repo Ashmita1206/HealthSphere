@@ -3,6 +3,7 @@ const Joi = require('joi');
 const {
   signup,
   login,
+  getMe,
   refresh,
   refreshTokenHandler,
   getSessions,
@@ -49,7 +50,9 @@ const verifyEmailSchema = Joi.object({
 
 // Primary auth endpoints
 router.post('/signup', authLimiter, validate(signupSchema), signup);
+router.post('/register', authLimiter, validate(signupSchema), signup);
 router.post('/login', authLimiter, validate(loginSchema), login);
+router.get('/me', protect, getMe);
 router.post('/refresh', authLimiter, validate(refreshSchema), refreshTokenHandler || refresh);
 router.post('/logout', logout);
 

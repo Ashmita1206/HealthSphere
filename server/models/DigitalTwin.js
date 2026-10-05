@@ -101,4 +101,4 @@ const digitalTwinSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('DigitalTwin', digitalTwinSchema);
+module.exports = (mongoose.models.DigitalTwin || mongoose.model('DigitalTwin', digitalTwinSchema));

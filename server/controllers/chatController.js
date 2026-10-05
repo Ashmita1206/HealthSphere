@@ -44,7 +44,7 @@ async function createSession(req, res, next) {
  */
 async function renameSession(req, res, next) {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId || req.params.id;
     const { title } = req.body;
     const session = await ChatSession.findOneAndUpdate(
       { _id: sessionId, userId: req.user._id },
@@ -70,7 +70,7 @@ async function renameSession(req, res, next) {
  */
 async function deleteSession(req, res, next) {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId || req.params.id;
     const userId = req.user._id;
     const session = await ChatSession.findOne({ _id: sessionId, userId });
     if (!session) {
@@ -120,7 +120,7 @@ async function searchChats(req, res, next) {
  */
 async function getMessages(req, res, next) {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId || req.params.id;
     const session = await ChatSession.findOne({ _id: sessionId, userId: req.user._id });
     if (!session) {
       return res.status(404).json({ success: false, message: 'Chat session not found' });
@@ -143,7 +143,7 @@ async function sendMessage(req, res, next) {
     const userId = req.user._id;
     const { sessionId, content, attachments = [] } = req.body;
 
-    let activeSessionId = sessionId;
+    let activeSessionId = req.params.sessionId || req.params.id || sessionId;
     if (activeSessionId) {
       const existingSession = await ChatSession.findOne({ _id: activeSessionId, userId });
       if (!existingSession) {

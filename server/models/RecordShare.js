@@ -89,4 +89,4 @@ recordShareSchema.methods.logAccess = function (ipAddress = '', userAgent = '', 
   });
 };
 
-module.exports = mongoose.model('RecordShare', recordShareSchema);
+module.exports = (mongoose.models.RecordShare || mongoose.model('RecordShare', recordShareSchema));

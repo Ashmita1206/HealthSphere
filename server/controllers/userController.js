@@ -11,7 +11,7 @@ const toProfile = (u) => ({
   address: u.address || "",
   emergency_contact_name: u.emergencyContactName || "",
   emergency_contact_phone: u.emergencyContactPhone || "",
-  health_score: u.healthScore || 75
+  health_score: u.healthScore !== undefined && u.healthScore !== null ? u.healthScore : null
 });
 
 async function getProfile(req, res, next) {

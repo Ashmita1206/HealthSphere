@@ -77,5 +77,5 @@ const ChatMessageSchema = new mongoose.Schema(
 
 ChatMessageSchema.index({ sessionId: 1, createdAt: 1 });
 
-module.exports = mongoose.model('ChatMessage', ChatMessageSchema);
+module.exports = (mongoose.models.ChatMessage || mongoose.model('ChatMessage', ChatMessageSchema));
 

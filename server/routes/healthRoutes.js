@@ -5,6 +5,7 @@ const { validate } = require("../middlewares/validate");
 const { chatLimiter } = require("../middlewares/rateLimiters");
 const c = require("../controllers/healthController");
 const hic = require("../controllers/healthIntelligenceController");
+const uc = require("../controllers/userController");
 
 const medicineUpdateSchema = Joi.object({
   name: Joi.string().trim().min(1).max(200),
@@ -47,6 +48,8 @@ const donationRequestUpdateSchema = Joi.object({
 }).min(1);
 
 router.use(protect);
+router.get("/profile", uc.getProfile);
+router.put("/profile", uc.updateProfile);
 router.get("/logs", c.listLogs);
 router.post("/logs", c.createLog);
 router.put("/logs/:id", c.updateLog);
@@ -65,9 +68,13 @@ router.get("/donation-requests", c.listDonationRequests);
 router.post("/donation-requests", c.createDonationRequest);
 router.put("/donation-requests/:id", validate(donationRequestUpdateSchema), c.updateDonationRequest);
 router.delete("/donation-requests/:id", c.deleteDonationRequest);
+router.get("/my-donations", c.listMyDonations);
+router.post("/my-donations", c.createMyDonation);
 router.get("/insights", c.getInsights);
 router.get("/intelligence", hic.getHealthIntelligence);
 router.get("/scores", hic.getHealthScores);
+router.get("/score", hic.getHealthScores);
+router.post("/score/calculate", hic.getHealthIntelligence);
 router.get("/trends", hic.getHealthTrends);
 router.post("/doses/toggle", c.toggleDose);
 router.get("/doses/today", c.getTodayDoses);

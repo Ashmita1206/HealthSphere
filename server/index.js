@@ -44,6 +44,7 @@ const timelineRoutes = require('./routes/timelineRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const medicalProfileRoutes = require('./routes/medicalProfileRoutes');
 const doctorRoutes = require('./routes/doctorRoutes');
+const discoveryRoutes = require('./routes/discoveryRoutes');
 
 const shareRoutes = require('./routes/shareRoutes');
 
@@ -230,9 +231,11 @@ apiPrefixes.forEach((prefix) => {
   app.use(`${prefix}/auth`, authRoutes);
   app.use(`${prefix}/user`, userRoutes);
   app.use(`${prefix}/health`, healthRoutes);
+  app.use(`${prefix}/health/reports`, reportRoutes);
   app.use(`${prefix}/reminders`, reminderRoutes);
   app.use(`${prefix}/reports`, reportRoutes);
   app.use(`${prefix}/emergency`, emergencyRoutes);
+  app.use(`${prefix}/discovery`, discoveryRoutes);
   app.use(`${prefix}/chat`, newChatRoutes);
   app.use(`${prefix}/legacy-chat`, chatRoutes);
   app.use(`${prefix}/ai`, aiRoutes);

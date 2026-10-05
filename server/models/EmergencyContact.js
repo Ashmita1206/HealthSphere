@@ -10,4 +10,4 @@ const emergencyContactSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("EmergencyContact", emergencyContactSchema);
+module.exports = (mongoose.models.EmergencyContact || mongoose.model("EmergencyContact", emergencyContactSchema));

@@ -108,5 +108,4 @@ loginHistorySchema.index({ createdAt: -1 });
 loginHistorySchema.index({ attemptedAt: -1 });
 
 module.exports =
-  mongoose.models.LoginHistory ||
-  mongoose.model('LoginHistory', loginHistorySchema);
+  mongoose.models.LoginHistory || mongoose.model('LoginHistory', loginHistorySchema);

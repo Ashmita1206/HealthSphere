@@ -16,4 +16,4 @@ const doseLogSchema = new mongoose.Schema(
 
 doseLogSchema.index({ userId: 1, careActionId: 1, scheduledDate: 1 }, { unique: true });
 
-module.exports = mongoose.model("DoseLog", doseLogSchema);
+module.exports = (mongoose.models.DoseLog || mongoose.model("DoseLog", doseLogSchema));

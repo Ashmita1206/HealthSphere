@@ -51,16 +51,15 @@ router.get(
   ),
   nearbyHospitals
 );
-router.post(
-  "/sos",
-  validate(
-    Joi.object({
-      latitude: Joi.number().required(),
-      longitude: Joi.number().required()
-    })
-  ),
-  triggerSos
+const sosSchema = validate(
+  Joi.object({
+    latitude: Joi.number().required(),
+    longitude: Joi.number().required()
+  })
 );
+
+router.post("/sos", sosSchema, triggerSos);
+router.post("/trigger-sos", sosSchema, triggerSos);
 router.post("/resolve", resolveSos);
 router.post("/report", eic.reportEmergency);
 router.get("/history", eic.getEmergencyHistory);

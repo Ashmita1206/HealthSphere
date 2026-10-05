@@ -49,4 +49,4 @@ const consultationMessageSchema = new mongoose.Schema(
 
 consultationMessageSchema.index({ consultationId: 1, createdAt: 1 });
 
-module.exports = mongoose.model('ConsultationMessage', consultationMessageSchema);
+module.exports = (mongoose.models.ConsultationMessage || mongoose.model('ConsultationMessage', consultationMessageSchema));

@@ -417,9 +417,30 @@ async function verifyEmail(req, res, next) {
   }
 }
 
+async function getMe(req, res, next) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: req.user._id,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+        isEmailVerified: req.user.isEmailVerified,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   signup,
   login,
+  getMe,
   refresh,
   refreshTokenHandler,
   getSessions,

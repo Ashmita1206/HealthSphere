@@ -56,5 +56,5 @@ const AIMemorySchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('AIMemory', AIMemorySchema);
+module.exports = (mongoose.models.AIMemory || mongoose.model('AIMemory', AIMemorySchema));
 

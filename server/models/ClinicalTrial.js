@@ -61,6 +61,6 @@ const SubjectEnrollmentSchema = new mongoose.Schema({
 });
 
 module.exports = {
-  ClinicalTrial: mongoose.model('ClinicalTrial', ClinicalTrialSchema),
-  SubjectEnrollment: mongoose.model('SubjectEnrollment', SubjectEnrollmentSchema)
+  ClinicalTrial: (mongoose.models.ClinicalTrial || mongoose.model('ClinicalTrial', ClinicalTrialSchema)),
+  SubjectEnrollment: (mongoose.models.SubjectEnrollment || mongoose.model('SubjectEnrollment', SubjectEnrollmentSchema))
 };

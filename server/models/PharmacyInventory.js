@@ -28,4 +28,4 @@ const PharmacyItemSchema = new mongoose.Schema({
   bufferCommands: false
 });
 
-module.exports = mongoose.model('PharmacyItem', PharmacyItemSchema);
+module.exports = (mongoose.models.PharmacyItem || mongoose.model('PharmacyItem', PharmacyItemSchema));

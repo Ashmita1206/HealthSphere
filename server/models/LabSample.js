@@ -47,4 +47,4 @@ const LabOrderSchema = new mongoose.Schema({
   bufferCommands: false
 });
 
-module.exports = mongoose.model('LabOrder', LabOrderSchema);
+module.exports = (mongoose.models.LabOrder || mongoose.model('LabOrder', LabOrderSchema));

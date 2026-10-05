@@ -62,6 +62,6 @@ const BillingClaimSchema = new mongoose.Schema({
 });
 
 module.exports = {
-  Invoice: mongoose.model('Invoice', InvoiceSchema),
-  BillingClaim: mongoose.model('BillingClaim', BillingClaimSchema)
+  Invoice: (mongoose.models.Invoice || mongoose.model('Invoice', InvoiceSchema)),
+  BillingClaim: (mongoose.models.BillingClaim || mongoose.model('BillingClaim', BillingClaimSchema))
 };
