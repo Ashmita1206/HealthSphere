@@ -26,6 +26,8 @@ router.get('/search', searchChats);
 // Messages
 router.get('/sessions/:sessionId/messages', getMessages);
 router.get('/sessions/:id/messages', getMessages);
+router.post('/sessions/:sessionId/messages', sendMessage);
+router.post('/sessions/:id/messages', sendMessage);
 router.post('/messages', sendMessage);
 router.put('/messages/:messageId/feedback', feedbackMessage);
 

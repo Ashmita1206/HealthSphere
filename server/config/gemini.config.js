@@ -11,7 +11,7 @@ const genAI = new GoogleGenAI({
 });
 
 const AI_PROVIDER = process.env.AI_PROVIDER || 'gemini';
-const AI_MODEL = process.env.AI_MODEL || 'gemini-flash-latest';
+const AI_MODEL = process.env.AI_MODEL || 'gemini-3.8-flash';
 
 function isConfigured() {
   return Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0);

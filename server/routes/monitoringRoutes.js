@@ -55,7 +55,7 @@ router.get('/health/liveness', (_req, res) => {
 });
 
 // Readiness Probe: ready to accept traffic
-router.get('/health/readiness', (_req, res) => {
+router.get(['/health/readiness', '/readiness'], (_req, res) => {
   const isReady = mongoose.connection.readyState === 1 || process.env.NODE_ENV === 'test';
   if (isReady) {
     return res.status(200).json({ status: 'ready' });

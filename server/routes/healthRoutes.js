@@ -73,6 +73,8 @@ router.post("/my-donations", c.createMyDonation);
 router.get("/insights", c.getInsights);
 router.get("/intelligence", hic.getHealthIntelligence);
 router.get("/scores", hic.getHealthScores);
+router.get("/score", hic.getHealthScores);
+router.post("/score/calculate", hic.getHealthIntelligence);
 router.get("/trends", hic.getHealthTrends);
 router.post("/doses/toggle", c.toggleDose);
 router.get("/doses/today", c.getTodayDoses);

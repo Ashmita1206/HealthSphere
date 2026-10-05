@@ -143,7 +143,7 @@ async function sendMessage(req, res, next) {
     const userId = req.user._id;
     const { sessionId, content, attachments = [] } = req.body;
 
-    let activeSessionId = sessionId;
+    let activeSessionId = req.params.sessionId || req.params.id || sessionId;
     if (activeSessionId) {
       const existingSession = await ChatSession.findOne({ _id: activeSessionId, userId });
       if (!existingSession) {
