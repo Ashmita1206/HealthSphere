@@ -77,6 +77,38 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// PUT /api/notifications/:id — update or mark single notification as read
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id || req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid notification ID' });
+    }
+
+    const notification = await Notification.findOne({ _id: id, userId });
+    if (!notification) {
+      const existsForOtherUser = await Notification.findById(id);
+      if (existsForOtherUser) {
+        return res.status(403).json({ success: false, message: 'Forbidden: You do not own this notification' });
+      }
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    if (req.body && req.body.read !== undefined) {
+      notification.read = Boolean(req.body.read);
+    } else {
+      notification.read = true;
+    }
+    await notification.save();
+
+    res.status(200).json({ success: true, data: mapNotification(notification) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PUT /api/notifications/:id/read — mark single notification as read
 router.put('/:id/read', async (req, res, next) => {
   try {
