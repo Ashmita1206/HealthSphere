@@ -58,4 +58,4 @@ userSchema.methods.isAccountLocked = function () {
   return Boolean(this.lockUntil && this.lockUntil > Date.now());
 };
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = (mongoose.models.User || mongoose.model("User", userSchema));

@@ -73,4 +73,4 @@ const careTeamThreadSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('CareTeamThread', careTeamThreadSchema);
+module.exports = (mongoose.models.CareTeamThread || mongoose.model('CareTeamThread', careTeamThreadSchema));

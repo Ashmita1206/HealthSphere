@@ -34,4 +34,4 @@ const pushSubscriptionSchema = new mongoose.Schema(
 
 pushSubscriptionSchema.index({ userId: 1, endpoint: 1 }, { unique: true });
 
-module.exports = mongoose.model('PushSubscription', pushSubscriptionSchema);
+module.exports = (mongoose.models.PushSubscription || mongoose.model('PushSubscription', pushSubscriptionSchema));

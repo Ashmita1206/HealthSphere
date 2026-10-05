@@ -49,5 +49,5 @@ const HealthScoreSchema = new mongoose.Schema(
 
 HealthScoreSchema.index({ userId: 1, createdAt: -1 });
 
-module.exports = mongoose.model('HealthScore', HealthScoreSchema);
+module.exports = (mongoose.models.HealthScore || mongoose.model('HealthScore', HealthScoreSchema));
 

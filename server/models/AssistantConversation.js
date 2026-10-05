@@ -53,4 +53,4 @@ const assistantConversationSchema = new mongoose.Schema(
 
 assistantConversationSchema.index({ userId: 1, sessionId: 1 }, { unique: true });
 
-module.exports = mongoose.model('AssistantConversation', assistantConversationSchema);
+module.exports = (mongoose.models.AssistantConversation || mongoose.model('AssistantConversation', assistantConversationSchema));

@@ -50,4 +50,4 @@ const medicalReportAnalysisSchema = new mongoose.Schema(
 
 medicalReportAnalysisSchema.index({ userId: 1, reportId: 1 });
 
-module.exports = mongoose.model('MedicalReportAnalysis', medicalReportAnalysisSchema);
+module.exports = (mongoose.models.MedicalReportAnalysis || mongoose.model('MedicalReportAnalysis', medicalReportAnalysisSchema));

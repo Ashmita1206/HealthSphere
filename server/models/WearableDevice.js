@@ -56,4 +56,4 @@ const wearableDeviceSchema = new mongoose.Schema(
 
 wearableDeviceSchema.index({ userId: 1, deviceId: 1 }, { unique: true });
 
-module.exports = mongoose.model('WearableDevice', wearableDeviceSchema);
+module.exports = (mongoose.models.WearableDevice || mongoose.model('WearableDevice', wearableDeviceSchema));

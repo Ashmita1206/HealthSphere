@@ -52,4 +52,4 @@ const symptomAssessmentSchema = new mongoose.Schema(
 
 symptomAssessmentSchema.index({ userId: 1, createdAt: -1 });
 
-module.exports = mongoose.model('SymptomAssessment', symptomAssessmentSchema);
+module.exports = (mongoose.models.SymptomAssessment || mongoose.model('SymptomAssessment', symptomAssessmentSchema));

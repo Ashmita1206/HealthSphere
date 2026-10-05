@@ -67,4 +67,4 @@ const sharedClinicalNoteSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('SharedClinicalNote', sharedClinicalNoteSchema);
+module.exports = (mongoose.models.SharedClinicalNote || mongoose.model('SharedClinicalNote', sharedClinicalNoteSchema));

@@ -49,4 +49,4 @@ healthTimelineSchema.index({ userId: 1, createdAt: -1 });
 healthTimelineSchema.index({ userId: 1, eventType: 1 });
 healthTimelineSchema.index({ userId: 1, category: 1 });
 
-module.exports = mongoose.model('HealthTimeline', healthTimelineSchema);
+module.exports = (mongoose.models.HealthTimeline || mongoose.model('HealthTimeline', healthTimelineSchema));

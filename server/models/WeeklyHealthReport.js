@@ -90,4 +90,4 @@ const weeklyHealthReportSchema = new mongoose.Schema(
 
 weeklyHealthReportSchema.index({ userId: 1, weekStartDate: -1 });
 
-module.exports = mongoose.model('WeeklyHealthReport', weeklyHealthReportSchema);
+module.exports = (mongoose.models.WeeklyHealthReport || mongoose.model('WeeklyHealthReport', weeklyHealthReportSchema));

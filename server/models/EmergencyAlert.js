@@ -12,4 +12,4 @@ const emergencyAlertSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("EmergencyAlert", emergencyAlertSchema);
+module.exports = (mongoose.models.EmergencyAlert || mongoose.model("EmergencyAlert", emergencyAlertSchema));

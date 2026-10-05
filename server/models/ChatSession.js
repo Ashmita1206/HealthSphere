@@ -47,5 +47,5 @@ const ChatSessionSchema = new mongoose.Schema(
 
 ChatSessionSchema.index({ userId: 1, lastActivityAt: -1 });
 
-module.exports = mongoose.model('ChatSession', ChatSessionSchema);
+module.exports = (mongoose.models.ChatSession || mongoose.model('ChatSession', ChatSessionSchema));
 

@@ -69,4 +69,4 @@ const consultationSchema = new mongoose.Schema(
 consultationSchema.index({ patientId: 1, status: 1 });
 consultationSchema.index({ doctorId: 1, status: 1 });
 
-module.exports = mongoose.model('Consultation', consultationSchema);
+module.exports = (mongoose.models.Consultation || mongoose.model('Consultation', consultationSchema));
