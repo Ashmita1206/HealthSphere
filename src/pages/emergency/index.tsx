@@ -68,6 +68,10 @@ export default function EmergencyPage() {
   const [selectedHospital, setSelectedHospital] = useState<Location | null>(null);
   const [showMap, setShowMap] = useState(false);
   const locationEnabled = geoLocation !== null;
+  const [activeIncidents, setActiveIncidents] = useState<EmergencyIncidentData[]>([]);
+  const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>([]);
+  const [liveRiskMetrics, setLiveRiskMetrics] = useState<LiveRiskMetric[]>([]);
+
   const [checklistItems, setChecklistItems] = useState([
     { id: 'medicines', label: 'Carry medicines', checked: false },
     { id: 'identity', label: 'Identity card', checked: false },
@@ -94,29 +98,18 @@ export default function EmergencyPage() {
     }
   }, [geoLocation]);
 
-  const [activeIncidents, setActiveIncidents] = useState<EmergencyIncidentData[]>([
-    {
-      id: 'INC-ACTIVE-01',
-      severity: 'HIGH',
-      triggerReason: 'Elevated tachycardia (HR 124 bpm) & severe dyspnea detected',
-      status: 'active',
-      createdAt: '4 mins ago',
-      location: {
-        latitude: 37.7749,
-        longitude: -122.4194,
-        address: 'Downtown Medical Corridor, Sector 4',
-      },
-      assignedDoctor: {
-        name: 'Anita Verma',
-        specialization: 'Emergency Medicine & Triage',
-        phone: '+1-555-0199',
-      },
-    },
-  ]);
-
-  const handleResolveIncident = useCallback((id: string) => {
-    setActiveIncidents((prev) => prev.filter((inc) => inc.id !== id));
-    toast({ title: 'Incident Resolved', description: 'Emergency alert marked resolved and added to log.' });
+  const handleResolveIncident = useCallback(async (id: string) => {
+    try {
+      await api.put(`/emergency/${id}/resolve`, { status: 'resolved' });
+      setActiveIncidents((prev) => prev.filter((inc) => inc.id !== id));
+      toast({ title: 'Incident Resolved', description: 'Emergency alert marked resolved and recorded in audit log.' });
+    } catch (err: any) {
+      toast({
+        title: 'Resolution Failed',
+        description: err?.message || 'Failed to resolve emergency incident on server. Incident remains active.',
+        variant: 'destructive',
+      });
+    }
   }, [toast]);
 
   const sosReady = useMemo(() => {
@@ -160,6 +153,46 @@ export default function EmergencyPage() {
     }
   }, []);
 
+  const fetchEmergencies = useCallback(async () => {
+    try {
+      const [activeRes, historyRes] = await Promise.allSettled([
+        api.get<any[]>('/emergency/active'),
+        api.get<any[]>('/emergency/history'),
+      ]);
+
+      if (activeRes.status === 'fulfilled' && Array.isArray(activeRes.value)) {
+        setActiveIncidents(
+          activeRes.value.map((inc: any) => ({
+            id: inc._id || inc.id,
+            severity: inc.severity || 'HIGH',
+            triggerReason: inc.triggerReason || inc.description || 'Emergency Dispatch',
+            status: inc.status || 'active',
+            createdAt: inc.createdAt ? new Date(inc.createdAt).toLocaleTimeString() : 'Just now',
+            location: inc.location,
+            assignedDoctor: inc.assignedDoctor,
+          }))
+        );
+      }
+
+      if (historyRes.status === 'fulfilled' && Array.isArray(historyRes.value)) {
+        setIncidentHistory(
+          historyRes.value.map((h: any) => ({
+            id: h._id || h.id || `INC-${Date.now().toString().slice(-4)}`,
+            severity: h.severity || 'HIGH',
+            triggerReason: h.triggerReason || h.description || 'Emergency SOS',
+            timestamp: h.createdAt ? new Date(h.createdAt).toLocaleString() : 'Recent',
+            duration: h.duration || '5 mins',
+            doctorName: h.doctorName,
+            status: h.status || 'resolved',
+            outcomeNote: h.outcomeNote || 'Emergency event resolved.',
+          }))
+        );
+      }
+    } catch {
+      // Retain honest clean state on error
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -194,11 +227,12 @@ export default function EmergencyPage() {
     };
 
     void fetchData();
+    void fetchEmergencies();
 
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, fetchEmergencies]);
 
   const handleSOSTriggered = useCallback(async () => {
     setSosSent((prev) => prev + 1);
@@ -228,12 +262,7 @@ export default function EmergencyPage() {
       location: {
         latitude: userLat ?? 37.7749,
         longitude: userLng ?? -122.4194,
-        address: 'Live GPS Coordinates Broadcasted',
-      },
-      assignedDoctor: {
-        name: 'Rapid Response Team',
-        specialization: 'Emergency Trauma Triage',
-        phone: '911',
+        address: 'Live GPS Coordinates Broadcasted to Emergency Contacts',
       },
     };
     setActiveIncidents((prev) => [newIncident, ...prev]);
@@ -389,15 +418,15 @@ export default function EmergencyPage() {
         locationEnabled={locationEnabled}
       />
 
-      {/* Active Alerts Banner */}
+      {/* Active Alerts Banner (renders ALL CLEAR when activeIncidents is empty) */}
       <ActiveAlertsBanner
         incidents={activeIncidents}
         onResolve={handleResolveIncident}
         onCallAssignedDoctor={(phone) => window.open(`tel:${phone}`)}
       />
 
-      {/* Live Risk Telemetry */}
-      <LiveRiskCards />
+      {/* Live Risk Telemetry (honest empty/standby state when no wearables streaming) */}
+      <LiveRiskCards metrics={liveRiskMetrics} />
 
       {/* SOS Button */}
       <div className="flex justify-center py-2">
@@ -464,14 +493,14 @@ export default function EmergencyPage() {
             </div>
           )}
 
-          {/* Nearby Ambulances */}
+          {/* Nearby Ambulances (Explicitly labeled as Simulated Dispatch) */}
           <NearbyAmbulances />
 
           {/* Emergency Timeline */}
           <EmergencyTimeline events={timeline} />
 
           {/* Incident History Audit Log */}
-          <IncidentHistoryTable />
+          <IncidentHistoryTable incidents={incidentHistory} />
         </div>
 
         {/* Right Column */}

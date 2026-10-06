@@ -6,7 +6,7 @@ export interface ReportHistoryItem {
   title: string;
   category: string;
   date: string;
-  riskLevel: 'low' | 'moderate' | 'high';
+  riskLevel: 'low' | 'moderate' | 'high' | 'critical' | string;
   summary: string;
   fileUrl?: string;
 }
@@ -18,39 +18,36 @@ export interface ReportHistoryListProps {
   className?: string;
 }
 
-export const DEFAULT_REPORT_HISTORY: ReportHistoryItem[] = [
-  {
-    id: 'rep-01',
-    title: 'Comprehensive Metabolic Panel & Lipid Profile',
-    category: 'Blood Chemistry',
-    date: 'Aug 24, 2026',
-    riskLevel: 'moderate',
-    summary: 'Elevated HbA1c (7.8%) and LDL (164 mg/dL); renal profile intact.',
-  },
-  {
-    id: 'rep-02',
-    title: 'Complete Blood Count (CBC) with Differential',
-    category: 'Hematology',
-    date: 'Jul 12, 2026',
-    riskLevel: 'low',
-    summary: 'Normal hemoglobin (14.2 g/dL), platelet count (260,000/mcL), and white blood cell count.',
-  },
-  {
-    id: 'rep-03',
-    title: '2D Echocardiogram & Doppler Flow Study',
-    category: 'Cardiology',
-    date: 'May 04, 2026',
-    riskLevel: 'low',
-    summary: 'Normal left ventricular systolic function (EF 60%). Mild concentric LV hypertrophy.',
-  },
-];
+// Retained for test fixture typing only; never used as a component default
+export const DEFAULT_REPORT_HISTORY: ReportHistoryItem[] = [];
 
 export const ReportHistoryList: React.FC<ReportHistoryListProps> = ({
-  reports = DEFAULT_REPORT_HISTORY,
+  reports = [],
   onViewReport,
   onDownloadReport,
   className = '',
 }) => {
+  if (!reports || reports.length === 0) {
+    return (
+      <div
+        data-testid="report-history-empty"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-center space-y-2.5 ${className}`}
+      >
+        <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mx-auto">
+          <Calendar className="w-5 h-5" />
+        </div>
+        <div>
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+            No Diagnostic Reports in Archive
+          </h4>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+            Uploaded diagnostic reports and longitudinal clinical documents will be securely encrypted and archived here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="report-history-list"
@@ -76,8 +73,9 @@ export const ReportHistoryList: React.FC<ReportHistoryListProps> = ({
 
       <div className="space-y-3">
         {reports.map((item) => {
-          const isHigh = item.riskLevel === 'high';
-          const isModerate = item.riskLevel === 'moderate';
+          const riskLower = String(item.riskLevel).toLowerCase();
+          const isHigh = riskLower === 'high' || riskLower === 'critical';
+          const isModerate = riskLower === 'moderate';
 
           const badgeClasses = isHigh
             ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200'
@@ -100,7 +98,7 @@ export const ReportHistoryList: React.FC<ReportHistoryListProps> = ({
                       {item.title}
                     </h4>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClasses}`}>
-                      {item.riskLevel.toUpperCase()} RISK
+                      {String(item.riskLevel).toUpperCase()} RISK
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500">

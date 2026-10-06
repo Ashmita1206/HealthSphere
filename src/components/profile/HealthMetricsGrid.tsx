@@ -3,14 +3,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  Activity,
-  Heart,
   Scale,
+  Heart,
   Moon,
   Droplets,
   Zap,
   TrendingDown,
-  Sparkles,
   CheckCircle2,
 } from 'lucide-react';
 import type { Profile } from '@/pages/profile/profileData';
@@ -145,7 +143,7 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
                 <span className="text-xs font-bold text-slate-800">Fasting Blood Sugar</span>
               </div>
               <Badge className="bg-violet-50 text-violet-700 border-violet-200 text-[10px] font-bold">
-                Fasting
+                {profile.blood_sugar_fasting ? 'Fasting' : 'No Data'}
               </Badge>
             </div>
 
@@ -200,21 +198,21 @@ export const HealthMetricsGrid = memo(function HealthMetricsGrid({ profile }: He
                 </div>
                 <span className="text-xs font-bold text-slate-800">Daily Hydration</span>
               </div>
-              <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-bold">
-                80% Reached
+              <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-bold">
+                Telemetry
               </Badge>
             </div>
 
             <div className="flex items-baseline justify-between pt-1">
               <div>
                 <p className="text-3xl font-extrabold font-heading text-slate-900">
-                  2.4 <span className="text-xs font-normal text-slate-500">/ 3.0 Liters</span>
+                  -- <span className="text-xs font-normal text-slate-500">/ 3.0 Liters</span>
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Remaining: 600ml before 10 PM</p>
+                <p className="text-[10px] text-slate-500 font-medium">Connect smart bottle or log daily intake</p>
               </div>
             </div>
 
-            <Progress value={80} className="h-2 bg-slate-100" />
+            <Progress value={0} className="h-2 bg-slate-100" />
           </CardContent>
         </Card>
       </div>

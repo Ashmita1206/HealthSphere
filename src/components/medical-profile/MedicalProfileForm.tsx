@@ -14,7 +14,6 @@ import {
   User,
   Heart,
   Droplet,
-  Shield,
   Phone,
   Activity,
   Plus,
@@ -41,7 +40,7 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
   const [fullName, setFullName] = useState(initialData?.fullName || '');
   const [dateOfBirth, setDateOfBirth] = useState(initialData?.dateOfBirth || '');
   const [gender, setGender] = useState(initialData?.gender || 'male');
-  const [bloodGroup, setBloodGroup] = useState(initialData?.bloodGroup || 'O+');
+  const [bloodGroup, setBloodGroup] = useState(initialData?.bloodGroup || 'Unknown');
   const [height, setHeight] = useState(initialData?.height ? String(initialData.height) : '');
   const [weight, setWeight] = useState(initialData?.weight ? String(initialData.weight) : '');
   const [organDonor, setOrganDonor] = useState(initialData?.organDonor || false);
@@ -53,9 +52,7 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
 
   // Emergency Contacts
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>(
-    initialData?.emergencyContacts?.length
-      ? initialData.emergencyContacts
-      : [{ name: 'Jane Doe', relationship: 'Spouse', phone: '+1 (555) 987-6543', isPrimary: true }]
+    initialData?.emergencyContacts?.length ? initialData.emergencyContacts : []
   );
 
   // Insurance
@@ -73,16 +70,14 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
       setFullName(initialData.fullName || '');
       setDateOfBirth(initialData.dateOfBirth || '');
       setGender(initialData.gender || 'male');
-      setBloodGroup(initialData.bloodGroup || 'O+');
+      setBloodGroup(initialData.bloodGroup || 'Unknown');
       setHeight(initialData.height ? String(initialData.height) : '');
       setWeight(initialData.weight ? String(initialData.weight) : '');
       setOrganDonor(!!initialData.organDonor);
       setAllergiesText(initialData.allergies?.join(', ') || '');
       setChronicDiseasesText(initialData.chronicDiseases?.join(', ') || '');
       setMedicationsText(initialData.currentMedications?.join(', ') || '');
-      if (initialData.emergencyContacts?.length) {
-        setEmergencyContacts(initialData.emergencyContacts);
-      }
+      setEmergencyContacts(initialData.emergencyContacts || []);
       setInsuranceProvider(initialData.insurance?.provider || '');
       setPolicyNumber(initialData.insurance?.policyNumber || '');
       setSmoking(initialData.lifestyle?.smoking || 'never');
@@ -95,7 +90,7 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
   const handleAddContact = () => {
     setEmergencyContacts((prev) => [
       ...prev,
-      { name: '', relationship: 'Family', phone: '', isPrimary: false },
+      { name: '', relationship: 'Family', phone: '', isPrimary: prev.length === 0 },
     ]);
   };
 
@@ -382,41 +377,47 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                   </Button>
                 </div>
 
-                {emergencyContacts.map((contact, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 items-center"
-                  >
-                    <Input
-                      placeholder="Contact Name"
-                      value={contact.name}
-                      onChange={(e) => handleUpdateContact(idx, 'name', e.target.value)}
-                      className="rounded-lg text-xs h-8 bg-white"
-                    />
-                    <Input
-                      placeholder="Relationship (e.g. Spouse)"
-                      value={contact.relationship}
-                      onChange={(e) => handleUpdateContact(idx, 'relationship', e.target.value)}
-                      className="rounded-lg text-xs h-8 bg-white"
-                    />
-                    <div className="flex items-center gap-2">
+                {emergencyContacts.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-2">
+                    No emergency contacts added. Click above to add trusted contacts.
+                  </p>
+                ) : (
+                  emergencyContacts.map((contact, idx) => (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 items-center"
+                    >
                       <Input
-                        placeholder="Phone Number"
-                        value={contact.phone}
-                        onChange={(e) => handleUpdateContact(idx, 'phone', e.target.value)}
-                        className="rounded-lg text-xs h-8 bg-white flex-1"
+                        placeholder="Contact Name"
+                        value={contact.name}
+                        onChange={(e) => handleUpdateContact(idx, 'name', e.target.value)}
+                        className="rounded-lg text-xs h-8 bg-white"
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveContact(idx)}
-                        className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
-                        title="Delete contact"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <Input
+                        placeholder="Relationship (e.g. Spouse)"
+                        value={contact.relationship}
+                        onChange={(e) => handleUpdateContact(idx, 'relationship', e.target.value)}
+                        className="rounded-lg text-xs h-8 bg-white"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="Phone Number"
+                          value={contact.phone}
+                          onChange={(e) => handleUpdateContact(idx, 'phone', e.target.value)}
+                          className="rounded-lg text-xs h-8 bg-white flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveContact(idx)}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded-md cursor-pointer"
+                          title="Delete contact"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
@@ -520,7 +521,7 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold gap-2 h-9 px-4 rounded-xl"
+              className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold gap-2 h-9 px-4 rounded-xl cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? 'Saving...' : 'Save Medical Profile'}</span>

@@ -6,10 +6,7 @@ import {
   VideoOff,
   PhoneOff,
   Share2,
-  ShieldCheck,
   Wifi,
-  Volume2,
-  Maximize2,
 } from 'lucide-react';
 
 export interface VideoConsultationScreenProps {
@@ -21,15 +18,25 @@ export interface VideoConsultationScreenProps {
 }
 
 export const VideoConsultationScreen: React.FC<VideoConsultationScreenProps> = ({
-  doctorName = 'Dr. Vikramaditya Sen',
-  patientName = 'Aarav Sharma',
-  consultationId = 'CONS-2026-8812',
+  doctorName = 'Consulting Physician',
+  patientName = 'Patient',
+  consultationId = 'CONS-2026-LIVE',
   onEndCall,
   className = '',
 }) => {
   const [micActive, setMicActive] = useState(true);
   const [videoActive, setVideoActive] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
+
+  const initials = doctorName
+    ? doctorName
+        .split(' ')
+        .filter(Boolean)
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : 'MD';
 
   return (
     <div
@@ -62,7 +69,7 @@ export const VideoConsultationScreen: React.FC<VideoConsultationScreenProps> = (
         <div className="text-center space-y-3 z-10">
           <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-teal-600 to-emerald-500 mx-auto p-1 shadow-xl">
             <div className="w-full h-full rounded-[22px] bg-slate-900 flex items-center justify-center text-teal-300 text-3xl font-black">
-              {doctorName.split(' ').map((n) => n[0]).join('')}
+              {initials}
             </div>
           </div>
           <div>

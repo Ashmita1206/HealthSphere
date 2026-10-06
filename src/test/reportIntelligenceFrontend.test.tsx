@@ -3,9 +3,50 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MedicalReports from '@/pages/MedicalReports';
 import { ReportUploadDropzone } from '@/components/reports/ReportUploadDropzone';
-import { AbnormalValuesTable, DEFAULT_ABNORMAL_VALUES } from '@/components/reports/AbnormalValuesTable';
-import { ClinicalRecommendations, DEFAULT_REPORT_RECS } from '@/components/reports/ClinicalRecommendations';
-import { ReportHistoryList, DEFAULT_REPORT_HISTORY } from '@/components/reports/ReportHistoryList';
+import { AbnormalValuesTable, type AbnormalBiomarker } from '@/components/reports/AbnormalValuesTable';
+import { ClinicalRecommendations, type ReportRecommendation } from '@/components/reports/ClinicalRecommendations';
+import { ReportHistoryList, type ReportHistoryItem } from '@/components/reports/ReportHistoryList';
+
+// Test fixtures for verified real report data
+const realAbnormalValues: AbnormalBiomarker[] = [
+  {
+    name: 'HbA1c (Glycated Hemoglobin)',
+    value: '7.8',
+    unit: '%',
+    normalRange: '< 5.7 %',
+    status: 'Elevated',
+    clinicalNote: 'Indicates suboptimal glycemic control over the prior 90 days.',
+  },
+  {
+    name: 'LDL Cholesterol',
+    value: '164',
+    unit: 'mg/dL',
+    normalRange: '< 100 mg/dL',
+    status: 'Elevated',
+    clinicalNote: 'Elevated atherogenic lipoprotein level; dietary modification indicated.',
+  },
+];
+
+const realRecommendations: ReportRecommendation[] = [
+  {
+    id: 'rec-endo',
+    category: 'Specialist Consultation',
+    title: 'Consult Endocrinologist regarding HbA1c (7.8%)',
+    description: 'Discuss potential adjustment of Metformin dosage with your specialist.',
+    urgency: 'Within 1 Week',
+  },
+];
+
+const realHistoryItems: ReportHistoryItem[] = [
+  {
+    id: 'rep-01',
+    title: 'Comprehensive Metabolic Panel',
+    category: 'Blood Chemistry',
+    date: 'Aug 24, 2026',
+    riskLevel: 'moderate',
+    summary: 'Elevated HbA1c and LDL profile.',
+  },
+];
 
 // Mock useMedicalReport hook
 vi.mock('@/hooks/ai/useMedicalReport', () => ({
@@ -18,6 +59,15 @@ vi.mock('@/hooks/ai/useMedicalReport', () => ({
       riskLevel: 'Moderate',
       summary: 'Patient exhibits elevated HbA1c (7.8%) and elevated LDL-C (164 mg/dL) indicating metabolic syndrome and glycemic instability.',
       ocrStatus: 'completed',
+      abnormalValues: [
+        {
+          parameter: 'HbA1c',
+          value: '7.8%',
+          normalRange: '<5.7%',
+          severity: 'Elevated',
+          clinicalNote: 'Suboptimal glycemic control.',
+        },
+      ],
       biomarkers: {
         hba1c: '7.8%',
         sugar: '148 mg/dL',
@@ -25,6 +75,7 @@ vi.mock('@/hooks/ai/useMedicalReport', () => ({
         liver: 'Normal',
         kidney: 'Creatinine 1.4 mg/dL',
       },
+      recommendations: ['Consult Endocrinologist regarding glycemic control'],
     },
     comparisonResult: null,
     analyzeDocument: vi.fn(),
@@ -32,7 +83,7 @@ vi.mock('@/hooks/ai/useMedicalReport', () => ({
   }),
 }));
 
-describe('F27 — Medical Report Intelligence UI', () => {
+describe('F27 — Medical Report Intelligence UI & Clinical Integrity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -79,27 +130,42 @@ describe('F27 — Medical Report Intelligence UI', () => {
     expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
   });
 
-  it('renders AbnormalValuesTable highlighting critical and elevated metrics', () => {
-    render(<AbnormalValuesTable abnormalValues={DEFAULT_ABNORMAL_VALUES} />);
+  it('renders honest empty state for AbnormalValuesTable when no abnormal values exist', () => {
+    render(<AbnormalValuesTable abnormalValues={[]} />);
+    expect(screen.getByTestId('abnormal-values-empty')).toBeInTheDocument();
+    expect(screen.getByText(/No Abnormal Biomarkers Flagged/i)).toBeInTheDocument();
+    expect(screen.queryByText('HbA1c (Glycated Hemoglobin)')).not.toBeInTheDocument();
+  });
+
+  it('renders AbnormalValuesTable highlighting critical and elevated metrics when actual data provided', () => {
+    render(<AbnormalValuesTable abnormalValues={realAbnormalValues} />);
     expect(screen.getByTestId('abnormal-values-table')).toBeInTheDocument();
     expect(screen.getByText('HbA1c (Glycated Hemoglobin)')).toBeInTheDocument();
     expect(screen.getByText('7.8')).toBeInTheDocument();
     expect(screen.getByText('LDL Cholesterol')).toBeInTheDocument();
-    expect(screen.getByText('Serum Creatinine')).toBeInTheDocument();
   });
 
-  it('renders ClinicalRecommendations categorized by diet, medication, and lifestyle', () => {
-    render(<ClinicalRecommendations recommendations={DEFAULT_REPORT_RECS} />);
+  it('renders honest empty state for ClinicalRecommendations when no recommendations exist', () => {
+    render(<ClinicalRecommendations recommendations={[]} />);
+    expect(screen.getByTestId('clinical-recommendations-empty')).toBeInTheDocument();
+    expect(screen.getByText(/No Clinical Recommendations/i)).toBeInTheDocument();
+  });
+
+  it('renders ClinicalRecommendations when actual recommendations are provided', () => {
+    render(<ClinicalRecommendations recommendations={realRecommendations} />);
     expect(screen.getByTestId('clinical-recommendations')).toBeInTheDocument();
     expect(screen.getByText(/Consult Endocrinologist regarding HbA1c/i)).toBeInTheDocument();
-    expect(screen.getByText(/Adopt Low-Glycemic Mediterranean Diet/i)).toBeInTheDocument();
   });
 
-  it('renders ReportHistoryList with report items and action buttons', () => {
-    render(<ReportHistoryList reports={DEFAULT_REPORT_HISTORY} />);
+  it('renders honest empty state for ReportHistoryList when no reports exist', () => {
+    render(<ReportHistoryList reports={[]} />);
+    expect(screen.getByTestId('report-history-empty')).toBeInTheDocument();
+    expect(screen.getByText(/No Diagnostic Reports in Archive/i)).toBeInTheDocument();
+  });
+
+  it('renders ReportHistoryList with real report items and action buttons', () => {
+    render(<ReportHistoryList reports={realHistoryItems} />);
     expect(screen.getByTestId('report-history-list')).toBeInTheDocument();
-    expect(screen.getByText('Comprehensive Metabolic Panel & Lipid Profile')).toBeInTheDocument();
-    expect(screen.getByText('Complete Blood Count (CBC) with Differential')).toBeInTheDocument();
-    expect(screen.getByText('2D Echocardiogram & Doppler Flow Study')).toBeInTheDocument();
+    expect(screen.getByText('Comprehensive Metabolic Panel')).toBeInTheDocument();
   });
 });

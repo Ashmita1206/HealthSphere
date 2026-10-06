@@ -1,31 +1,59 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useMedicalReport } from '@/hooks/ai/useMedicalReport';
 import { ReportComparisonModal } from '@/components/ai/ReportComparisonModal';
 import {
   FileText,
   Upload,
   Sparkles,
-  AlertTriangle,
-  CheckCircle2,
-  ArrowRightLeft,
-  Calendar,
-  Activity,
   ShieldCheck,
   Download,
+  ArrowRightLeft,
+  FileCheck2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReportUploadDropzone } from '@/components/reports/ReportUploadDropzone';
-import { AbnormalValuesTable, DEFAULT_ABNORMAL_VALUES } from '@/components/reports/AbnormalValuesTable';
-import { ClinicalRecommendations, DEFAULT_REPORT_RECS } from '@/components/reports/ClinicalRecommendations';
-import { ReportHistoryList, DEFAULT_REPORT_HISTORY } from '@/components/reports/ReportHistoryList';
+import { AbnormalValuesTable, type AbnormalBiomarker } from '@/components/reports/AbnormalValuesTable';
+import { ClinicalRecommendations, type ReportRecommendation } from '@/components/reports/ClinicalRecommendations';
+import { ReportHistoryList, type ReportHistoryItem } from '@/components/reports/ReportHistoryList';
+import { api } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MedicalReports() {
   const { analyzing, comparing, reportResult, comparisonResult, analyzeDocument, compareTwoReports } =
     useMedicalReport();
 
+  const { toast } = useToast();
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [ocrStep, setOcrStep] = useState(1);
+  const [historyReports, setHistoryReports] = useState<ReportHistoryItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch real archived reports from backend
+  useEffect(() => {
+    let mounted = true;
+    api.get<any[]>('/reports')
+      .then((data) => {
+        if (mounted && Array.isArray(data)) {
+          const mapped: ReportHistoryItem[] = data.map((r) => ({
+            id: r.id || r._id,
+            title: r.title || 'Diagnostic Report',
+            category: r.category || 'General Diagnostic',
+            date: r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recent',
+            riskLevel: (r.risk_level || 'low').toLowerCase(),
+            summary: r.summary || 'Clinical report record uploaded to HealthSphere archive.',
+            fileUrl: r.file_url,
+          }));
+          setHistoryReports(mapped);
+        }
+      })
+      .catch(() => {
+        if (mounted) setHistoryReports([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,16 +73,49 @@ export default function MedicalReports() {
   };
 
   const handleDownloadAnalysis = () => {
+    if (!reportResult) {
+      toast({
+        title: 'No Report Analyzed',
+        description: 'Upload a medical report first to generate and download clinical insights.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(
-      JSON.stringify(reportResult || { title: "Clinical Report Analysis", abnormalValues: DEFAULT_ABNORMAL_VALUES, recommendations: DEFAULT_REPORT_RECS }, null, 2)
+      JSON.stringify(reportResult, null, 2)
     );
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "HealthSphere_Clinical_Analysis.json");
+    downloadAnchor.setAttribute("download", `HealthSphere_Clinical_Analysis_${reportResult.reportTitle.replace(/\s+/g, '_')}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
   };
+
+  // Convert real AI reportResult abnormal values
+  const abnormalBiomarkers: AbnormalBiomarker[] = (reportResult?.abnormalValues || []).map((item) => ({
+    name: item.parameter || (item as any).name || 'Biomarker',
+    value: item.value || '',
+    unit: (item as any).unit || '',
+    normalRange: item.normalRange || '',
+    status: item.severity || (item as any).status || 'Elevated',
+    clinicalNote: item.clinicalNote || '',
+  }));
+
+  // Convert real AI reportResult recommendations
+  const clinicalRecs: ReportRecommendation[] = (reportResult?.recommendations || []).map((rec, idx) => {
+    if (typeof rec === 'string') {
+      return {
+        id: `rec-real-${idx}`,
+        category: 'Clinical Follow-Up',
+        title: rec,
+        description: 'Recommended by AI clinical report intelligence based on extracted lab values.',
+        urgency: reportResult.riskLevel === 'Critical' || reportResult.riskLevel === 'High' ? 'Immediate' : 'Routine',
+      };
+    }
+    return rec as ReportRecommendation;
+  });
 
   // 13 biomarkers extractions list
   const biomarkerKeys = [
@@ -95,7 +156,8 @@ export default function MedicalReports() {
           <Button
             onClick={handleDownloadAnalysis}
             variant="outline"
-            className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-bold gap-1.5 cursor-pointer"
+            disabled={!reportResult}
+            className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-bold gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <Download className="w-4 h-4 text-teal-600" />
             <span>Download Analysis</span>
@@ -127,10 +189,10 @@ export default function MedicalReports() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 uppercase tracking-wider">
-                  {reportResult.category}
+                  {reportResult.category || 'Diagnostic Lab'}
                 </span>
                 <h2 className="text-xl font-extrabold text-slate-900 dark:text-white font-heading mt-1">
-                  {reportResult.reportTitle}
+                  {reportResult.reportTitle || 'Analyzed Laboratory Report'}
                 </h2>
               </div>
 
@@ -147,7 +209,7 @@ export default function MedicalReports() {
                         : 'text-emerald-600'
                     }`}
                   >
-                    {reportResult.riskLevel}
+                    {reportResult.riskLevel || 'Normal'}
                   </span>
                 </div>
 
@@ -172,17 +234,17 @@ export default function MedicalReports() {
           </div>
 
           {/* 3. Highlighted Abnormal Values */}
-          <AbnormalValuesTable />
+          <AbnormalValuesTable abnormalValues={abnormalBiomarkers} />
 
           {/* 4. 13 Extracted Biomarkers Grid */}
           <div className="space-y-3">
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
-              Extracted Clinical Biomarkers (13 Parameters)
+              Extracted Clinical Biomarkers ({Object.keys(reportResult.biomarkers || {}).length > 0 ? Object.keys(reportResult.biomarkers).length : 13} Parameters)
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {biomarkerKeys.map(({ key, label }) => {
                 const rawVal = reportResult.biomarkers?.[key];
-                const val = typeof rawVal === 'object' ? JSON.stringify(rawVal) : String(rawVal || 'Normal');
+                const val = typeof rawVal === 'object' ? JSON.stringify(rawVal) : String(rawVal || 'Not Detected');
                 return (
                   <div
                     key={key}
@@ -197,20 +259,29 @@ export default function MedicalReports() {
           </div>
 
           {/* 5. AI Recommendations */}
-          <ClinicalRecommendations />
+          <ClinicalRecommendations recommendations={clinicalRecs} />
         </div>
       )}
 
-      {/* Fallback Display if no report analyzed yet: Show Abnormal Table & Recommendations preview */}
+      {/* Honest Empty State when no report has been analyzed yet */}
       {!reportResult && !analyzing && (
-        <div className="space-y-6">
-          <AbnormalValuesTable />
-          <ClinicalRecommendations />
+        <div data-testid="no-report-empty-state" className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center mx-auto">
+            <FileCheck2 className="w-6 h-6" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
+              Ready for Document Ingestion & AI OCR
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Upload a lab test, blood panel, or diagnostic radiology report above. HealthSphere will securely extract 13 key biomarkers, calculate risk stratifications, and flag abnormal parameters.
+            </p>
+          </div>
         </div>
       )}
 
       {/* 6. Report History List */}
-      <ReportHistoryList />
+      <ReportHistoryList reports={historyReports} />
 
       {/* Comparison Modal */}
       <ReportComparisonModal

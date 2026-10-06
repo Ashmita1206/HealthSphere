@@ -5,14 +5,11 @@ import { api } from '@/services/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Save,
-  User,
   Activity,
   PhoneCall,
   FileText,
-  Trophy,
   ShieldCheck,
   Settings,
   Heart,
@@ -22,13 +19,13 @@ import { ProfileHero } from '@/components/profile/ProfileHero';
 import { HealthMetricsGrid } from '@/components/profile/HealthMetricsGrid';
 import { AchievementsSection } from '@/components/profile/AchievementsSection';
 import { HealthDocumentsVault } from '@/components/profile/HealthDocumentsVault';
-import { PersonalInformation } from '@/components/profile/PersonalInformation';
 import { EmergencyContact } from '@/components/profile/EmergencyContact';
-import { MedicalInformation } from '@/components/profile/MedicalInformation';
-import { LifestyleInformation } from '@/components/profile/LifestyleInformation';
 import { Preferences } from '@/components/profile/Preferences';
-import { MedicalIDCard } from '@/components/profile/MedicalIDCard';
 import { useMedicalProfile } from '@/context/MedicalProfileContext';
+import {
+  medicalProfileService,
+  type MedicalProfileData,
+} from '@/services/medicalProfileService';
 import {
   DigitalHealthCard,
   QRCodeCard,
@@ -41,13 +38,14 @@ import {
 import {
   createDefaultProfile,
   normalizeProfileData,
+  mergeProfileAndMedicalData,
   type Profile,
   type ProfileDocument,
 } from './profileData';
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const { profile: medicalProfile, saveProfile: saveMedicalProfile } = useMedicalProfile();
+  const { profile: medicalProfile, saveProfile: saveMedicalProfile, refreshProfile } = useMedicalProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [fetchingProfile, setFetchingProfile] = useState(true);
@@ -95,18 +93,44 @@ export default function ProfilePage() {
       return;
     }
 
+    let isMounted = true;
     setFetchingProfile(true);
-    api.get<unknown>('/user/profile')
-      .then((data) => setProfile(normalizeProfileData(data)))
-      .catch(() => setProfile(createDefaultProfile()))
-      .finally(() => setFetchingProfile(false));
-  }, [user]);
+
+    Promise.allSettled([
+      api.get<unknown>('/user/profile'),
+      medicalProfileService.getMedicalProfile(),
+    ])
+      .then(([userRes, medRes]) => {
+        if (!isMounted) return;
+        const userData = userRes.status === 'fulfilled' ? userRes.value : {};
+        const medData = medRes.status === 'fulfilled' ? medRes.value : null;
+        setProfile(mergeProfileAndMedicalData(userData, medData));
+      })
+      .catch(() => {
+        if (isMounted) setProfile(createDefaultProfile());
+      })
+      .finally(() => {
+        if (isMounted) setFetchingProfile(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  // Sync profile state when medicalProfile context updates externally
+  useEffect(() => {
+    if (medicalProfile) {
+      setProfile((prev) => mergeProfileAndMedicalData(prev, medicalProfile));
+    }
+  }, [medicalProfile]);
 
   const handleSave = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const backendProfile = {
+      // 1. Personal Identity portion -> PUT /api/user/profile
+      const userProfilePayload = {
         full_name: profile.full_name,
         phone: profile.phone,
         date_of_birth: profile.date_of_birth,
@@ -118,16 +142,69 @@ export default function ProfilePage() {
         health_score: profile.health_score,
       };
 
-      await api.put('/user/profile', backendProfile);
+      // 2. Clinical Medical Profile portion -> PUT /api/profile/medical
+      const clinicalPayload: Partial<MedicalProfileData> = {
+        fullName: profile.full_name || medicalProfile?.fullName || 'HealthSphere Patient',
+        dateOfBirth: profile.date_of_birth || medicalProfile?.dateOfBirth || '',
+        gender: profile.gender || medicalProfile?.gender || '',
+        bloodGroup: profile.blood_type || medicalProfile?.bloodGroup || 'Unknown',
+        height: typeof profile.height === 'number' ? profile.height : (medicalProfile?.height ?? null),
+        weight: typeof profile.weight === 'number' ? profile.weight : (medicalProfile?.weight ?? null),
+        allergies: profile.allergies || [],
+        chronicDiseases: profile.chronic_diseases || [],
+        surgeries: (profile.surgeries || []).map((s) =>
+          typeof s === 'string' ? { name: s } : s
+        ),
+        familyHistory: (profile.family_history || []).map((f) =>
+          typeof f === 'string' ? { relation: 'Family', condition: f } : f
+        ),
+        lifestyle: {
+          smoking: profile.smoking || 'never',
+          alcohol: profile.alcohol || 'never',
+          activityLevel: profile.exercise_level || 'moderate',
+          diet: profile.diet_preference || 'balanced',
+        },
+        insurance: {
+          provider: profile.insurance_provider || '',
+          policyNumber: profile.insurance_policy_number || '',
+        },
+        organDonor: Boolean(profile.organ_donor),
+        address: {
+          street: profile.address || '',
+        },
+        emergencyContacts: profile.emergency_contact_name
+          ? [
+              {
+                name: profile.emergency_contact_name,
+                phone: profile.emergency_contact_phone,
+                relationship: profile.emergency_contact_relationship || 'Emergency Contact',
+                isPrimary: true,
+              },
+            ]
+          : (medicalProfile?.emergencyContacts || []),
+      };
+
+      // Concurrently persist both domains
+      const [userRes, medOk] = await Promise.all([
+        api.put('/user/profile', userProfilePayload),
+        saveMedicalProfile(clinicalPayload),
+      ]);
+
+      if (userRes) {
+        setProfile((prev) => mergeProfileAndMedicalData(userRes, clinicalPayload));
+      }
+
+      await refreshProfile();
 
       toast({
-        title: 'Profile Updated',
-        description: 'Your health record and clinical preferences have been saved.',
+        title: 'Profile & Clinical Records Saved',
+        description: 'Personal details and lifelong medical profile persisted successfully.',
       });
     } catch (err: any) {
       toast({
-        title: 'Save Complete (Local)',
-        description: 'Profile updated in component state.',
+        title: 'Save Failed',
+        description: err?.message || 'Failed saving profile updates. Please retry.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -301,7 +378,13 @@ export default function ProfilePage() {
         <TabsContent value="edit-medical" className="space-y-6">
           <MedicalProfileForm
             initialData={medicalProfile}
-            onSave={saveMedicalProfile}
+            onSave={async (data) => {
+              const success = await saveMedicalProfile(data);
+              if (success) {
+                setProfile((prev) => mergeProfileAndMedicalData(prev, data as any));
+              }
+              return success;
+            }}
           />
         </TabsContent>
 
