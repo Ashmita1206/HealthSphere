@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, tokenStore } from "@/services/api";
+import { api, tokenStore, refreshTokenStore } from "@/services/api";
 
 interface AuthContextType {
   user: { id: string; email: string; name?: string } | null;
@@ -16,6 +16,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      setLoading(false);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth:unauthorized", handleUnauthorized);
+    }
+
+    if (!tokenStore.get()) {
+      setLoading(false);
+      return () => {
+        if (typeof window !== "undefined") {
+          window.removeEventListener("auth:unauthorized", handleUnauthorized);
+        }
+      };
+    }
+
     api.get<{ id: string; email: string; name?: string }>("/user/profile")
       .then((profile) => {
         const email = (profile as any).email || "";
@@ -23,20 +41,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         tokenStore.clear();
+        refreshTokenStore.clear();
         setUser(null);
       })
       .finally(() => {
         setLoading(false);
       });
-    if (!tokenStore.get()) {
-      setLoading(false);
-    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("auth:unauthorized", handleUnauthorized);
+      }
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const res = await api.post<{ token: string; user: { id: string; email: string; name?: string } }>("/auth/signup", { email, password, fullName });
-      tokenStore.set(res.token);
+      const res = await api.post<{
+        token?: string;
+        accessToken?: string;
+        refreshToken?: string;
+        user: { id: string; email: string; name?: string };
+      }>("/auth/signup", { email, password, fullName });
+
+      const authToken = res.accessToken || res.token;
+      if (authToken) tokenStore.set(authToken);
+      if (res.refreshToken) refreshTokenStore.set(res.refreshToken);
+
       setUser(res.user);
       return { error: null };
     } catch (error) {
@@ -46,8 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const res = await api.post<{ token: string; user: { id: string; email: string; name?: string } }>("/auth/login", { email, password });
-      tokenStore.set(res.token);
+      const res = await api.post<{
+        token?: string;
+        accessToken?: string;
+        refreshToken?: string;
+        user: { id: string; email: string; name?: string };
+      }>("/auth/login", { email, password });
+
+      const authToken = res.accessToken || res.token;
+      if (authToken) tokenStore.set(authToken);
+      if (res.refreshToken) refreshTokenStore.set(res.refreshToken);
+
       setUser(res.user);
       return { error: null };
     } catch (error) {
@@ -56,8 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    tokenStore.clear();
-    setUser(null);
+    const currentRefreshToken = refreshTokenStore.get();
+    try {
+      if (currentRefreshToken) {
+        await api.post("/auth/logout", { refreshToken: currentRefreshToken });
+      }
+    } catch {
+      // Backend logout failure still safely clears local authenticated state
+    } finally {
+      tokenStore.clear();
+      refreshTokenStore.clear();
+      setUser(null);
+    }
   };
 
   return (

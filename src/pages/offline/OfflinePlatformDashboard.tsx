@@ -44,42 +44,10 @@ export const OfflinePlatformDashboard: React.FC = () => {
 
       setQueue(q);
       setEmergencyProfile(ep);
-
-      // Provide demo items if empty
-      setReports(
-        r.length > 0
-          ? r
-          : [
-              { id: 'rep-1', title: 'Complete Blood Count (CBC)', category: 'Hematology', summary: 'Normal WBC 6.8, Platelets 240k' },
-              { id: 'rep-2', title: 'Lipid Panel', category: 'Biochemistry', summary: 'Total Chol 185 mg/dL, HDL 55' },
-            ]
-      );
-
-      setMedicines(
-        m.length > 0
-          ? m
-          : [
-              { id: 'med-1', name: 'Atorvastatin', dosage: '20mg', frequency: 'Once daily at bedtime' },
-              { id: 'med-2', name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily in the morning' },
-            ]
-      );
-
-      setAppointments(
-        a.length > 0
-          ? a
-          : [
-              { id: 'apt-1', doctorName: 'Dr. Sarah Jenkins', date: new Date().toISOString(), type: 'Follow-up Cardiology' },
-            ]
-      );
-
-      setTimeline(
-        t.length > 0
-          ? t
-          : [
-              { id: 'tl-1', title: 'Prescription Refilled', eventType: 'medication', date: new Date().toISOString() },
-              { id: 'tl-2', title: 'Annual Checkup Completed', eventType: 'appointment', date: new Date().toISOString() },
-            ]
-      );
+      setReports(r || []);
+      setMedicines(m || []);
+      setAppointments(a || []);
+      setTimeline(t || []);
     } catch {
       // ignore
     }

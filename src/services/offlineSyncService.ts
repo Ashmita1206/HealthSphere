@@ -92,22 +92,22 @@ class OfflineSyncService {
 
     for (const item of queue) {
       try {
-        await api({
-          method: item.method,
-          url: item.url,
-          data: item.payload,
-          headers: {
-            'X-HealthSphere-Offline-Replay': 'true',
-            'X-Original-Timestamp': String(item.timestamp),
-          },
-        });
+        if (item.method === 'POST') {
+          await api.post(item.url, item.payload);
+        } else if (item.method === 'PUT') {
+          await api.put(item.url, item.payload);
+        } else if (item.method === 'PATCH') {
+          await api.patch(item.url, item.payload);
+        } else if (item.method === 'DELETE') {
+          await api.delete(item.url);
+        }
 
         await offlineStorage.removeMutation(item.id);
         succeeded++;
         this.successfulReplays++;
       } catch (err: any) {
         // If conflict (409) or validation failure (422), we drop or increment retry
-        if (err.response?.status === 409) {
+        if (err.response?.status === 409 || err.message?.includes('conflict')) {
           // Version conflict resolved by server discard
           await offlineStorage.removeMutation(item.id);
           failed++;
@@ -141,9 +141,18 @@ class OfflineSyncService {
       this.notify();
 
       // Attempt to fetch fresh snapshot from bootstrap endpoint
-      const res = await api.get('/sync/bootstrap');
-      if (res.data?.success) {
-        const { reports, medicines, appointments, timeline, emergencyProfile } = res.data;
+      const res = await api.get<{
+        success: boolean;
+        snapshotTimestamp?: string;
+        reports?: any[];
+        medicines?: any[];
+        appointments?: any[];
+        timeline?: any[];
+        emergencyProfile?: OfflineEmergencyProfile;
+      }>('/sync/bootstrap');
+
+      if (res?.success) {
+        const { reports, medicines, appointments, timeline, emergencyProfile } = res;
 
         if (Array.isArray(reports)) {
           for (const r of reports) await offlineStorage.setItem('reports', r._id || r.id, r);

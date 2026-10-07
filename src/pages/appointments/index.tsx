@@ -162,9 +162,15 @@ export default function AppointmentsPage() {
         );
         toast({ title: 'Appointment Deleted' });
       } else {
+        const updated = await api.put<Appointment>(
+          `/health/appointments/${pendingAction.appointment.id}`,
+          { status: 'cancelled' },
+        );
         setAppointments((current) =>
           current.map((apt) =>
-            apt.id === pendingAction.appointment.id ? { ...apt, status: 'cancelled' } : apt,
+            apt.id === pendingAction.appointment.id
+              ? { ...apt, status: 'cancelled', ...(updated || {}) }
+              : apt,
           ),
         );
         toast({ title: 'Appointment Cancelled' });
@@ -400,6 +406,7 @@ export default function AppointmentsPage() {
               key={appointment.id}
               appointment={appointment}
               index={index}
+              onCancel={handleCancel}
               onDelete={handleDelete}
               onEdit={handleEditClick}
               onClick={handleAppointmentClick}
@@ -462,7 +469,9 @@ export default function AppointmentsPage() {
             >
               {actionLoading
                 ? 'Working...'
-                : 'Confirm'}
+                : pendingAction?.type === 'cancel'
+                  ? 'Cancel Appointment'
+                  : 'Delete Appointment'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -216,17 +216,31 @@ export default function MedicinesPage() {
         );
         toast({ title: 'Medication Removed' });
       } else {
+        const updatedMedicine = await api.put<unknown>(
+          `/health/medicines/${pendingAction.medicine.id}`,
+          { status: 'archived', isActive: false },
+        );
+        const normalizedUpdated = normalizeMedicine(
+          {
+            ...(updatedMedicine && typeof updatedMedicine === 'object'
+              ? updatedMedicine
+              : {}),
+            ...pendingAction.medicine,
+            status: 'archived',
+            isActive: false,
+            id: pendingAction.medicine.id,
+          },
+          pendingAction.medicine.id,
+        );
         setMedicines((currentMedicines) =>
           currentMedicines.map((medicine) =>
             medicine.id === pendingAction.medicine.id
-              ? { ...medicine, status: 'archived' }
+              ? normalizedUpdated
               : medicine,
           ),
         );
         toast({
           title: 'Medication Archived',
-          description:
-            'Archive status is kept for this session until backend persistence is available.',
         });
       }
 

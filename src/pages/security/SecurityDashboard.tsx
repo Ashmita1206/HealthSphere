@@ -78,16 +78,13 @@ export const SecurityDashboard: React.FC = () => {
   const handleStart2faSetup = async () => {
     try {
       const data = await securityService.generate2fa();
-      setSetupData(data);
-      setIs2faModalOpen(true);
+      if (data) {
+        setSetupData(data);
+        setIs2faModalOpen(true);
+      }
     } catch (_e) {
-      // Fallback for demo / offline
-      setSetupData({
-        secret: 'HXDMVJECJJWSRB3HWLUUPMFE',
-        otpauthUrl: 'otpauth://totp/HealthSphere:patient?secret=HXDMVJECJJWSRB3HWLUUPMFE',
-        instructions: 'Scan with your authenticator application.',
-      });
-      setIs2faModalOpen(true);
+      // Backend generation failed; do not invent fake TOTP secrets
+      setSetupData(null);
     }
   };
 
