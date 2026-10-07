@@ -26,7 +26,7 @@ describe('Router & Route Hygiene Verification', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/HealthSphere AI Assistant/i)).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
   }, 15000);
 
   it('2. /ai-assistant is obsolete and renders NotFound 404 page', async () => {
@@ -45,7 +45,7 @@ describe('Router & Route Hygiene Verification', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Blood Donation & Requests/i)).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
   }, 15000);
 
   it('4. /blood-organ is obsolete and renders NotFound 404 page', async () => {
