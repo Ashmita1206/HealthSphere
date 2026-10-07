@@ -18,7 +18,60 @@ export const DEFAULT_VITALS_TELEMETRY: VitalsTelemetryData = {
 export const VitalsTelemetryGrid: React.FC<{
   data?: VitalsTelemetryData;
   className?: string;
-}> = ({ data = DEFAULT_VITALS_TELEMETRY, className = '' }) => {
+}> = ({ data, className = '' }) => {
+  if (!data) {
+    return (
+      <div
+        data-testid="vitals-telemetry-grid"
+        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${className}`}
+      >
+        <div data-testid="card-heart-rate" className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+              <Heart className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">OFFLINE</span>
+          </div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Heart Rate</p>
+          <p className="text-sm font-bold text-slate-400">No device connected</p>
+        </div>
+
+        <div data-testid="card-steps" className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+              <Footprints className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">OFFLINE</span>
+          </div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Daily Steps</p>
+          <p className="text-sm font-bold text-slate-400">No device connected</p>
+        </div>
+
+        <div data-testid="card-sleep" className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+              <Moon className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">OFFLINE</span>
+          </div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sleep Architecture</p>
+          <p className="text-sm font-bold text-slate-400">No device connected</p>
+        </div>
+
+        <div data-testid="card-spo2" className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+              <Wind className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">OFFLINE</span>
+          </div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Blood Oxygen (SpO2)</p>
+          <p className="text-sm font-bold text-slate-400">No device connected</p>
+        </div>
+      </div>
+    );
+  }
+
   const stepPct = Math.min(Math.round((data.steps.current / data.steps.goal) * 100), 100);
 
   return (

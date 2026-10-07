@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { doctorService, Doctor, DoctorFilters } from '@/services/doctorService';
 
 interface DoctorContextType {
@@ -14,6 +15,8 @@ interface DoctorContextType {
 const DoctorContext = createContext<DoctorContextType | undefined>(undefined);
 
 export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +46,13 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   useEffect(() => {
-    // Only auto-fetch when authenticated or initial mount
-    const token = localStorage.getItem('healthsphere_token');
-    if (token) {
+    if (userId) {
       void fetchDoctors();
+    } else {
+      setSelectedDoctor(null);
+      setDoctors([]);
     }
-  }, [fetchDoctors]);
+  }, [userId, fetchDoctors]);
 
   return (
     <DoctorContext.Provider

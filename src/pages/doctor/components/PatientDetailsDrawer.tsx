@@ -38,7 +38,7 @@ export const PatientDetailsDrawer: React.FC<PatientDetailsDrawerProps> = ({
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">{patient.name}</h3>
                 <p className="text-xs text-slate-500">
-                  {patient.age} Years • {patient.gender} • HealthSphere ID: HS-2026-9812
+                  {patient.age} Years • {patient.gender} • ID: {patient.id}
                 </p>
               </div>
             </div>

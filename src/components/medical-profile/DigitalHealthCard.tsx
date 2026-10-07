@@ -21,8 +21,8 @@ export const DigitalHealthCard: React.FC<DigitalHealthCardProps> = ({ profile })
   const cardRef = useRef<HTMLDivElement>(null);
 
   const fullName = profile?.fullName || 'HealthSphere Patient';
-  const healthId = profile?.healthId || 'HS-2026-000123';
-  const bloodGroup = profile?.bloodGroup && profile.bloodGroup !== 'Unknown' ? profile.bloodGroup : 'O+';
+  const healthId = profile?.healthId || 'Not assigned';
+  const bloodGroup = profile?.bloodGroup && profile.bloodGroup !== 'Unknown' ? profile.bloodGroup : 'Not specified';
   const primaryContact = profile?.emergencyContacts?.find((c) => c.isPrimary) || profile?.emergencyContacts?.[0];
   const emergencyPhone = primaryContact ? `${primaryContact.name} · ${primaryContact.phone}` : 'Not Specified';
   const organDonor = profile?.organDonor ? 'YES' : 'NO';

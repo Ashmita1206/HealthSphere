@@ -177,7 +177,7 @@ export default function EmergencyPage() {
       if (historyRes.status === 'fulfilled' && Array.isArray(historyRes.value)) {
         setIncidentHistory(
           historyRes.value.map((h: any) => ({
-            id: h._id || h.id || `INC-${Date.now().toString().slice(-4)}`,
+            id: h._id || h.id || '',
             severity: h.severity || 'HIGH',
             triggerReason: h.triggerReason || h.description || 'Emergency SOS',
             timestamp: h.createdAt ? new Date(h.createdAt).toLocaleString() : 'Recent',
@@ -235,44 +235,56 @@ export default function EmergencyPage() {
   }, [user, fetchEmergencies]);
 
   const handleSOSTriggered = useCallback(async () => {
-    setSosSent((prev) => prev + 1);
     try {
-      await api.post('/emergency/sos', {
-        latitude: userLat ?? 0,
-        longitude: userLng ?? 0,
+      const res = await api.post<{ success: boolean; data?: any }>('/emergency/sos', {
+        latitude: userLat !== null ? userLat : undefined,
+        longitude: userLng !== null ? userLng : undefined,
       });
-    } catch {
-      // fallback local trigger
+
+      setSosSent((prev) => prev + 1);
+
+      const newEvent: TimelineEvent = {
+        id: `event-${Date.now()}`,
+        type: 'sos-triggered',
+        timestamp: new Date().toISOString(),
+        description: 'SOS emergency alert triggered',
+      };
+      setTimeline((prev) => [newEvent, ...prev]);
+
+      if (res && res.data && (res.data.id || res.data._id || res.data.incidentId)) {
+        const verifiedId = res.data.id || res.data._id || res.data.incidentId;
+        setActiveIncidents((prev) => [
+          {
+            id: verifiedId,
+            severity: res.data.severity || 'CRITICAL',
+            triggerReason: res.data.triggerReason || 'SOS Button Manual Emergency Dispatch',
+            status: res.data.status || 'active',
+            createdAt: res.data.createdAt ? new Date(res.data.createdAt).toLocaleTimeString() : 'Just now',
+            location: res.data.location || (userLat !== null && userLng !== null ? {
+              latitude: userLat,
+              longitude: userLng,
+              address: 'Live GPS Coordinates Broadcasted',
+            } : undefined),
+          },
+          ...prev,
+        ]);
+      } else {
+        await fetchEmergencies();
+      }
+
+      toast({
+        title: 'SOS Triggered',
+        description: 'Emergency alert sent to your contacts and nearest facility',
+        variant: 'destructive',
+      });
+    } catch (_err: unknown) {
+      toast({
+        title: 'Emergency Dispatch Failed',
+        description: 'Emergency dispatch could not be confirmed. Please contact local emergency services immediately.',
+        variant: 'destructive',
+      });
     }
-
-    const newEvent: TimelineEvent = {
-      id: `event-${Date.now()}`,
-      type: 'sos-triggered',
-      timestamp: new Date().toISOString(),
-      description: 'SOS emergency alert triggered',
-    };
-    setTimeline((prev) => [newEvent, ...prev]);
-
-    const newIncident: EmergencyIncidentData = {
-      id: `INC-${Date.now().toString().slice(-4)}`,
-      severity: 'CRITICAL',
-      triggerReason: 'SOS Button Manual Emergency Dispatch',
-      status: 'active',
-      createdAt: 'Just now',
-      location: {
-        latitude: userLat ?? 37.7749,
-        longitude: userLng ?? -122.4194,
-        address: 'Live GPS Coordinates Broadcasted to Emergency Contacts',
-      },
-    };
-    setActiveIncidents((prev) => [newIncident, ...prev]);
-
-    toast({
-      title: 'SOS Triggered',
-      description: 'Emergency alert sent to your contacts and nearest facility',
-      variant: 'destructive',
-    });
-  }, [toast, userLat, userLng]);
+  }, [fetchEmergencies, toast, userLat, userLng]);
 
   const handleAddContact = useCallback(async (contact: EmergencyContact) => {
     try {
@@ -281,11 +293,15 @@ export default function EmergencyPage() {
         phone: contact.phone,
         relation: contact.relation,
       });
-      fetchContacts();
-    } catch {
-      setContacts((prev) => [...prev, contact]);
+      await fetchContacts();
+      toast({ title: 'Emergency Contact Added' });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to Add Contact',
+        description: err?.message || 'Could not save emergency contact.',
+        variant: 'destructive',
+      });
     }
-    toast({ title: 'Emergency Contact Added' });
   }, [fetchContacts, toast]);
 
   const handleEditContact = useCallback(async (contact: EmergencyContact) => {
@@ -295,21 +311,29 @@ export default function EmergencyPage() {
         phone: contact.phone,
         relation: contact.relation,
       });
-      fetchContacts();
-    } catch {
-      setContacts((prev) => prev.map((c) => (c.id === contact.id ? contact : c)));
+      await fetchContacts();
+      toast({ title: 'Emergency Contact Updated' });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to Update Contact',
+        description: err?.message || 'Could not update emergency contact.',
+        variant: 'destructive',
+      });
     }
-    toast({ title: 'Emergency Contact Updated' });
   }, [fetchContacts, toast]);
 
   const handleDeleteContact = useCallback(async (id: string) => {
     try {
       await api.delete(`/emergency/contacts/${id}`);
-      fetchContacts();
-    } catch {
-      setContacts((prev) => prev.filter((c) => c.id !== id));
+      await fetchContacts();
+      toast({ title: 'Emergency Contact Deleted' });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to Delete Contact',
+        description: err?.message || 'Could not delete emergency contact.',
+        variant: 'destructive',
+      });
     }
-    toast({ title: 'Emergency Contact Deleted' });
   }, [fetchContacts, toast]);
 
   const handleBloodRequest = useCallback(async (data: any) => {

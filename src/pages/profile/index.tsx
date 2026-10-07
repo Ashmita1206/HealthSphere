@@ -365,7 +365,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-6">
               <QRCodeCard
-                healthId={medicalProfile?.healthId || 'HS-2026-000123'}
+                healthId={medicalProfile?.healthId || ''}
                 fullName={medicalProfile?.fullName || profile.full_name}
                 bloodGroup={medicalProfile?.bloodGroup || profile.blood_type}
                 qrData={medicalProfile?.qrData}

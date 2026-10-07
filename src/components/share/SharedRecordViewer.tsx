@@ -101,7 +101,7 @@ export const SharedRecordViewer: React.FC<SharedRecordViewerProps> = ({ data }) 
               <div className="space-y-1">
                 <span className="text-slate-400 text-[10px] uppercase font-bold">Health ID</span>
                 <p className="font-mono font-bold text-slate-800">
-                  {records.profile.healthId || 'HS-2026-PATIENT'}
+                  {records.profile.healthId || 'Not assigned'}
                 </p>
               </div>
               <div className="space-y-1">

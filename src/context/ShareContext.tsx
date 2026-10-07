@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   shareService,
   CreateSharePayload,
@@ -27,11 +28,17 @@ const defaultSharesData: SharesData = {
 const ShareContext = createContext<ShareContextType | undefined>(undefined);
 
 export const ShareProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [shares, setShares] = useState<SharesData>(defaultSharesData);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchShares = useCallback(async () => {
+    if (!userId) {
+      setShares(defaultSharesData);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -43,7 +50,7 @@ export const ShareProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   const createShare = useCallback(
     async (payload: CreateSharePayload): Promise<CreateShareResponse> => {
@@ -98,11 +105,13 @@ export const ShareProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   useEffect(() => {
-    const token = localStorage.getItem('healthsphere_token');
-    if (token) {
+    if (userId) {
       void fetchShares();
+    } else {
+      setShares(defaultSharesData);
+      setError(null);
     }
-  }, [fetchShares]);
+  }, [userId, fetchShares]);
 
   return (
     <ShareContext.Provider

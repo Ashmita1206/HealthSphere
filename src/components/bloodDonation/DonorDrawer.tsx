@@ -56,6 +56,22 @@ const eligibilityColors: Record<string, { color: string; icon: typeof CheckCircl
   'maybe-eligible': { color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
 };
 
+const maskPhone = (phone?: string) => {
+  if (!phone || phone.toLowerCase().includes('contact')) return 'Protected (Dispatch via Platform)';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) return '***-***-****';
+  return `(***) ***-${digits.slice(-4)}`;
+};
+
+const maskEmail = (email?: string) => {
+  if (!email || email.toLowerCase().includes('portal')) return 'Protected (Dispatch via Platform)';
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***@***.***';
+  const name = parts[0];
+  const domain = parts[1];
+  return `${name.slice(0, 1)}***@${domain}`;
+};
+
 export const DonorDrawer = memo(function DonorDrawer({
   open,
   onOpenChange,
@@ -97,9 +113,9 @@ export const DonorDrawer = memo(function DonorDrawer({
 
           {/* Blood Group Badge */}
           <Badge
-            className={`text-sm font-bold uppercase tracking-wider py-2 px-4 ${bloodGroupColors[donor.bloodGroup] || bloodGroupColors['O+']}`}
+            className={`text-sm font-bold uppercase tracking-wider py-2 px-4 ${bloodGroupColors[donor.bloodGroup] || 'bg-slate-100 text-slate-700 border-slate-200'}`}
           >
-            {donor.bloodGroup}
+            {donor.bloodGroup || 'Not specified'}
           </Badge>
 
           {/* Personal Details */}
@@ -113,7 +129,7 @@ export const DonorDrawer = memo(function DonorDrawer({
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Blood Group
                   </p>
-                  <p className="text-sm font-bold text-slate-900">{donor.bloodGroup}</p>
+                  <p className="text-sm font-bold text-slate-900">{donor.bloodGroup || 'Not specified'}</p>
                 </div>
               </div>
 
@@ -125,7 +141,7 @@ export const DonorDrawer = memo(function DonorDrawer({
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Age
                   </p>
-                  <p className="text-sm font-bold text-slate-900">{donor.age} years</p>
+                  <p className="text-sm font-bold text-slate-900">{donor.age ? `${donor.age} years` : 'Age not recorded'}</p>
                 </div>
               </div>
 
@@ -151,9 +167,9 @@ export const DonorDrawer = memo(function DonorDrawer({
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Phone
+                      Phone (Privacy Masked)
                     </p>
-                    <p className="text-sm font-bold text-slate-900">{donor.phone}</p>
+                    <p className="text-sm font-mono font-bold text-slate-900">{maskPhone(donor.phone)}</p>
                   </div>
                 </div>
               )}
@@ -165,9 +181,9 @@ export const DonorDrawer = memo(function DonorDrawer({
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Email
+                      Email (Privacy Masked)
                     </p>
-                    <p className="text-sm font-bold text-slate-900">{donor.email}</p>
+                    <p className="text-sm font-mono font-bold text-slate-900">{maskEmail(donor.email)}</p>
                   </div>
                 </div>
               )}

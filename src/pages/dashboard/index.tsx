@@ -423,7 +423,7 @@ export default function DashboardPage() {
                   Digital Health ID & QR
                 </h4>
                 <p className="text-[10px] text-slate-300 font-mono">
-                  {medicalProfile?.healthId || "HS-2026-000123"}
+                  {medicalProfile?.healthId || "Not assigned"}
                 </p>
               </div>
             </div>
