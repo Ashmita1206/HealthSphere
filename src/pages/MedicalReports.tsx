@@ -244,14 +244,30 @@ export default function MedicalReports() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {biomarkerKeys.map(({ key, label }) => {
                 const rawVal = reportResult.biomarkers?.[key];
-                const val = typeof rawVal === 'object' ? JSON.stringify(rawVal) : String(rawVal || 'Not Detected');
+                const hasExtractedVal =
+                  rawVal !== undefined &&
+                  rawVal !== null &&
+                  String(rawVal).trim() !== '';
+                const val = hasExtractedVal
+                  ? typeof rawVal === 'object'
+                    ? JSON.stringify(rawVal)
+                    : String(rawVal)
+                  : 'Not extracted';
                 return (
                   <div
                     key={key}
                     className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1"
                   >
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-                    <p className="text-sm font-extrabold text-teal-800 dark:text-teal-300 font-mono truncate">{val}</p>
+                    <p
+                      className={`text-sm font-mono truncate ${
+                        hasExtractedVal
+                          ? 'font-extrabold text-teal-800 dark:text-teal-300'
+                          : 'font-medium text-slate-400 dark:text-slate-500'
+                      }`}
+                    >
+                      {val}
+                    </p>
                   </div>
                 );
               })}

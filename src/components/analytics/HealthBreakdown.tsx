@@ -8,20 +8,13 @@ interface HealthBreakdownProps {
 }
 
 export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) => {
-  const data = breakdown || {
-    medicine: 95,
-    appointments: 90,
-    vitals: 88,
-    reports: 92,
-    timeline: 85,
-    emergency: 100,
-  };
+  const hasBreakdown = !!breakdown;
 
   const categories = [
     {
       name: 'Medication Adherence',
       weight: '35% weight',
-      score: data.medicine,
+      score: breakdown?.medicine,
       icon: Pill,
       barColor: 'bg-emerald-500',
       textColor: 'text-emerald-700',
@@ -29,7 +22,7 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
     {
       name: 'Clinical Appointments',
       weight: '20% weight',
-      score: data.appointments,
+      score: breakdown?.appointments,
       icon: Calendar,
       barColor: 'bg-blue-500',
       textColor: 'text-blue-700',
@@ -37,7 +30,7 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
     {
       name: 'Vitals & Telemetry',
       weight: '15% weight',
-      score: data.vitals,
+      score: breakdown?.vitals,
       icon: Heart,
       barColor: 'bg-rose-500',
       textColor: 'text-rose-700',
@@ -45,7 +38,7 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
     {
       name: 'Lab & Diagnostic Reports',
       weight: '10% weight',
-      score: data.reports,
+      score: breakdown?.reports,
       icon: FileText,
       barColor: 'bg-violet-500',
       textColor: 'text-violet-700',
@@ -53,7 +46,7 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
     {
       name: 'Timeline & Care Milestones',
       weight: '10% weight',
-      score: data.timeline,
+      score: breakdown?.timeline,
       icon: Activity,
       barColor: 'bg-teal-500',
       textColor: 'text-teal-700',
@@ -61,7 +54,7 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
     {
       name: 'Emergency Safety Protocol',
       weight: '10% weight',
-      score: data.emergency,
+      score: breakdown?.emergency,
       icon: ShieldAlert,
       barColor: 'bg-amber-500',
       textColor: 'text-amber-700',
@@ -94,6 +87,7 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
       <CardContent className="p-4 sm:p-5 space-y-3.5">
         {categories.map((cat) => {
           const Icon = cat.icon;
+          const isScored = typeof cat.score === 'number';
           return (
             <div key={cat.name} className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
@@ -102,12 +96,14 @@ export const HealthBreakdown: React.FC<HealthBreakdownProps> = ({ breakdown }) =
                   <span className="font-bold text-slate-800">{cat.name}</span>
                   <span className="text-[10px] text-slate-400 font-medium">({cat.weight})</span>
                 </div>
-                <span className="font-extrabold text-slate-900 font-heading">{cat.score}%</span>
+                <span className="font-extrabold text-slate-900 font-heading">
+                  {isScored ? `${cat.score}%` : '--'}
+                </span>
               </div>
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-700 ${cat.barColor}`}
-                  style={{ width: `${Math.min(Math.max(cat.score, 0), 100)}%` }}
+                  className={`h-full rounded-full transition-all duration-700 ${isScored ? cat.barColor : 'bg-slate-300'}`}
+                  style={{ width: `${isScored ? Math.min(Math.max(cat.score!, 0), 100) : 0}%` }}
                 />
               </div>
             </div>

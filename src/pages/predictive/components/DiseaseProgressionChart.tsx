@@ -73,9 +73,14 @@ export const DiseaseProgressionChart: React.FC<{ className?: string }> = ({ clas
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Longitudinal Disease Progression Forecast
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Longitudinal Disease Progression Forecast
+                </h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                  Educational Reference Model
+                </span>
+              </div>
               <p className="text-xs text-slate-500">
                 5-Year deep predictive modeling comparing passive trajectory vs active AI intervention
               </p>

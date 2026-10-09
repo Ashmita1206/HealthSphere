@@ -12,36 +12,42 @@ export interface AIHealthScoreCircleProps {
 }
 
 export const AIHealthScoreCircle: React.FC<AIHealthScoreCircleProps> = ({
-  score = 84,
-  confidence = 92,
-  trendDelta = 3.2,
+  score,
+  confidence,
+  trendDelta,
   statusLabel,
   onExploreBreakdown,
   className = '',
 }) => {
+  const hasScore = typeof score === 'number';
+  const effectiveScore = hasScore ? Math.min(Math.max(score, 0), 100) : 0;
   const radius = 64;
   const strokeWidth = 10;
   const normalizedRadius = radius - strokeWidth * 0.5;
   const circumference = normalizedRadius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (Math.min(Math.max(score, 0), 100) / 100) * circumference;
+  const strokeDashoffset = hasScore
+    ? circumference - (effectiveScore / 100) * circumference
+    : circumference;
 
   // Determine health tier styling
-  const isOptimal = score >= 85;
-  const isGood = score >= 70 && score < 85;
-  const isFair = score >= 50 && score < 70;
-  const isCritical = score < 50;
+  const isOptimal = hasScore && effectiveScore >= 85;
+  const isGood = hasScore && effectiveScore >= 70 && effectiveScore < 85;
+  const isFair = hasScore && effectiveScore >= 50 && effectiveScore < 70;
+  const isCritical = hasScore && effectiveScore < 50;
 
   const gradientId = 'healthScoreGradient';
-  const startColor = isOptimal ? '#10B981' : isGood ? '#0D9488' : isFair ? '#F59E0B' : '#EF4444';
-  const endColor = isOptimal ? '#059669' : isGood ? '#0284C7' : isFair ? '#D97706' : '#DC2626';
+  const startColor = isOptimal ? '#10B981' : isGood ? '#0D9488' : isFair ? '#F59E0B' : isCritical ? '#EF4444' : '#94A3B8';
+  const endColor = isOptimal ? '#059669' : isGood ? '#0284C7' : isFair ? '#D97706' : isCritical ? '#DC2626' : '#64748B';
 
-  const defaultStatus = isOptimal
-    ? 'Optimal Standing'
-    : isGood
-    ? 'Good Condition'
-    : isFair
-    ? 'Attention Required'
-    : 'Critical Risk';
+  const defaultStatus = hasScore
+    ? isOptimal
+      ? 'Optimal Standing'
+      : isGood
+      ? 'Good Condition'
+      : isFair
+      ? 'Attention Required'
+      : 'Critical Risk'
+    : 'Data Pending';
 
   const finalStatus = statusLabel || defaultStatus;
 
@@ -101,10 +107,10 @@ export const AIHealthScoreCircle: React.FC<AIHealthScoreCircleProps> = ({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
               >
-                {Math.round(score)}
+                {hasScore ? Math.round(effectiveScore) : '--'}
               </motion.span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                Out of 100
+                {hasScore ? 'Out of 100' : 'Data Pending'}
               </span>
             </div>
           </div>
@@ -132,23 +138,36 @@ export const AIHealthScoreCircle: React.FC<AIHealthScoreCircleProps> = ({
 
             {/* Trending Delta */}
             <div className="flex items-center gap-3 pt-1 text-xs font-semibold">
-              <span
-                className={`inline-flex items-center gap-1 ${
-                  trendDelta >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'
-                }`}
-              >
-                {trendDelta >= 0 ? (
-                  <TrendingUp className="w-3.5 h-3.5" />
-                ) : (
-                  <TrendingDown className="w-3.5 h-3.5" />
-                )}
-                {trendDelta >= 0 ? `+${trendDelta}%` : `${trendDelta}%`} vs last week
-              </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                {confidence}% AI Confidence
-              </span>
+              {hasScore && typeof trendDelta === 'number' ? (
+                <>
+                  <span
+                    className={`inline-flex items-center gap-1 ${
+                      trendDelta >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'
+                    }`}
+                  >
+                    {trendDelta >= 0 ? (
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <TrendingDown className="w-3.5 h-3.5" />
+                    )}
+                    {trendDelta >= 0 ? `+${trendDelta}%` : `${trendDelta}%`} vs last week
+                  </span>
+                  {typeof confidence === 'number' && (
+                    <>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        {confidence}% AI Confidence
+                      </span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  Score calculation pending sufficient clinical logs
+                </span>
+              )}
             </div>
           </div>
         </div>

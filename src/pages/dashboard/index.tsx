@@ -185,17 +185,17 @@ export default function DashboardPage() {
       {/* 1. SIGNATURE AI DIGITAL TWIN HEALTH SCORE CIRCLE */}
       <motion.div variants={motionVariants.contentReveal}>
         <AIHealthScoreCircle
-          score={analyticsData?.healthScore?.score ?? healthScore ?? 84}
-          confidence={92}
-          trendDelta={3.2}
-          statusLabel={healthScore !== undefined ? "Optimal Standing" : "Calibrated"}
+          score={analyticsData?.healthScore?.score ?? healthScore}
+          confidence={typeof (analyticsData?.healthScore?.score ?? healthScore) === 'number' ? 92 : undefined}
+          trendDelta={typeof (analyticsData?.healthScore?.score ?? healthScore) === 'number' ? (analyticsData?.weeklyActivity?.healthScoreDifference ?? 0) : undefined}
+          statusLabel={analyticsData?.healthScore?.level || (healthScore !== undefined ? "Active Standing" : "Pending Data")}
           onExploreBreakdown={() => navigate('/ai-health-score')}
         />
       </motion.div>
 
       {/* 2. 10 CLINICAL HEALTH SUB SCORE CARDS */}
       <motion.div variants={motionVariants.contentReveal}>
-        <HealthSubScoreGrid />
+        <HealthSubScoreGrid customScores={analyticsData?.healthScore?.breakdown} />
       </motion.div>
 
       {/* 3. SIGNATURE MOMENT: Health Daily Briefing */}

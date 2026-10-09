@@ -9,16 +9,10 @@ interface HealthScoreCardProps {
 }
 
 export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore, loading }) => {
-  const score = healthScore?.score ?? 92;
-  const level = healthScore?.level ?? 'Excellent';
-  const breakdown = healthScore?.breakdown ?? {
-    medicine: 95,
-    appointments: 90,
-    vitals: 88,
-    reports: 92,
-    timeline: 85,
-    emergency: 100,
-  };
+  const hasScore = !!healthScore && typeof healthScore.score === 'number';
+  const score = hasScore ? healthScore.score : null;
+  const level = hasScore ? healthScore.level : 'Data Pending';
+  const breakdown = healthScore?.breakdown;
 
   const getLevelTheme = (lvl: string) => {
     switch (lvl) {
@@ -46,7 +40,7 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore, l
           strokeColor: '#d97706',
           badge: 'bg-amber-100 text-amber-800',
         };
-      default:
+      case 'Needs Attention':
         return {
           textColor: 'text-rose-700',
           bgColor: 'bg-rose-50',
@@ -54,13 +48,21 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore, l
           strokeColor: '#e11d48',
           badge: 'bg-rose-100 text-rose-800',
         };
+      default:
+        return {
+          textColor: 'text-slate-600',
+          bgColor: 'bg-slate-50',
+          borderColor: 'border-slate-200',
+          strokeColor: '#94a3b8',
+          badge: 'bg-slate-100 text-slate-700',
+        };
     }
   };
 
   const theme = getLevelTheme(level);
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const strokeDashoffset = hasScore ? circumference - (score! / 100) * circumference : circumference;
 
   return (
     <Card className="rounded-2xl border border-slate-200/80 shadow-xs bg-white overflow-hidden flex flex-col justify-between">
@@ -113,10 +115,10 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore, l
             </svg>
             <div className="absolute flex flex-col items-center justify-center">
               <span className={`text-2xl font-black font-heading ${theme.textColor}`}>
-                {score}
+                {hasScore ? score : '--'}
               </span>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                out of 100
+                {hasScore ? 'out of 100' : 'pending'}
               </span>
             </div>
           </div>
@@ -125,19 +127,27 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore, l
           <div className="grid grid-cols-2 gap-2.5 w-full sm:w-auto flex-1">
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-[10px] text-slate-500 font-semibold block">Medicine</span>
-              <span className="text-xs font-bold text-slate-900">{breakdown.medicine}%</span>
+              <span className="text-xs font-bold text-slate-900">
+                {typeof breakdown?.medicine === 'number' ? `${breakdown.medicine}%` : '--'}
+              </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-[10px] text-slate-500 font-semibold block">Visits</span>
-              <span className="text-xs font-bold text-slate-900">{breakdown.appointments}%</span>
+              <span className="text-xs font-bold text-slate-900">
+                {typeof breakdown?.appointments === 'number' ? `${breakdown.appointments}%` : '--'}
+              </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-[10px] text-slate-500 font-semibold block">Vitals</span>
-              <span className="text-xs font-bold text-slate-900">{breakdown.vitals}%</span>
+              <span className="text-xs font-bold text-slate-900">
+                {typeof breakdown?.vitals === 'number' ? `${breakdown.vitals}%` : '--'}
+              </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
               <span className="text-[10px] text-slate-500 font-semibold block">Reports</span>
-              <span className="text-xs font-bold text-slate-900">{breakdown.reports}%</span>
+              <span className="text-xs font-bold text-slate-900">
+                {typeof breakdown?.reports === 'number' ? `${breakdown.reports}%` : '--'}
+              </span>
             </div>
           </div>
         </div>

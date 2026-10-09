@@ -48,35 +48,39 @@ const realHistoryItems: ReportHistoryItem[] = [
   },
 ];
 
+const baselineReportResult = {
+  reportTitle: 'Comprehensive Metabolic Panel & Lipid Profile',
+  category: 'Blood Chemistry',
+  riskLevel: 'Moderate',
+  summary: 'Patient exhibits elevated HbA1c (7.8%) and elevated LDL-C (164 mg/dL) indicating metabolic syndrome and glycemic instability.',
+  ocrStatus: 'completed',
+  abnormalValues: [
+    {
+      parameter: 'HbA1c',
+      value: '7.8%',
+      normalRange: '<5.7%',
+      severity: 'Elevated',
+      clinicalNote: 'Suboptimal glycemic control.',
+    },
+  ],
+  biomarkers: {
+    hba1c: '7.8%',
+    sugar: '148 mg/dL',
+    cholesterol: '215 mg/dL',
+    liver: 'Normal',
+    kidney: 'Creatinine 1.4 mg/dL',
+  },
+  recommendations: ['Consult Endocrinologist regarding glycemic control'],
+};
+
+let mockReportResult: any = baselineReportResult;
+
 // Mock useMedicalReport hook
 vi.mock('@/hooks/ai/useMedicalReport', () => ({
   useMedicalReport: () => ({
     analyzing: false,
     comparing: false,
-    reportResult: {
-      reportTitle: 'Comprehensive Metabolic Panel & Lipid Profile',
-      category: 'Blood Chemistry',
-      riskLevel: 'Moderate',
-      summary: 'Patient exhibits elevated HbA1c (7.8%) and elevated LDL-C (164 mg/dL) indicating metabolic syndrome and glycemic instability.',
-      ocrStatus: 'completed',
-      abnormalValues: [
-        {
-          parameter: 'HbA1c',
-          value: '7.8%',
-          normalRange: '<5.7%',
-          severity: 'Elevated',
-          clinicalNote: 'Suboptimal glycemic control.',
-        },
-      ],
-      biomarkers: {
-        hba1c: '7.8%',
-        sugar: '148 mg/dL',
-        cholesterol: '215 mg/dL',
-        liver: 'Normal',
-        kidney: 'Creatinine 1.4 mg/dL',
-      },
-      recommendations: ['Consult Endocrinologist regarding glycemic control'],
-    },
+    reportResult: mockReportResult,
     comparisonResult: null,
     analyzeDocument: vi.fn(),
     compareTwoReports: vi.fn(),
@@ -86,6 +90,7 @@ vi.mock('@/hooks/ai/useMedicalReport', () => ({
 describe('F27 — Medical Report Intelligence UI & Clinical Integrity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReportResult = baselineReportResult;
   });
 
   it('renders MedicalReports page header and download analysis button', () => {
@@ -167,5 +172,93 @@ describe('F27 — Medical Report Intelligence UI & Clinical Integrity', () => {
     render(<ReportHistoryList reports={realHistoryItems} />);
     expect(screen.getByTestId('report-history-list')).toBeInTheDocument();
     expect(screen.getByText('Comprehensive Metabolic Panel')).toBeInTheDocument();
+  });
+
+  it('renders extracted biomarkers with values and labels unextracted biomarkers as "Not extracted"', () => {
+    mockReportResult = {
+      reportTitle: 'Targeted Glycemic & Lipid Panel',
+      category: 'Diagnostic Blood',
+      riskLevel: 'Moderate',
+      summary: 'Biomarkers extracted successfully.',
+      abnormalValues: [],
+      biomarkers: {
+        hba1c: '7.8%',
+        sugar: '148 mg/dL',
+      },
+      recommendations: [],
+    };
+
+    render(<MedicalReports />);
+    // Extracted values
+    expect(screen.getByText('7.8%')).toBeInTheDocument();
+    expect(screen.getByText('148 mg/dL')).toBeInTheDocument();
+
+    // Missing biomarkers must render 'Not extracted' (11 out of 13)
+    const notExtractedBadges = screen.getAllByText('Not extracted');
+    expect(notExtractedBadges.length).toBe(11);
+    // Must not fabricate 'Not Detected' for unextracted metrics
+    expect(screen.queryByText('Not Detected')).not.toBeInTheDocument();
+  });
+
+  it('renders explicitly negative results (e.g. "Not Detected", "Negative") only when source report provides them', () => {
+    mockReportResult = {
+      reportTitle: 'Infectious & Autoimmune Panel',
+      category: 'Diagnostic Lab',
+      riskLevel: 'Low',
+      summary: 'Negative viral markers.',
+      abnormalValues: [],
+      biomarkers: {
+        thyroid: 'Not Detected',
+        cbc: 'Negative',
+      },
+      recommendations: [],
+    };
+
+    render(<MedicalReports />);
+    expect(screen.getByText('Not Detected')).toBeInTheDocument();
+    expect(screen.getByText('Negative')).toBeInTheDocument();
+    // Remaining 11 unextracted metrics display 'Not extracted'
+    expect(screen.getAllByText('Not extracted').length).toBe(11);
+  });
+
+  it('renders "Not extracted" for all biomarkers upon OCR extraction failure or empty biomarker payload', () => {
+    mockReportResult = {
+      reportTitle: 'Unprocessed Scanned Document',
+      category: 'Diagnostic Lab',
+      riskLevel: 'Low',
+      summary: 'OCR could not parse discrete biomarkers.',
+      abnormalValues: [],
+      biomarkers: {},
+      recommendations: [],
+    };
+
+    render(<MedicalReports />);
+    // All 13 monitored biomarkers render 'Not extracted'
+    const notExtractedList = screen.getAllByText('Not extracted');
+    expect(notExtractedList.length).toBe(13);
+    expect(screen.queryByText('Not Detected')).not.toBeInTheDocument();
+  });
+
+  it('renders "Not extracted" for unavailable/null/blank biomarker entries without conflating with negative result', () => {
+    mockReportResult = {
+      reportTitle: 'Partial Ingestion Report',
+      category: 'Diagnostic Lab',
+      riskLevel: 'Low',
+      summary: 'Partial readings.',
+      abnormalValues: [],
+      biomarkers: {
+        iron: null as any,
+        calcium: undefined as any,
+        vitaminD: '   ',
+        hemoglobin: '14.2 g/dL',
+      },
+      recommendations: [],
+    };
+
+    render(<MedicalReports />);
+    expect(screen.getByText('14.2 g/dL')).toBeInTheDocument();
+    // iron, calcium, vitaminD and the other 9 keys = 12 total 'Not extracted'
+    expect(screen.getAllByText('Not extracted').length).toBe(12);
+    expect(screen.queryByText('Not Detected')).not.toBeInTheDocument();
   });
 });
