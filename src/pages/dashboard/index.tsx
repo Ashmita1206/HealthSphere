@@ -55,12 +55,7 @@ export default function DashboardPage() {
     title: string;
     message: string;
     severity: 'critical' | 'warning';
-  } | null>({
-    id: 'telemetry-status',
-    title: 'Wearable Telemetry Stream Active',
-    message: 'HealthSphere AI is continuously monitoring blood pressure, SpO2, and medication adherence for acute clinical breaches.',
-    severity: 'warning',
-  });
+  } | null>(null);
 
   useEffect(() => {
     let active = true;

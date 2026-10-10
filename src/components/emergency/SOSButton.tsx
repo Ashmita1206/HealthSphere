@@ -22,22 +22,25 @@ export const SOSButton = memo(function SOSButton({ onSOSTriggered }: SOSButtonPr
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    let timeout: NodeJS.Timeout;
     if (counting && countdown > 0) {
       interval = setInterval(() => {
         setCountdown((prev) => prev - 1);
       }, 1000);
-    } else if (countdown === 0) {
+    } else if (counting && countdown === 0) {
       setCounting(false);
       setTriggered(true);
-      // TODO: Backend integration for SOS trigger
       onSOSTriggered();
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         setDialogOpen(false);
         setTriggered(false);
         setCountdown(5);
       }, 3000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, [counting, countdown, onSOSTriggered]);
 
   const handlePress = () => {
@@ -95,7 +98,16 @@ export const SOSButton = memo(function SOSButton({ onSOSTriggered }: SOSButtonPr
         </span>
       </motion.button>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setCounting(false);
+            setCountdown(5);
+          }
+        }}
+      >
         <DialogContent className="max-w-sm rounded-3xl border-slate-200 p-6 text-center">
           {!triggered ? (
             <>

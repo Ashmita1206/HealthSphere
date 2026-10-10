@@ -32,7 +32,44 @@ export const DEFAULT_HOURLY_DATA: HourlyPoint[] = [
 export const HourlyActivityChart: React.FC<{
   data?: HourlyPoint[];
   className?: string;
-}> = ({ data = DEFAULT_HOURLY_DATA, className = '' }) => {
+}> = ({ data, className = '' }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div
+        data-testid="hourly-activity-chart"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 ${className}`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Intraday Hourly Activity & Exertion Load
+              </h3>
+              <p className="text-xs text-slate-500">
+                Continuous intraday step and heart rate distribution
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400">
+            OFFLINE
+          </span>
+        </div>
+
+        <div className="p-8 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center space-y-1.5">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            No Intraday Telemetry Logged Today
+          </p>
+          <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+            Connect a compatible wearable sensor to track hourly movement, exercise load, and cardiac response.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="hourly-activity-chart"

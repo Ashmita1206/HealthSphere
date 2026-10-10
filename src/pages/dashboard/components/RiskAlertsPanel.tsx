@@ -38,7 +38,7 @@ export const DEFAULT_RISK_ALERTS: RiskAlertItem[] = [
 ];
 
 export const RiskAlertsPanel: React.FC<RiskAlertsPanelProps> = ({
-  initialAlerts = DEFAULT_RISK_ALERTS,
+  initialAlerts = [],
   className = '',
 }) => {
   const navigate = useNavigate();

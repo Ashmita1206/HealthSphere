@@ -49,7 +49,7 @@ export const DEFAULT_RECOMMENDATIONS: RecommendationItem[] = [
 ];
 
 export const AIRecommendationsCard: React.FC<AIRecommendationsCardProps> = ({
-  recommendations = DEFAULT_RECOMMENDATIONS,
+  recommendations = [],
   className = '',
 }) => {
   const navigate = useNavigate();
@@ -78,53 +78,65 @@ export const AIRecommendationsCard: React.FC<AIRecommendationsCardProps> = ({
         </span>
       </div>
 
-      <div className="space-y-3">
-        {recommendations.map((rec, index) => {
-          const isHighImpact = rec.impact === 'High Impact';
-          return (
-            <motion.div
-              key={rec.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.08 }}
-              className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs group"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isHighImpact
-                        ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
-                        : 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-900'
-                    }`}
-                  >
-                    {rec.impact}
-                  </span>
-                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    {rec.category}
-                  </span>
+      {recommendations.length === 0 ? (
+        <div className="py-6 text-center space-y-1">
+          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">No Pending AI Recommendations</h4>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            Log your daily vitals, active prescriptions, or upload lab reports to receive personalized preventative directives.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {recommendations.map((rec, index) => {
+            const isHighImpact = rec.impact === 'High Impact';
+            return (
+              <motion.div
+                key={rec.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.08 }}
+                className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs group"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isHighImpact
+                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
+                          : 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-900'
+                      }`}
+                    >
+                      {rec.impact}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                      {rec.category}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                    {rec.title}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
+                    {rec.description}
+                  </p>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                  {rec.title}
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
-                  {rec.description}
-                </p>
-              </div>
 
-              {rec.actionLabel && (
-                <button
-                  onClick={() => rec.actionRoute && navigate(rec.actionRoute)}
-                  className="shrink-0 self-start sm:self-center px-3 py-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 hover:text-emerald-900 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{rec.actionLabel}</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+                {rec.actionLabel && (
+                  <button
+                    onClick={() => rec.actionRoute && navigate(rec.actionRoute)}
+                    className="shrink-0 self-start sm:self-center px-3 py-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 hover:text-emerald-900 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{rec.actionLabel}</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
