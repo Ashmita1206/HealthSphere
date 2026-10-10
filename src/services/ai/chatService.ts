@@ -1,4 +1,4 @@
-import { api, tokenStore } from '@/services/api';
+import { api, tokenStore, API_BASE_URL } from '@/services/api';
 
 export interface ChatSessionItem {
   _id: string;
@@ -68,7 +68,6 @@ export const chatService = {
     onDone: (assistantMsg: ChatMessageItem) => void
   ) => {
     const token = tokenStore.get();
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
     
     const response = await fetch(`${API_BASE_URL}/chat/messages`, {
       method: 'POST',

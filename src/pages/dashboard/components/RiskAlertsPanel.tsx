@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, ShieldAlert, Check, ChevronRight, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -38,11 +38,15 @@ export const DEFAULT_RISK_ALERTS: RiskAlertItem[] = [
 ];
 
 export const RiskAlertsPanel: React.FC<RiskAlertsPanelProps> = ({
-  initialAlerts = [],
+  initialAlerts = DEFAULT_RISK_ALERTS,
   className = '',
 }) => {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<RiskAlertItem[]>(initialAlerts);
+
+  useEffect(() => {
+    setAlerts(initialAlerts);
+  }, [initialAlerts]);
 
   const handleDismiss = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));

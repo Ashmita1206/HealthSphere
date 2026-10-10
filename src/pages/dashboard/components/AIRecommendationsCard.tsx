@@ -49,7 +49,7 @@ export const DEFAULT_RECOMMENDATIONS: RecommendationItem[] = [
 ];
 
 export const AIRecommendationsCard: React.FC<AIRecommendationsCardProps> = ({
-  recommendations = [],
+  recommendations = DEFAULT_RECOMMENDATIONS,
   className = '',
 }) => {
   const navigate = useNavigate();

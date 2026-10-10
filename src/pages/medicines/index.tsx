@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Grid, List, Download, Printer } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { Plus, Grid, List, Download, Printer, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -68,15 +68,19 @@ export default function MedicinesPage() {
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
 
   const fetchMedicines = useCallback(async () => {
     if (!user) {
       setMedicines([]);
+      setFetchError(null);
       setFetchingMedicines(false);
       return;
     }
 
     setFetchingMedicines(true);
+    setFetchError(null);
     try {
       const data = await api.get<unknown>('/health/medicines');
       const safeMedicines = Array.isArray(data) ? data : [];
@@ -85,8 +89,9 @@ export default function MedicinesPage() {
           normalizeMedicine(medicine, `medicine-${index}`),
         ),
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch medicines:', err);
+      setFetchError(err?.message || 'Failed to load medicines from server');
       setMedicines([]);
     } finally {
       setFetchingMedicines(false);
@@ -111,7 +116,8 @@ export default function MedicinesPage() {
   }, []);
 
   const handleAdd = useCallback(async (data: MedicineFormData) => {
-    if (!user) return;
+    if (!user || isSubmittingRef.current || loading) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       const createdMedicine = await api.post<unknown>(
@@ -141,11 +147,13 @@ export default function MedicinesPage() {
       });
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
-  }, [closeForm, toast, user]);
+  }, [closeForm, loading, toast, user]);
 
   const handleEdit = useCallback(async (data: MedicineFormData) => {
-    if (!user || !selectedMedicine) return;
+    if (!user || !selectedMedicine || isSubmittingRef.current || loading) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       const updatedMedicine = await api.put<unknown>(
@@ -181,8 +189,9 @@ export default function MedicinesPage() {
       });
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
-  }, [closeForm, selectedMedicine, toast, user]);
+  }, [closeForm, loading, selectedMedicine, toast, user]);
 
   const requestAction = useCallback(
     (type: PendingAction['type'], id: string) => {
@@ -627,8 +636,26 @@ export default function MedicinesPage() {
         onDateSelect={handleCalendarDateSelect}
       />
 
-      {/* Medicines Grid/List */}
-      {sortedMedicines.length === 0 ? (
+      {/* Medicines Grid/List / Error Recovery / Empty State */}
+      {fetchError && medicines.length === 0 ? (
+        <div data-testid="medicines-error-state" className="p-8 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/60 text-center space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">Unable to Load Prescriptions</h3>
+            <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 max-w-md mx-auto">{fetchError}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => void fetchMedicines()}
+            className="bg-white hover:bg-rose-50 text-rose-700 border-rose-200 rounded-xl text-xs font-bold gap-2"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry Connection</span>
+          </Button>
+        </div>
+      ) : sortedMedicines.length === 0 ? (
         <MedicineEmptyState
           onAction={handleEmptyStateAction}
           type={emptyStateType}

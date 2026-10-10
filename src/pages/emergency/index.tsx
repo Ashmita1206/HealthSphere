@@ -277,12 +277,14 @@ export default function EmergencyPage() {
         description: 'Emergency alert sent to your contacts and nearest facility',
         variant: 'destructive',
       });
+      return true;
     } catch (_err: unknown) {
       toast({
         title: 'Emergency Dispatch Failed',
         description: 'Emergency dispatch could not be confirmed. Please contact local emergency services immediately.',
         variant: 'destructive',
       });
+      return false;
     }
   }, [fetchEmergencies, toast, userLat, userLng]);
 

@@ -1,17 +1,39 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'healthsphere_token';
 const REFRESH_TOKEN_KEY = 'healthsphere_refresh_token';
 
+export class ApiError extends Error {
+  status: number;
+  data?: unknown;
+  statusText?: string;
+
+  constructor(message: string, status: number, data?: unknown, statusText?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+    this.statusText = statusText;
+  }
+}
+
 export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
+  get: () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token || token === 'null' || token === 'undefined') return null;
+    return token.trim() || null;
+  },
+  set: (token: string) => localStorage.setItem(TOKEN_KEY, token.trim()),
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
 export const refreshTokenStore = {
-  get: () => localStorage.getItem(REFRESH_TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(REFRESH_TOKEN_KEY, token),
+  get: () => {
+    const token = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (!token || token === 'null' || token === 'undefined') return null;
+    return token.trim() || null;
+  },
+  set: (token: string) => localStorage.setItem(REFRESH_TOKEN_KEY, token.trim()),
   clear: () => localStorage.removeItem(REFRESH_TOKEN_KEY),
 };
 
@@ -44,7 +66,7 @@ async function executeTokenRefresh(): Promise<string | null> {
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     const newAccessToken = data.accessToken || data.token;
     const newRefreshToken = data.refreshToken;
 
@@ -77,9 +99,14 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   };
-  if (!(options.body instanceof FormData))
-    headers['Content-Type'] = 'application/json';
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (!(options.body instanceof FormData) && options.body !== undefined) {
+    if (!headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+  }
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -105,36 +132,81 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.message || 'Request failed');
+    let errorBody: any = null;
+    let errorMessage = response.statusText || 'Request failed';
+    try {
+      if (typeof response.text === 'function') {
+        const rawText = await response.text();
+        if (rawText) {
+          try {
+            errorBody = JSON.parse(rawText);
+            errorMessage = errorBody.message || errorBody.error || errorBody.msg || rawText;
+          } catch {
+            errorMessage = rawText;
+          }
+        }
+      } else if (typeof response.json === 'function') {
+        errorBody = await response.json();
+        errorMessage = errorBody?.message || errorBody?.error || errorBody?.msg || errorMessage;
+      }
+    } catch {
+      // response reading failed
+    }
+
+    throw new ApiError(errorMessage, response.status, errorBody, response.statusText);
   }
-  if (response.status === 204) return undefined as T;
-  return response.json();
+
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
+  }
+
+  if (typeof response.text === 'function') {
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return undefined as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as unknown as T;
+    }
+  }
+
+  if (typeof response.json === 'function') {
+    return (await response.json()) as T;
+  }
+
+  return undefined as T;
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, options?: RequestInit) => request<T>(path, options),
 
-  post: <T>(path: string, body?: unknown) =>
+  post: <T>(path: string, body?: unknown, options?: RequestInit) =>
     request<T>(path, {
+      ...options,
       method: 'POST',
-      body: body instanceof FormData ? body : JSON.stringify(body || {}),
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  put: <T>(path: string, body?: unknown) =>
+  put: <T>(path: string, body?: unknown, options?: RequestInit) =>
     request<T>(path, {
+      ...options,
       method: 'PUT',
-      body: JSON.stringify(body || {}),
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  patch: <T>(path: string, body?: unknown) =>
+  patch: <T>(path: string, body?: unknown, options?: RequestInit) =>
     request<T>(path, {
+      ...options,
       method: 'PATCH',
-      body: JSON.stringify(body || {}),
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  delete: <T>(path: string) =>
+  delete: <T>(path: string, options?: RequestInit) =>
     request<T>(path, {
+      ...options,
       method: 'DELETE',
     }),
 };

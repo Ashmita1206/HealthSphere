@@ -74,7 +74,15 @@ export const DoctorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 export const useDoctor = (): DoctorContextType => {
   const context = useContext(DoctorContext);
   if (!context) {
-    throw new Error('useDoctor must be used within a DoctorProvider');
+    return {
+      doctors: [],
+      loading: false,
+      error: null,
+      selectedDoctor: null,
+      selectDoctor: () => {},
+      fetchDoctors: async () => {},
+      getDoctor: async () => null,
+    };
   }
   return context;
 };

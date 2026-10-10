@@ -133,7 +133,15 @@ export const ShareProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useMedicalShare = (): ShareContextType => {
   const context = useContext(ShareContext);
   if (!context) {
-    throw new Error('useMedicalShare must be used within a ShareProvider');
+    return {
+      shares: defaultSharesData,
+      loading: false,
+      error: null,
+      activeCount: 0,
+      fetchShares: async () => {},
+      createShare: async () => ({} as any),
+      revokeShare: async () => {},
+    };
   }
   return context;
 };
