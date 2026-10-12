@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 
 export type SOSTriggerResponse =
-  | { success: boolean; message?: string }
+  | { success?: boolean; status?: string; message?: string }
   | boolean
   | void;
 
@@ -57,9 +57,10 @@ export const SOSButton = memo(function SOSButton({ onSOSTriggered }: SOSButtonPr
         .then((result) => {
           if (!mountedRef.current) return;
           const isSuccess =
-            result === undefined ||
             result === true ||
-            (typeof result === 'object' && result !== null && result.success === true);
+            (typeof result === 'object' &&
+              result !== null &&
+              (result.success === true || (result as any).status === 'triggered'));
 
           if (isSuccess) {
             setStatus('confirmed');
@@ -237,7 +238,7 @@ export const SOSButton = memo(function SOSButton({ onSOSTriggered }: SOSButtonPr
                   Dispatch Unconfirmed
                 </DialogTitle>
                 <DialogDescription className="text-xs text-rose-600 mt-1">
-                  Server could not confirm emergency dispatch. Please contact local emergency services immediately (911 / 112).
+                  Server could not confirm emergency dispatch. Note that a prior attempt may have reached the server; retries are not guaranteed to be deduplicated. Please contact local emergency services immediately (911 / 112).
                 </DialogDescription>
               </div>
               <div className="flex gap-2 pt-2">

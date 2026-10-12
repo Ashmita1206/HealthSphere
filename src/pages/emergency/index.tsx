@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -71,6 +71,9 @@ export default function EmergencyPage() {
   const [activeIncidents, setActiveIncidents] = useState<EmergencyIncidentData[]>([]);
   const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>([]);
   const [liveRiskMetrics, setLiveRiskMetrics] = useState<LiveRiskMetric[]>([]);
+  const isTriggeringRef = useRef(false);
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const [checklistItems, setChecklistItems] = useState([
     { id: 'medicines', label: 'Carry medicines', checked: false },
@@ -154,15 +157,33 @@ export default function EmergencyPage() {
   }, []);
 
   const fetchEmergencies = useCallback(async () => {
+    if (!userRef.current) {
+      setActiveIncidents([]);
+      setIncidentHistory([]);
+      return;
+    }
+    const currentUserId = userRef.current.id;
+
     try {
       const [activeRes, historyRes] = await Promise.allSettled([
-        api.get<any[]>('/emergency/active'),
-        api.get<any[]>('/emergency/history'),
+        api.get<any>('/emergency/active'),
+        api.get<any>('/emergency/history'),
       ]);
 
-      if (activeRes.status === 'fulfilled' && Array.isArray(activeRes.value)) {
+      if (userRef.current?.id !== currentUserId) {
+        return;
+      }
+
+      if (activeRes.status === 'fulfilled') {
+        const rawActive = activeRes.value;
+        const activeList = Array.isArray(rawActive)
+          ? rawActive
+          : Array.isArray(rawActive?.data)
+          ? rawActive.data
+          : [];
+
         setActiveIncidents(
-          activeRes.value.map((inc: any) => ({
+          activeList.map((inc: any) => ({
             id: inc._id || inc.id,
             severity: inc.severity || 'HIGH',
             triggerReason: inc.triggerReason || inc.description || 'Emergency Dispatch',
@@ -174,9 +195,16 @@ export default function EmergencyPage() {
         );
       }
 
-      if (historyRes.status === 'fulfilled' && Array.isArray(historyRes.value)) {
+      if (historyRes.status === 'fulfilled') {
+        const rawHistory = historyRes.value;
+        const historyList = Array.isArray(rawHistory)
+          ? rawHistory
+          : Array.isArray(rawHistory?.data)
+          ? rawHistory.data
+          : [];
+
         setIncidentHistory(
-          historyRes.value.map((h: any) => ({
+          historyList.map((h: any) => ({
             id: h._id || h.id || '',
             severity: h.severity || 'HIGH',
             triggerReason: h.triggerReason || h.description || 'Emergency SOS',
@@ -198,19 +226,37 @@ export default function EmergencyPage() {
 
     const fetchData = async () => {
       setLoading(true);
+      if (!user) {
+        if (active) {
+          setProfile(createDefaultProfile());
+          setContacts([]);
+          setActiveIncidents([]);
+          setIncidentHistory([]);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         const [profileRes, contactsRes] = await Promise.allSettled([
-          user ? api.get<unknown>('/user/profile') : Promise.resolve(createDefaultProfile()),
-          user ? api.get<any[]>('/emergency/contacts') : Promise.resolve([]),
+          api.get<unknown>('/user/profile'),
+          api.get<any>('/emergency/contacts'),
         ]);
 
         if (active) {
           const profileData = profileRes.status === 'fulfilled' ? profileRes.value : createDefaultProfile();
           setProfile(normalizeProfileData(profileData));
 
-          if (contactsRes.status === 'fulfilled' && Array.isArray(contactsRes.value)) {
+          if (contactsRes.status === 'fulfilled') {
+            const rawContacts = contactsRes.value;
+            const contactsList = Array.isArray(rawContacts)
+              ? rawContacts
+              : Array.isArray(rawContacts?.data)
+              ? rawContacts.data
+              : [];
+
             setContacts(
-              contactsRes.value.map((c: any) => ({
+              contactsList.map((c: any) => ({
                 id: c._id || c.id,
                 name: c.name,
                 phone: c.phone,
@@ -227,7 +273,9 @@ export default function EmergencyPage() {
     };
 
     void fetchData();
-    void fetchEmergencies();
+    if (user) {
+      void fetchEmergencies();
+    }
 
     return () => {
       active = false;
@@ -235,19 +283,46 @@ export default function EmergencyPage() {
   }, [user, fetchEmergencies]);
 
   const handleSOSTriggered = useCallback(async () => {
+    if (isTriggeringRef.current) return false;
+    isTriggeringRef.current = true;
+
     try {
-      const res = await api.post<{ success: boolean; data?: any }>('/emergency/sos', {
-        latitude: userLat !== null ? userLat : undefined,
-        longitude: userLng !== null ? userLng : undefined,
-      });
+      const payload: { latitude?: number; longitude?: number } = {};
+      if (
+        typeof userLat === 'number' &&
+        typeof userLng === 'number' &&
+        !Number.isNaN(userLat) &&
+        !Number.isNaN(userLng)
+      ) {
+        payload.latitude = userLat;
+        payload.longitude = userLng;
+      }
+
+      const res = await api.post<{ success?: boolean; status?: string; data?: any }>('/emergency/sos', payload);
+
+      const isConfirmed = Boolean(
+        res &&
+          (res.status === 'triggered' ||
+            res.success === true ||
+            (res.data && (res.data.id || res.data._id || res.data.incidentId || res.data.status === 'active')))
+      );
+
+      if (!isConfirmed) {
+        throw new Error('Server did not acknowledge emergency dispatch');
+      }
 
       setSosSent((prev) => prev + 1);
+
+      const locationShared = typeof payload.latitude === 'number' && typeof payload.longitude === 'number';
+      const eventDescription = locationShared
+        ? `SOS emergency alert triggered with live coordinates (${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)})`
+        : 'SOS emergency alert triggered (GPS coordinates unavailable)';
 
       const newEvent: TimelineEvent = {
         id: `event-${Date.now()}`,
         type: 'sos-triggered',
         timestamp: new Date().toISOString(),
-        description: 'SOS emergency alert triggered',
+        description: eventDescription,
       };
       setTimeline((prev) => [newEvent, ...prev]);
 
@@ -260,9 +335,9 @@ export default function EmergencyPage() {
             triggerReason: res.data.triggerReason || 'SOS Button Manual Emergency Dispatch',
             status: res.data.status || 'active',
             createdAt: res.data.createdAt ? new Date(res.data.createdAt).toLocaleTimeString() : 'Just now',
-            location: res.data.location || (userLat !== null && userLng !== null ? {
-              latitude: userLat,
-              longitude: userLng,
+            location: res.data.location || (locationShared ? {
+              latitude: payload.latitude!,
+              longitude: payload.longitude!,
               address: 'Live GPS Coordinates Broadcasted',
             } : undefined),
           },
@@ -273,18 +348,22 @@ export default function EmergencyPage() {
       }
 
       toast({
-        title: 'SOS Triggered',
-        description: 'Emergency alert sent to your contacts and nearest facility',
+        title: 'Emergency Request Submitted',
+        description: locationShared
+          ? 'Emergency alert and coordinates transmitted.'
+          : 'Emergency alert transmitted without GPS coordinates.',
         variant: 'destructive',
       });
       return true;
     } catch (_err: unknown) {
       toast({
-        title: 'Emergency Dispatch Failed',
-        description: 'Emergency dispatch could not be confirmed. Please contact local emergency services immediately.',
+        title: 'Emergency Dispatch Unconfirmed',
+        description: 'Emergency dispatch could not be confirmed. Retries may create duplicate incidents. Call emergency contacts or 911 / 112 immediately.',
         variant: 'destructive',
       });
       return false;
+    } finally {
+      isTriggeringRef.current = false;
     }
   }, [fetchEmergencies, toast, userLat, userLng]);
 

@@ -23,6 +23,7 @@ import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
 import { useAnalytics } from "@/context/AnalyticsContext";
 import { useMedicalProfile } from "@/context/MedicalProfileContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ProfileCompletion } from "@/components/medical-profile/ProfileCompletion";
 import {
   HealthScoreCard,
@@ -43,6 +44,7 @@ import { HealthTrendCharts } from "./components/HealthTrendCharts";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { dashboardData: analyticsData, loading: analyticsLoading } = useAnalytics();
   const { profile: medicalProfile } = useMedicalProfile();
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
@@ -59,6 +61,15 @@ export default function DashboardPage() {
   } | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (!user) {
+      setProfile(createDefaultProfile());
+      setDashboardData(null);
+      setCareCompletedMap({});
+      setDashboardError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const [profileResult, dashboardResult] = await Promise.allSettled([
@@ -94,12 +105,23 @@ export default function DashboardPage() {
     }
 
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     let active = true;
 
     async function initialLoad() {
+      if (!user) {
+        if (active) {
+          setProfile(createDefaultProfile());
+          setDashboardData(null);
+          setCareCompletedMap({});
+          setDashboardError(null);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
 
       const [profileResult, dashboardResult] = await Promise.allSettled([
@@ -144,7 +166,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id]);
 
   const mappedRecommendations = useMemo(() => {
     if (!dashboardData) return undefined;
