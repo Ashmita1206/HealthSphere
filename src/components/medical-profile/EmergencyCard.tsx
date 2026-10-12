@@ -17,7 +17,7 @@ interface EmergencyCardProps {
 }
 
 export const EmergencyCard: React.FC<EmergencyCardProps> = ({ profile }) => {
-  const bloodGroup = profile?.bloodGroup && profile.bloodGroup !== 'Unknown' ? profile.bloodGroup : 'O+';
+  const bloodGroup = profile?.bloodGroup && profile.bloodGroup !== 'Unknown' ? profile.bloodGroup : 'Not specified';
   const allergies = profile?.allergies && profile.allergies.length > 0 ? profile.allergies : ['None reported'];
   const chronicDiseases = profile?.chronicDiseases && profile.chronicDiseases.length > 0 ? profile.chronicDiseases : ['None reported'];
   const medications = profile?.currentMedications && profile.currentMedications.length > 0 ? profile.currentMedications : ['None reported'];

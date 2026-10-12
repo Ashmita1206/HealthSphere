@@ -106,7 +106,7 @@ export const ProfileHero = memo(function ProfileHero({
                 <span>{profile.date_of_birth ? `DOB: ${profile.date_of_birth}` : 'DOB Not set'}</span>
                 <span>•</span>
                 <span className="font-mono text-teal-300 font-bold">
-                  ID: {profile.phone ? `HS-${profile.phone.slice(-4)}` : 'HS-2026-PATIENT'}
+                  ID: {profile.phone ? `HS-${profile.phone.slice(-4)}` : 'Not assigned'}
                 </span>
               </p>
 

@@ -18,7 +18,7 @@ interface MedicalProfileCardProps {
 }
 
 export const MedicalProfileCard: React.FC<MedicalProfileCardProps> = ({ profile, onEdit }) => {
-  const bloodGroup = profile?.bloodGroup && profile.bloodGroup !== 'Unknown' ? profile.bloodGroup : 'O+';
+  const bloodGroup = profile?.bloodGroup && profile.bloodGroup !== 'Unknown' ? profile.bloodGroup : 'Not specified';
   const allergies = profile?.allergies || [];
   const conditions = profile?.chronicDiseases || [];
   const height = profile?.height;

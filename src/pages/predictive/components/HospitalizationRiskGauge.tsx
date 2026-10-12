@@ -16,20 +16,59 @@ export const DEFAULT_RISK_DRIVERS = [
 ];
 
 export const HospitalizationRiskGauge: React.FC<HospitalizationRiskProps> = ({
-  riskScore = 18,
-  timeframe30Day = 4.2,
-  timeframe90Day = 11.5,
+  riskScore,
+  timeframe30Day,
+  timeframe90Day,
   primaryRiskDrivers = DEFAULT_RISK_DRIVERS,
   className = '',
 }) => {
+  const hasRisk = typeof riskScore === 'number';
+
   const getRiskTier = (score: number) => {
     if (score >= 60) return { label: 'HIGH RISK', color: 'text-rose-600', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
     if (score >= 30) return { label: 'MODERATE RISK', color: 'text-amber-600', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
     return { label: 'LOW RISK', color: 'text-emerald-600', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
   };
 
-  const tier = getRiskTier(riskScore);
-  const strokeDashoffset = 283 - (283 * riskScore) / 100;
+  const tier = hasRisk ? getRiskTier(riskScore!) : { label: 'DATA PENDING', color: 'text-slate-600', bg: 'bg-slate-50 text-slate-700 border-slate-200' };
+  const strokeDashoffset = hasRisk ? 283 - (283 * riskScore!) / 100 : 283;
+
+  if (!hasRisk) {
+    return (
+      <div
+        data-testid="hospitalization-risk-gauge"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 ${className}`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Hospitalization & Acute ER Risk
+              </h3>
+              <p className="text-xs text-slate-500">
+                Predictive risk engine
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+            PENDING LOGS
+          </span>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center space-y-1.5">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Insufficient Telemetry for Acute Risk Calculation
+          </p>
+          <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+            Continuous blood pressure logs, glycemic readings, and active dose adherence are required to calibrate the 30-day ER and 90-day readmission prediction models.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

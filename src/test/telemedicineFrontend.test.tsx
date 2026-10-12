@@ -4,24 +4,44 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { VideoConsultationScreen } from '@/pages/telemedicine/components/VideoConsultationScreen';
 import { LiveChatPanel, DEFAULT_TELEMEDICINE_MESSAGES } from '@/pages/telemedicine/components/LiveChatPanel';
-import { LivePrescriptionPanel } from '@/pages/telemedicine/components/LivePrescriptionPanel';
-import { ConsultationTimeline } from '@/pages/telemedicine/components/ConsultationTimeline';
+import { LivePrescriptionPanel, type TelemedicinePrescriptionItem } from '@/pages/telemedicine/components/LivePrescriptionPanel';
+import { ConsultationTimeline, type TimelineMilestone } from '@/pages/telemedicine/components/ConsultationTimeline';
 import { TelemedicineRoom } from '@/pages/telemedicine/TelemedicineRoom';
 
-describe('F26 — Telemedicine UI Suite', () => {
+const realPrescriptions: TelemedicinePrescriptionItem[] = [
+  {
+    id: 'rx-real-1',
+    name: 'Telmisartan Tablets IP',
+    dosage: '40 mg',
+    frequency: 'Once Daily (Night)',
+    duration: '30 Days',
+    instructions: 'Take 30 minutes before bedtime with water',
+  },
+];
+
+const realMilestones: TimelineMilestone[] = [
+  {
+    id: 'm-1',
+    time: '10:00 AM',
+    title: 'Consultation Session Connected',
+    description: 'Encrypted WebRTC high-definition channel established.',
+  },
+];
+
+describe('F26 — Telemedicine UI & Clinical Integrity Suite', () => {
   it('1. VideoConsultationScreen renders connection metadata and handles media toggles and end call', () => {
     const handleEndCall = vi.fn();
     render(
       <VideoConsultationScreen
-        doctorName="Dr. Vikramaditya Sen"
-        patientName="Aarav Sharma"
+        doctorName="Dr. Anita Desai"
+        patientName="Rohan Gupta"
         consultationId="CONS-TEST-001"
         onEndCall={handleEndCall}
       />
     );
 
     expect(screen.getByTestId('video-consultation-screen')).toBeInTheDocument();
-    expect(screen.getByText('Dr. Vikramaditya Sen')).toBeInTheDocument();
+    expect(screen.getByText('Dr. Anita Desai')).toBeInTheDocument();
     expect(screen.getByText(/Live Encrypted WebRTC/i)).toBeInTheDocument();
     expect(screen.getByText('CONS-TEST-001')).toBeInTheDocument();
 
@@ -65,10 +85,18 @@ describe('F26 — Telemedicine UI Suite', () => {
     expect(screen.getByText('Understood Doctor, will check my vitals now.')).toBeInTheDocument();
   });
 
-  it('3. LivePrescriptionPanel displays live synced medications and triggers download', () => {
+  it('3. LivePrescriptionPanel renders honest drafting state when no prescriptions are drafted', () => {
+    render(<LivePrescriptionPanel prescriptions={[]} isSigned={false} />);
+    expect(screen.getByTestId('live-prescription-empty')).toBeInTheDocument();
+    expect(screen.getByText(/No Prescriptions Drafted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Drafting In Call/i)).toBeInTheDocument();
+  });
+
+  it('4. LivePrescriptionPanel displays real synced medications and handles download when signed', () => {
     const handleDownload = vi.fn();
     render(
       <LivePrescriptionPanel
+        prescriptions={realPrescriptions}
         isSigned={true}
         onDownload={handleDownload}
       />
@@ -83,17 +111,19 @@ describe('F26 — Telemedicine UI Suite', () => {
     expect(handleDownload).toHaveBeenCalledTimes(1);
   });
 
-  it('4. ConsultationTimeline renders chronological milestones', () => {
-    render(<ConsultationTimeline />);
-
-    expect(screen.getByTestId('consultation-timeline')).toBeInTheDocument();
-    expect(screen.getByText('Consultation Session Connected')).toBeInTheDocument();
-    expect(screen.getByText('Biometric Telemetry Ingested')).toBeInTheDocument();
-    expect(screen.getByText('Clinical Assessment Documented')).toBeInTheDocument();
-    expect(screen.getByText('Digital Prescription Signed')).toBeInTheDocument();
+  it('5. ConsultationTimeline renders honest session state when no milestones yet', () => {
+    render(<ConsultationTimeline milestones={[]} />);
+    expect(screen.getByTestId('consultation-timeline-empty')).toBeInTheDocument();
+    expect(screen.getByText(/Session Initialized/i)).toBeInTheDocument();
   });
 
-  it('5. TelemedicineRoom page switches workspace tabs between Chat, Rx Pad, and Timeline', () => {
+  it('6. ConsultationTimeline renders chronological milestones when provided', () => {
+    render(<ConsultationTimeline milestones={realMilestones} />);
+    expect(screen.getByTestId('consultation-timeline')).toBeInTheDocument();
+    expect(screen.getByText('Consultation Session Connected')).toBeInTheDocument();
+  });
+
+  it('7. TelemedicineRoom page switches workspace tabs between Chat, Rx Pad, and Timeline', () => {
     render(
       <BrowserRouter>
         <TelemedicineRoom />

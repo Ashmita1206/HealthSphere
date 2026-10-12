@@ -35,7 +35,7 @@ export const MedicalIDCard = memo(function MedicalIDCard({
 
   const healthID = userId
     ? `HS-2026-${userId.slice(-6).toUpperCase()}`
-    : `HS-2026-MED987`;
+    : 'Not assigned';
 
   const handleDownloadID = () => {
     const content = `====================================================

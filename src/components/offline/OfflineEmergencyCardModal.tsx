@@ -26,19 +26,55 @@ export const OfflineEmergencyCardModal: React.FC<OfflineEmergencyCardModalProps>
 }) => {
   if (!isOpen) return null;
 
-  const p: OfflineEmergencyProfile = profile || {
-    patientName: 'Local Patient (Offline Cache)',
-    bloodGroup: 'O+',
-    allergies: ['Penicillin', 'Sulfa drugs'],
-    chronicConditions: ['Type 2 Diabetes', 'Hypertension'],
-    medications: ['Metformin 500mg', 'Lisinopril 10mg'],
-    emergencyContacts: [
-      { name: 'Sarah Connor', relationship: 'Spouse', phone: '+1 (555) 234-5678' },
-    ],
-    organDonor: true,
-    dnrStatus: false,
-    lastUpdated: new Date().toISOString(),
-  };
+  if (!profile) {
+    return (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-card border-2 border-border/60 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative overflow-hidden"
+        >
+          <div className="flex items-center justify-between pb-3 border-b border-border/40">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground text-sm">Offline Emergency Medical Card</h3>
+                <p className="text-xs text-muted-foreground">Cached in IndexedDB • Zero Connectivity Access</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="py-8 text-center space-y-2">
+            <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
+            <p className="text-sm font-semibold text-foreground">No Offline Emergency Profile Cached</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Connect to the hospital network and click "Hydrate Snapshot" to cache your critical emergency card for offline use.
+            </p>
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-border/30">
+            <button
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-xl bg-card border border-border/40 text-foreground text-xs font-semibold hover:bg-muted"
+            >
+              Close
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const p = profile;
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">

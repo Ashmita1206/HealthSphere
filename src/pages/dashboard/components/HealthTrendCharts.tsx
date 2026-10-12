@@ -85,11 +85,11 @@ export const HealthTrendCharts: React.FC<HealthTrendChartsProps> = ({ className 
               Longitudinal Health Trends
             </h3>
             <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800">
-              Live Telemetry
+              Telemetry Benchmark
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Compare biometric trends against clinical target baselines
+            Reference target intervals and physiological limits
           </p>
         </div>
 

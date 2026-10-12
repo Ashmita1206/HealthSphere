@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createPlaceholderTimelineEvents } from '@/components/timeline/timelineData';
+import type { TimelineEvent } from '@/components/timeline/timelineTypes';
 import {
   formatTimelineDate,
   formatTimelineTime,
@@ -17,6 +17,7 @@ import {
 
 interface CareNetworkWidgetProps {
   bloodType?: string;
+  events?: TimelineEvent[];
 }
 
 const linkClass =
@@ -24,17 +25,18 @@ const linkClass =
 
 export const CareNetworkWidget = memo(function CareNetworkWidget({
   bloodType,
+  events = [],
 }: CareNetworkWidgetProps) {
   const recentEvents = useMemo(
     () =>
-      createPlaceholderTimelineEvents()
+      [...events]
         .sort(
           (left, right) =>
             new Date(right.timestamp).getTime() -
             new Date(left.timestamp).getTime(),
         )
         .slice(0, 3),
-    [],
+    [events],
   );
 
   return (
@@ -50,23 +52,29 @@ export const CareNetworkWidget = memo(function CareNetworkWidget({
           </Link>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
-          {recentEvents.map((event) => (
-            <Link
-              key={event.id}
-              to="/timeline"
-              className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:border-teal-200 hover:bg-teal-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-            >
-              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-teal-600 ring-4 ring-teal-100" />
-              <span className="min-w-0">
-                <span className="block truncate text-xs font-bold text-slate-900">
-                  {event.title}
+          {recentEvents.length > 0 ? (
+            recentEvents.map((event) => (
+              <Link
+                key={event.id}
+                to="/timeline"
+                className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:border-teal-200 hover:bg-teal-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+              >
+                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-teal-600 ring-4 ring-teal-100" />
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-bold text-slate-900">
+                    {event.title}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                    {formatTimelineDate(event.timestamp)} · {formatTimelineTime(event.timestamp)}
+                  </span>
                 </span>
-                <span className="mt-0.5 block text-[11px] text-slate-500">
-                  {formatTimelineDate(event.timestamp)} · {formatTimelineTime(event.timestamp)}
-                </span>
-              </span>
-            </Link>
-          ))}
+              </Link>
+            ))
+          ) : (
+            <div className="p-4 rounded-xl bg-slate-50 text-center text-xs text-slate-500">
+              No recent timeline events recorded yet.
+            </div>
+          )}
         </CardContent>
       </Card>
 

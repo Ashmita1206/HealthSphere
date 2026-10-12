@@ -28,7 +28,42 @@ export const WeeklyReportSummary: React.FC<{
   report?: WeeklyReportData;
   onDownload?: () => void;
   className?: string;
-}> = ({ report = DEFAULT_WEEKLY_REPORT, onDownload, className = '' }) => {
+}> = ({ report, onDownload, className = '' }) => {
+  if (!report) {
+    return (
+      <div
+        data-testid="weekly-report-summary"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3 ${className}`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Weekly Predictive Intelligence Report
+              </h3>
+              <p className="text-xs text-slate-500">Longitudinal predictive telemetry synthesis</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400">
+            PENDING LOGS
+          </span>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center space-y-1">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Insufficient Telemetry for Weekly Predictive Synthesis
+          </p>
+          <p className="text-[11px] text-slate-500 max-w-md mx-auto leading-relaxed">
+            Minimum 7 days of continuous vitals, medication logs, and clinical checkups are required to generate personalized longitudinal forecasting.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const handleDownload = () => {
     if (onDownload) {
       onDownload();

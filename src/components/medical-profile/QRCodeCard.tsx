@@ -67,7 +67,7 @@ export const QRCodeCard: React.FC<QRCodeCardProps> = ({
     return matrix;
   };
 
-  const pattern = generatePattern(healthId || 'HS-2026-DEFAULT');
+  const pattern = generatePattern(healthId || '');
 
   return (
     <Card className="rounded-2xl border border-slate-200/80 shadow-xs bg-white overflow-hidden flex flex-col justify-between">

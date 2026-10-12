@@ -1,12 +1,12 @@
 import React from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Heart, Apple, Stethoscope } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export interface ReportRecommendation {
   id: string;
   category: string;
   title: string;
   description: string;
-  urgency: 'Immediate' | 'Within 1 Week' | 'Routine';
+  urgency: 'Immediate' | 'Within 1 Week' | 'Routine' | string;
 }
 
 export interface ClinicalRecommendationsProps {
@@ -15,35 +15,35 @@ export interface ClinicalRecommendationsProps {
   className?: string;
 }
 
-export const DEFAULT_REPORT_RECS: ReportRecommendation[] = [
-  {
-    id: 'rec-endo',
-    category: 'Specialist Consultation',
-    title: 'Consult Endocrinologist regarding HbA1c (7.8%)',
-    description: 'Discuss potential adjustment of Metformin dosage or adjuvant GLP-1/SGLT2 therapy with your specialist.',
-    urgency: 'Within 1 Week',
-  },
-  {
-    id: 'rec-diet',
-    category: 'Dietary Modification',
-    title: 'Adopt Low-Glycemic Mediterranean Diet',
-    description: 'Reduce refined carbohydrates and saturated fats to manage both fasting glucose and elevated LDL levels.',
-    urgency: 'Routine',
-  },
-  {
-    id: 'rec-retest',
-    category: 'Follow-up Testing',
-    title: 'Repeat Lipid & Renal Panel in 6 Weeks',
-    description: 'Ensure serum creatinine normalizes and track response to dietary modifications.',
-    urgency: 'Routine',
-  },
-];
+// Retained for test fixture typing only; never used as a component default
+export const DEFAULT_REPORT_RECS: ReportRecommendation[] = [];
 
 export const ClinicalRecommendations: React.FC<ClinicalRecommendationsProps> = ({
-  recommendations = DEFAULT_REPORT_RECS,
+  recommendations = [],
   onActionClick,
   className = '',
 }) => {
+  if (!recommendations || recommendations.length === 0) {
+    return (
+      <div
+        data-testid="clinical-recommendations-empty"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-center space-y-2.5 ${className}`}
+      >
+        <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto">
+          <Sparkles className="w-5 h-5" />
+        </div>
+        <div>
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+            No Clinical Recommendations
+          </h4>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+            Evidence-based clinical follow-up guidance and dietary/lifestyle recommendations will be generated automatically once a diagnostic report is analyzed.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="clinical-recommendations"
@@ -56,7 +56,7 @@ export const ClinicalRecommendations: React.FC<ClinicalRecommendationsProps> = (
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              AI Clinical Recommendations
+              AI Clinical Recommendations ({recommendations.length})
             </h3>
             <p className="text-xs text-slate-500">Evidence-based follow-up steps generated from report analysis</p>
           </div>
@@ -68,9 +68,9 @@ export const ClinicalRecommendations: React.FC<ClinicalRecommendationsProps> = (
       </div>
 
       <div className="space-y-3">
-        {recommendations.map((rec) => (
+        {recommendations.map((rec, idx) => (
           <div
-            key={rec.id}
+            key={rec.id || `rec-${idx}`}
             className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:border-teal-400 dark:hover:border-teal-600 transition-all"
           >
             <div className="space-y-1">

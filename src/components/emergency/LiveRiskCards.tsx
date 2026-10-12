@@ -17,61 +17,11 @@ export interface LiveRiskCardsProps {
   className?: string;
 }
 
-export const DEFAULT_LIVE_RISK_METRICS: LiveRiskMetric[] = [
-  {
-    id: 'risk-hr',
-    label: 'Heart Rate',
-    value: 78,
-    unit: 'BPM',
-    status: 'normal',
-    threshold: 'Normal (60 - 100)',
-    iconType: 'heart',
-    lastUpdated: '10s ago',
-  },
-  {
-    id: 'risk-bp',
-    label: 'Blood Pressure',
-    value: '138/88',
-    unit: 'mmHg',
-    status: 'warning',
-    threshold: 'Elevated (> 130/80)',
-    iconType: 'bp',
-    lastUpdated: '2m ago',
-  },
-  {
-    id: 'risk-spo2',
-    label: 'Blood Oxygen (SpO2)',
-    value: 98,
-    unit: '%',
-    status: 'normal',
-    threshold: 'Normal (> 95%)',
-    iconType: 'spo2',
-    lastUpdated: 'Just now',
-  },
-  {
-    id: 'risk-glucose',
-    label: 'Blood Glucose',
-    value: 142,
-    unit: 'mg/dL',
-    status: 'warning',
-    threshold: 'Suboptimal (> 140)',
-    iconType: 'glucose',
-    lastUpdated: '15m ago',
-  },
-  {
-    id: 'risk-temp',
-    label: 'Core Temperature',
-    value: 98.6,
-    unit: '°F',
-    status: 'normal',
-    threshold: 'Normal (97.8 - 99.1)',
-    iconType: 'temp',
-    lastUpdated: '30m ago',
-  },
-];
+// Retained for test fixture typing only; never used as a component default
+export const DEFAULT_LIVE_RISK_METRICS: LiveRiskMetric[] = [];
 
 export const LiveRiskCards: React.FC<LiveRiskCardsProps> = ({
-  metrics = DEFAULT_LIVE_RISK_METRICS,
+  metrics = [],
   className = '',
 }) => {
   const getIcon = (type: LiveRiskMetric['iconType']) => {
@@ -111,6 +61,28 @@ export const LiveRiskCards: React.FC<LiveRiskCardsProps> = ({
         );
     }
   };
+
+  if (!metrics || metrics.length === 0) {
+    return (
+      <div data-testid="live-risk-cards" className={`p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 ${className}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Live Risk Telemetry & Vitals Thresholds
+            </h3>
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium">Telemetry Standby</span>
+        </div>
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center space-y-1">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No Continuous Telemetry Stream Active</p>
+          <p className="text-[11px] text-slate-500 max-w-lg mx-auto">
+            Biometric devices and continuous vitals monitors are currently offline. Emergency SOS triggers remain fully armed via manual dispatch.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div data-testid="live-risk-cards" className={`space-y-3 ${className}`}>

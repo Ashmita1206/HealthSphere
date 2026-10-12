@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { History, ShieldAlert, CheckCircle2, Clock, MapPin, Download, Search } from 'lucide-react';
+import { History, Download, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export interface IncidentRecord {
   id: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
   triggerReason: string;
   timestamp: string;
   duration: string;
   doctorName?: string;
-  status: 'resolved' | 'escalated' | 'cancelled';
+  status: 'resolved' | 'escalated' | 'cancelled' | string;
   outcomeNote: string;
 }
 
@@ -18,40 +18,11 @@ export interface IncidentHistoryTableProps {
   className?: string;
 }
 
-export const DEFAULT_INCIDENT_HISTORY: IncidentRecord[] = [
-  {
-    id: 'INC-2026-081',
-    severity: 'CRITICAL',
-    triggerReason: 'Symptom report indicated chest pain with shortness of breath & HR 128 bpm',
-    timestamp: 'Aug 14, 2026 • 22:45',
-    duration: '18 mins',
-    doctorName: 'Dr. Sarah Mitchell',
-    status: 'resolved',
-    outcomeNote: 'Emergency contacts notified; EMS dispatched. Patient stabilized at Metro Cardiac Center.',
-  },
-  {
-    id: 'INC-2026-054',
-    severity: 'HIGH',
-    triggerReason: 'Blood glucose spike to 310 mg/dL with ketones reported',
-    timestamp: 'Jul 28, 2026 • 14:10',
-    duration: '35 mins',
-    doctorName: 'Dr. Rajesh Patel',
-    status: 'resolved',
-    outcomeNote: 'Tele-triage physician adjusted insulin regimen. Vitals normalized after 2 hours.',
-  },
-  {
-    id: 'INC-2026-019',
-    severity: 'MEDIUM',
-    triggerReason: 'Manual SOS button triggered accidentally by user',
-    timestamp: 'Jun 05, 2026 • 09:12',
-    duration: '2 mins',
-    status: 'cancelled',
-    outcomeNote: 'Cancelled by user with biometric pin confirmation within 120 seconds.',
-  },
-];
+// Retained for test fixture typing only; never used as a component default
+export const DEFAULT_INCIDENT_HISTORY: IncidentRecord[] = [];
 
 export const IncidentHistoryTable: React.FC<IncidentHistoryTableProps> = ({
-  incidents = DEFAULT_INCIDENT_HISTORY,
+  incidents = [],
   className = '',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,8 +34,8 @@ export const IncidentHistoryTable: React.FC<IncidentHistoryTableProps> = ({
       inc.severity.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getSeverityBadge = (sev: IncidentRecord['severity']) => {
-    switch (sev) {
+  const getSeverityBadge = (sev: string) => {
+    switch (sev.toUpperCase()) {
       case 'CRITICAL':
         return 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300';
       case 'HIGH':
@@ -86,6 +57,27 @@ export const IncidentHistoryTable: React.FC<IncidentHistoryTableProps> = ({
     downloadAnchor.remove();
   };
 
+  if (!incidents || incidents.length === 0) {
+    return (
+      <div
+        data-testid="incident-history-empty"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-center space-y-2.5 ${className}`}
+      >
+        <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mx-auto">
+          <History className="w-5 h-5" />
+        </div>
+        <div>
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+            No Emergency Incidents on Record
+          </h4>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+            Verified records of manual SOS dispatches, paramedic routing, and automated triage classifications will be logged here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="incident-history-table"
@@ -98,7 +90,7 @@ export const IncidentHistoryTable: React.FC<IncidentHistoryTableProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Emergency Incident History & Audit Log
+              Emergency Incident History & Audit Log ({incidents.length})
             </h3>
             <p className="text-xs text-slate-500">
               Verified records of SOS dispatches and automated risk classifications
@@ -122,7 +114,7 @@ export const IncidentHistoryTable: React.FC<IncidentHistoryTableProps> = ({
             size="sm"
             variant="outline"
             onClick={handleExportHistory}
-            className="h-8 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold gap-1.5"
+            className="h-8 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-teal-600" />
             <span>Export Log</span>

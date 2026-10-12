@@ -52,57 +52,57 @@ export interface TwoFactorSetupData {
 
 export const securityService = {
   async getSessions(): Promise<ActiveSession[]> {
-    const res = await api.get('/security/sessions');
-    return res.data?.data || [];
+    const res = await api.get<{ success: boolean; data: ActiveSession[] }>('/security/sessions');
+    return res?.data || [];
   },
 
   async revokeSession(id: string): Promise<boolean> {
-    const res = await api.delete(`/security/sessions/${id}`);
-    return res.data?.success;
+    const res = await api.delete<{ success: boolean; message?: string }>(`/security/sessions/${id}`);
+    return Boolean(res?.success);
   },
 
   async revokeOtherSessions(): Promise<number> {
-    const res = await api.post('/security/sessions/revoke-others');
-    return res.data?.count || 0;
+    const res = await api.post<{ success: boolean; count?: number }>('/security/sessions/revoke-others');
+    return res?.count || 0;
   },
 
   async getDevices(): Promise<TrustedDevice[]> {
-    const res = await api.get('/security/devices');
-    return res.data?.data || [];
+    const res = await api.get<{ success: boolean; data: TrustedDevice[] }>('/security/devices');
+    return res?.data || [];
   },
 
   async untrustDevice(id: string): Promise<boolean> {
-    const res = await api.delete(`/security/devices/${id}`);
-    return res.data?.success;
+    const res = await api.delete<{ success: boolean; message?: string }>(`/security/devices/${id}`);
+    return Boolean(res?.success);
   },
 
   async getLoginHistory(): Promise<LoginHistoryItem[]> {
-    const res = await api.get('/security/login-history');
-    return res.data?.data || [];
+    const res = await api.get<{ success: boolean; data: LoginHistoryItem[] }>('/security/login-history');
+    return res?.data || [];
   },
 
   async getSecurityAlerts(): Promise<SecurityAlert[]> {
-    const res = await api.get('/security/alerts');
-    return res.data?.data || [];
+    const res = await api.get<{ success: boolean; data: SecurityAlert[] }>('/security/alerts');
+    return res?.data || [];
   },
 
   async generate2fa(): Promise<TwoFactorSetupData> {
-    const res = await api.post('/security/2fa/generate');
-    return res.data?.data;
+    const res = await api.post<{ success: boolean; data: TwoFactorSetupData }>('/security/2fa/generate');
+    return res?.data;
   },
 
   async verifyAndEnable2fa(secret: string, token: string): Promise<{ emergencyCodes: string[] }> {
-    const res = await api.post('/security/2fa/verify', { secret, token });
-    return res.data;
+    const res = await api.post<{ success: boolean; message?: string; emergencyCodes?: string[] }>('/security/2fa/verify', { secret, token });
+    return { emergencyCodes: res?.emergencyCodes || [] };
   },
 
   async disable2fa(): Promise<boolean> {
-    const res = await api.post('/security/2fa/disable');
-    return res.data?.success;
+    const res = await api.post<{ success: boolean; message?: string }>('/security/2fa/disable');
+    return Boolean(res?.success);
   },
 
   async createEmergencyToken(patientId: string, reason: string): Promise<{ emergencyToken: string; expiresAt: string }> {
-    const res = await api.post('/security/emergency-token', { patientId, reason });
-    return res.data?.data;
+    const res = await api.post<{ success: boolean; message?: string; data: { emergencyToken: string; expiresAt: string } }>('/security/emergency-token', { patientId, reason });
+    return res?.data;
   },
 };

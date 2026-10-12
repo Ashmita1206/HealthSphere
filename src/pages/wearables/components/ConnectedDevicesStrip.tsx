@@ -47,7 +47,7 @@ export const ConnectedDevicesStrip: React.FC<{
   onSyncDevice?: (id: string) => void;
   onPairNew?: () => void;
   className?: string;
-}> = ({ devices = DEFAULT_DEVICES, onSyncDevice, onPairNew, className = '' }) => {
+}> = ({ devices = [], onSyncDevice, onPairNew, className = '' }) => {
   return (
     <div
       data-testid="connected-devices-strip"
@@ -73,13 +73,19 @@ export const ConnectedDevicesStrip: React.FC<{
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-        {devices.map((d) => (
-          <div
-            key={d.id}
-            data-testid={`device-card-${d.id}`}
-            className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-3"
-          >
+      {devices.length === 0 ? (
+        <div className="p-6 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 text-center space-y-1.5">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No Device Connected</p>
+          <p className="text-[11px] text-slate-500">Pair a sensor to stream live telemetry</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          {devices.map((d) => (
+            <div
+              key={d.id}
+              data-testid={`device-card-${d.id}`}
+              className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-3"
+            >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-teal-700 dark:text-teal-300">
@@ -113,6 +119,7 @@ export const ConnectedDevicesStrip: React.FC<{
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 };

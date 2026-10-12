@@ -185,3 +185,66 @@ export const normalizeProfileData = (value: unknown): Profile => {
     documents: docs,
   };
 };
+
+export const mergeProfileAndMedicalData = (
+  userData: unknown,
+  medData?: {
+    fullName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    bloodGroup?: string;
+    height?: number | null;
+    weight?: number | null;
+    allergies?: string[];
+    chronicDiseases?: string[];
+    surgeries?: Array<{ name: string } | string>;
+    familyHistory?: Array<{ relation: string; condition: string } | string>;
+    emergencyContacts?: Array<{ name: string; phone: string; relationship?: string; isPrimary?: boolean }>;
+    insurance?: { provider?: string; policyNumber?: string };
+    organDonor?: boolean;
+    lifestyle?: { smoking?: string; alcohol?: string; activityLevel?: string; diet?: string };
+    address?: { street?: string; city?: string; state?: string; postalCode?: string; country?: string };
+  } | null
+): Profile => {
+  const base = normalizeProfileData(userData);
+  if (!medData) return base;
+
+  const surgeries = medData.surgeries?.length
+    ? medData.surgeries.map((s) => (typeof s === 'string' ? s : s.name))
+    : base.surgeries;
+
+  const familyHistory = medData.familyHistory?.length
+    ? medData.familyHistory.map((f) =>
+        typeof f === 'string' ? f : `${f.relation}: ${f.condition}`
+      )
+    : base.family_history;
+
+  const primaryContact =
+    medData.emergencyContacts?.find((c) => c.isPrimary) ||
+    medData.emergencyContacts?.[0];
+
+  return {
+    ...base,
+    full_name: base.full_name || medData.fullName || '',
+    date_of_birth: base.date_of_birth || medData.dateOfBirth || '',
+    gender: base.gender || medData.gender || '',
+    blood_type: base.blood_type || (medData.bloodGroup && medData.bloodGroup !== 'Unknown' ? medData.bloodGroup : '') || '',
+    height: typeof medData.height === 'number' ? medData.height : base.height,
+    weight: typeof medData.weight === 'number' ? medData.weight : base.weight,
+    allergies: medData.allergies?.length ? medData.allergies : base.allergies,
+    chronic_diseases: medData.chronicDiseases?.length ? medData.chronicDiseases : base.chronic_diseases,
+    surgeries,
+    family_history: familyHistory,
+    smoking: medData.lifestyle?.smoking || base.smoking,
+    alcohol: medData.lifestyle?.alcohol || base.alcohol,
+    exercise_level: medData.lifestyle?.activityLevel || base.exercise_level,
+    diet_preference: medData.lifestyle?.diet || base.diet_preference,
+    insurance_provider: medData.insurance?.provider || base.insurance_provider,
+    insurance_policy_number: medData.insurance?.policyNumber || base.insurance_policy_number,
+    organ_donor: typeof medData.organDonor === 'boolean' ? medData.organDonor : base.organ_donor,
+    emergency_contact_name: base.emergency_contact_name || primaryContact?.name || '',
+    emergency_contact_phone: base.emergency_contact_phone || primaryContact?.phone || '',
+    emergency_contact_relationship: base.emergency_contact_relationship || primaryContact?.relationship || '',
+    address: base.address || medData.address?.street || '',
+  };
+};

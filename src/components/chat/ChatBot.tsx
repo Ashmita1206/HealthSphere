@@ -137,44 +137,11 @@ export function ChatBot() {
             previewText: s.lastMessageText || 'Medical Chat',
           }))
         );
-      } else if (conversations.length === 0) {
-        setConversations([
-          {
-            _id: 'local-1',
-            title: 'Metformin Dosage Consultation',
-            lastMessageAt: new Date().toISOString(),
-            isPinned: true,
-            previewText: 'Explained 500mg Metformin administration with food.',
-          },
-          {
-            _id: 'local-2',
-            title: 'Blood Pressure & Diet Tips',
-            lastMessageAt: new Date(Date.now() - 86400000).toISOString(),
-            isPinned: false,
-            previewText: 'DASH diet principles and daily sodium targets.',
-          },
-        ]);
+      } else {
+        setConversations([]);
       }
     } catch {
-      // Mock local conversation list if backend is offline
-      if (conversations.length === 0) {
-        setConversations([
-          {
-            _id: 'local-1',
-            title: 'Metformin Dosage Consultation',
-            lastMessageAt: new Date().toISOString(),
-            isPinned: true,
-            previewText: 'Explained 500mg Metformin administration with food.',
-          },
-          {
-            _id: 'local-2',
-            title: 'Blood Pressure & Diet Tips',
-            lastMessageAt: new Date(Date.now() - 86400000).toISOString(),
-            isPinned: false,
-            previewText: 'DASH diet principles and daily sodium targets.',
-          },
-        ]);
-      }
+      setConversations([]);
     }
   };
 

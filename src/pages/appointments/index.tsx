@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { Plus, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -53,6 +53,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [fetchingAppointments, setFetchingAppointments] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>('add');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -62,20 +63,24 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const isSubmittingRef = useRef(false);
 
   const fetchAppointments = useCallback(async () => {
     if (!user) {
       setAppointments([]);
+      setFetchError(null);
       setFetchingAppointments(false);
       return;
     }
 
     setFetchingAppointments(true);
+    setFetchError(null);
     try {
       const data = await api.get<Appointment[]>('/health/appointments');
       setAppointments(data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch appointments:', err);
+      setFetchError(err?.message || 'Failed to fetch appointments from server');
       setAppointments([]);
     } finally {
       setFetchingAppointments(false);
@@ -100,7 +105,8 @@ export default function AppointmentsPage() {
   }, []);
 
   const handleAdd = useCallback(async (data: AppointmentFormData) => {
-    if (!user) return;
+    if (!user || isSubmittingRef.current || loading) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       await api.post('/health/appointments', data);
@@ -115,11 +121,13 @@ export default function AppointmentsPage() {
       });
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
-  }, [closeForm, fetchAppointments, toast, user]);
+  }, [closeForm, fetchAppointments, loading, toast, user]);
 
   const handleEdit = useCallback(async (data: AppointmentFormData) => {
-    if (!user || !selectedAppointment) return;
+    if (!user || !selectedAppointment || isSubmittingRef.current || loading) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       await api.put(`/health/appointments/${selectedAppointment.id}`, data);
@@ -136,8 +144,9 @@ export default function AppointmentsPage() {
       });
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
-  }, [closeForm, fetchAppointments, selectedAppointment, toast, user]);
+  }, [closeForm, fetchAppointments, loading, selectedAppointment, toast, user]);
 
   const requestAction = useCallback(
     (type: PendingAction['type'], id: string) => {
@@ -162,9 +171,15 @@ export default function AppointmentsPage() {
         );
         toast({ title: 'Appointment Deleted' });
       } else {
+        const updated = await api.put<Appointment>(
+          `/health/appointments/${pendingAction.appointment.id}`,
+          { status: 'cancelled' },
+        );
         setAppointments((current) =>
           current.map((apt) =>
-            apt.id === pendingAction.appointment.id ? { ...apt, status: 'cancelled' } : apt,
+            apt.id === pendingAction.appointment.id
+              ? { ...apt, status: 'cancelled', ...(updated || {}) }
+              : apt,
           ),
         );
         toast({ title: 'Appointment Cancelled' });
@@ -387,8 +402,26 @@ export default function AppointmentsPage() {
         />
       </div>
 
-      {/* Appointments Grid */}
-      {sortedAppointments.length === 0 ? (
+      {/* Appointments Grid / Error Recovery / Empty State */}
+      {fetchError && appointments.length === 0 ? (
+        <div data-testid="appointments-error-state" className="p-8 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/60 text-center space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">Unable to Load Appointments</h3>
+            <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 max-w-md mx-auto">{fetchError}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => void fetchAppointments()}
+            className="bg-white hover:bg-rose-50 text-rose-700 border-rose-200 rounded-xl text-xs font-bold gap-2"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry Connection</span>
+          </Button>
+        </div>
+      ) : sortedAppointments.length === 0 ? (
         <AppointmentEmptyState
           type={emptyStateType}
           onAction={handleEmptyStateAction}
@@ -400,6 +433,7 @@ export default function AppointmentsPage() {
               key={appointment.id}
               appointment={appointment}
               index={index}
+              onCancel={handleCancel}
               onDelete={handleDelete}
               onEdit={handleEditClick}
               onClick={handleAppointmentClick}
@@ -462,7 +496,9 @@ export default function AppointmentsPage() {
             >
               {actionLoading
                 ? 'Working...'
-                : 'Confirm'}
+                : pendingAction?.type === 'cancel'
+                  ? 'Cancel Appointment'
+                  : 'Delete Appointment'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

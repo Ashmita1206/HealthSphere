@@ -20,6 +20,7 @@ interface AppointmentCardProps {
   appointment: Appointment;
   index: number;
   onDelete: (id: string) => void;
+  onCancel?: (id: string) => void;
   onEdit: (appointment: Appointment) => void;
   onClick: (appointment: Appointment) => void;
 }
@@ -55,6 +56,7 @@ export const AppointmentCard = memo(function AppointmentCard({
   appointment,
   index,
   onDelete,
+  onCancel,
   onEdit,
   onClick,
 }: AppointmentCardProps) {
@@ -113,6 +115,22 @@ export const AppointmentCard = memo(function AppointmentCard({
               >
                 <Edit2 className="h-4 w-4" />
               </Button>
+              {appointment.status !== 'cancelled' && appointment.status !== 'completed' && onCancel && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onCancel(appointment.id);
+                  }}
+                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-xl h-8 w-8"
+                  title="Cancel Appointment"
+                  aria-label={`Cancel ${appointment.doctor_name}`}
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -122,8 +140,8 @@ export const AppointmentCard = memo(function AppointmentCard({
                   onDelete(appointment.id);
                 }}
                 className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl h-8 w-8"
-                title="Cancel Appointment"
-                aria-label={`Cancel ${appointment.doctor_name}`}
+                title="Delete Appointment"
+                aria-label={`Delete ${appointment.doctor_name}`}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

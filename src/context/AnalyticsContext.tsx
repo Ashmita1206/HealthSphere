@@ -69,7 +69,16 @@ export const AnalyticsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 export const useAnalytics = () => {
   const context = useContext(AnalyticsContext);
   if (!context) {
-    throw new Error('useAnalytics must be used within an AnalyticsProvider');
+    return {
+      dashboardData: null,
+      loading: false,
+      error: null,
+      insights: [],
+      healthScore: null,
+      todaysSummary: '',
+      weeklySummary: '',
+      refreshAnalytics: async () => {},
+    };
   }
   return context;
 };

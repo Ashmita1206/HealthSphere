@@ -16,8 +16,8 @@ import {
 export interface SubScoreItem {
   id: string;
   name: string;
-  score: number;
-  status: 'Optimal' | 'Stable' | 'Attention' | 'At Risk';
+  score?: number;
+  status: 'Optimal' | 'Stable' | 'Attention' | 'At Risk' | 'Pending';
   metricValue: string;
   metricLabel: string;
   icon: React.ElementType;
@@ -35,9 +35,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'cardiovascular',
     name: 'Cardiovascular Health',
-    score: 88,
-    status: 'Optimal',
-    metricValue: '118/78 mmHg',
+    status: 'Pending',
+    metricValue: 'Resting BP & Pulse',
     metricLabel: 'Resting BP & Pulse',
     icon: Heart,
     accentColor: '#EF4444',
@@ -47,9 +46,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'metabolic',
     name: 'Metabolic Stability',
-    score: 82,
-    status: 'Stable',
-    metricValue: '98 mg/dL',
+    status: 'Pending',
+    metricValue: 'Fasting Blood Glucose',
     metricLabel: 'Fasting Blood Glucose',
     icon: Flame,
     accentColor: '#F97316',
@@ -59,9 +57,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'respiratory',
     name: 'Respiratory Efficiency',
-    score: 95,
-    status: 'Optimal',
-    metricValue: '98% SpO2',
+    status: 'Pending',
+    metricValue: 'Blood Oxygen Saturation',
     metricLabel: 'Blood Oxygen Saturation',
     icon: Wind,
     accentColor: '#06B6D4',
@@ -71,9 +68,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'adherence',
     name: 'Medication Adherence',
-    score: 90,
-    status: 'Optimal',
-    metricValue: '90% Schedule',
+    status: 'Pending',
+    metricValue: 'Dose Tracking Rate',
     metricLabel: 'Dose Tracking Rate',
     icon: Pill,
     accentColor: '#10B981',
@@ -83,9 +79,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'sleep',
     name: 'Sleep & Recovery',
-    score: 76,
-    status: 'Stable',
-    metricValue: '7h 24m',
+    status: 'Pending',
+    metricValue: 'Nightly Sleep Duration',
     metricLabel: 'Nightly Sleep Duration',
     icon: Moon,
     accentColor: '#6366F1',
@@ -95,9 +90,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'activity',
     name: 'Physical Activity',
-    score: 84,
-    status: 'Optimal',
-    metricValue: '8,420 steps',
+    status: 'Pending',
+    metricValue: 'Daily Movement Average',
     metricLabel: 'Daily Movement Average',
     icon: Footprints,
     accentColor: '#14B8A6',
@@ -107,9 +101,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'nutrition',
     name: 'Nutritional Balance',
-    score: 78,
-    status: 'Stable',
-    metricValue: '2.4 L/day',
+    status: 'Pending',
+    metricValue: 'Hydration & Diet Index',
     metricLabel: 'Hydration & Diet Index',
     icon: Apple,
     accentColor: '#84CC16',
@@ -119,9 +112,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'stress',
     name: 'Autonomic & Stress',
-    score: 72,
-    status: 'Attention',
-    metricValue: '58 ms HRV',
+    status: 'Pending',
+    metricValue: 'Heart Rate Variability',
     metricLabel: 'Heart Rate Variability',
     icon: Zap,
     accentColor: '#EAB308',
@@ -131,9 +123,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'biomarkers',
     name: 'Biomarkers & Labs',
-    score: 85,
-    status: 'Optimal',
-    metricValue: 'Normal Range',
+    status: 'Pending',
+    metricValue: 'Recent OCR Lab Findings',
     metricLabel: 'Recent OCR Lab Findings',
     icon: FlaskConical,
     accentColor: '#8B5CF6',
@@ -143,9 +134,8 @@ export const DEFAULT_10_SUB_SCORES: SubScoreItem[] = [
   {
     id: 'prevention',
     name: 'Preventive Screening',
-    score: 92,
-    status: 'Optimal',
-    metricValue: 'Up to Date',
+    status: 'Pending',
+    metricValue: 'Checkup & Vaccine Registry',
     metricLabel: 'Checkup & Vaccine Registry',
     icon: ClipboardCheck,
     accentColor: '#0284C7',
@@ -163,7 +153,7 @@ export const HealthSubScoreGrid: React.FC<HealthSubScoreGridProps> = ({
       const newScore = customScores[item.id]!;
       const status: SubScoreItem['status'] =
         newScore >= 85 ? 'Optimal' : newScore >= 70 ? 'Stable' : newScore >= 50 ? 'Attention' : 'At Risk';
-      return { ...item, score: newScore, status };
+      return { ...item, score: newScore, status, metricValue: `${newScore}% Calibrated` };
     }
     return item;
   });
@@ -194,7 +184,9 @@ export const HealthSubScoreGrid: React.FC<HealthSubScoreGridProps> = ({
               ? 'bg-teal-100/70 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300'
               : item.status === 'Attention'
               ? 'bg-amber-100/70 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
-              : 'bg-rose-100/70 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300';
+              : item.status === 'At Risk'
+              ? 'bg-rose-100/70 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300'
+              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
 
           return (
             <motion.div
@@ -227,14 +219,14 @@ export const HealthSubScoreGrid: React.FC<HealthSubScoreGridProps> = ({
               <div className="mt-3 space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
                   <span>Score</span>
-                  <span>{item.score}%</span>
+                  <span>{typeof item.score === 'number' ? `${item.score}%` : '--'}</span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
-                    style={{ backgroundColor: item.accentColor }}
+                    style={{ backgroundColor: typeof item.score === 'number' ? item.accentColor : '#CBD5E1' }}
                     initial={{ width: 0 }}
-                    animate={{ width: `${item.score}%` }}
+                    animate={{ width: typeof item.score === 'number' ? `${item.score}%` : '0%' }}
                     transition={{ duration: 0.8, delay: index * 0.05 }}
                   />
                 </div>

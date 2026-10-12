@@ -85,7 +85,13 @@ export const MedicalProfileProvider: React.FC<{ children: React.ReactNode }> = (
 export const useMedicalProfile = () => {
   const context = useContext(MedicalProfileContext);
   if (!context) {
-    throw new Error('useMedicalProfile must be used within a MedicalProfileProvider');
+    return {
+      profile: null,
+      loading: false,
+      completion: { percentage: 0, missingFields: [] },
+      saveProfile: async () => false,
+      refreshProfile: async () => {},
+    };
   }
   return context;
 };

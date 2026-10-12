@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  FileText, Upload, Download, Trash2, Calendar, FileUp, Sparkles, Filter, CheckCircle2, AlertCircle, Eye, Search 
+import {
+  FileText, Upload, Download, Trash2, Calendar, FileUp, Sparkles, Filter, CheckCircle2, AlertCircle, Eye, Search, RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,19 +33,29 @@ export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const isUploadingRef = useRef(false);
   const [form, setForm] = useState({ title: "", file: null as File | null });
   const [filterType, setFilterType] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchReports = async () => {
-    if (!user) return;
+    if (!user) {
+      setReports([]);
+      setFetchError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setFetchError(null);
     try {
       const data = await api.get<Report[]>("/reports");
       setReports(data || []);
     } catch (err: any) {
       console.error("Error fetching reports:", err);
+      setFetchError(err?.message || "Failed to load clinical reports");
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -74,11 +84,14 @@ export default function ReportsPage() {
   };
 
   const handleUpload = async () => {
-    if (!user || !form.title || !form.file) {
-      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
+    if (!user || !form.title || !form.file || isUploadingRef.current || uploading) {
+      if (!user || !form.title || !form.file) {
+        toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
+      }
       return;
     }
 
+    isUploadingRef.current = true;
     setUploading(true);
     try {
       const payload = new FormData();
@@ -94,6 +107,7 @@ export default function ReportsPage() {
       toast({ title: "Error", description: err.message || "Failed to upload report", variant: "destructive" });
     } finally {
       setUploading(false);
+      isUploadingRef.current = false;
     }
   };
 
@@ -261,8 +275,28 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Report Cards Grid */}
-      {filteredReports.length === 0 ? (
+      {/* Report Cards Grid / Error Recovery / Empty State */}
+      {fetchError && reports.length === 0 ? (
+        <Card className="rounded-3xl border border-rose-200/80 shadow-sm bg-rose-50/50">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-rose-900">Failed to Load Medical Reports</h3>
+              <p className="text-xs text-rose-600 max-w-sm mt-1">{fetchError}</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => void fetchReports()}
+              className="bg-white hover:bg-rose-50 text-rose-700 border-rose-200 rounded-xl text-xs font-bold gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Connection</span>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : filteredReports.length === 0 ? (
         <Card className="rounded-3xl border border-slate-200/80 shadow-sm bg-white">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center">

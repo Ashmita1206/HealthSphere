@@ -198,6 +198,7 @@ export const AppointmentDrawer = memo(function AppointmentDrawer({
                 type="button"
                 variant="outline"
                 size="sm"
+                aria-label="Cancel Appointment"
                 onClick={() => onArchive(appointment.id)}
                 className="flex-1 h-9 text-xs font-bold rounded-lg border-amber-200 text-amber-700 hover:bg-amber-50"
               >

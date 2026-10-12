@@ -80,12 +80,12 @@ export const DonorCard = memo(function DonorCard({
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge
-                    className={`text-xs font-bold uppercase tracking-wider ${bloodGroupColors[donor.bloodGroup] || bloodGroupColors['O+']}`}
+                    className={`text-xs font-bold uppercase tracking-wider ${bloodGroupColors[donor.bloodGroup] || 'bg-slate-100 text-slate-700 border-slate-200'}`}
                   >
-                    {donor.bloodGroup}
+                    {donor.bloodGroup || 'Not specified'}
                   </Badge>
                   <span className="text-xs text-slate-500">•</span>
-                  <span className="text-xs text-slate-500">{donor.age} yrs</span>
+                  <span className="text-xs text-slate-500">{donor.age ? `${donor.age} yrs` : 'Age not recorded'}</span>
                 </div>
               </div>
             </div>

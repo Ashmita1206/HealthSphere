@@ -1,12 +1,12 @@
 import React from 'react';
-import { AlertTriangle, AlertCircle, Check } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export interface AbnormalBiomarker {
   name: string;
   value: string;
   unit: string;
   normalRange: string;
-  status: 'Critical' | 'Elevated' | 'Low';
+  status: 'Critical' | 'Elevated' | 'Low' | string;
   clinicalNote: string;
 }
 
@@ -15,45 +15,34 @@ export interface AbnormalValuesTableProps {
   className?: string;
 }
 
-export const DEFAULT_ABNORMAL_VALUES: AbnormalBiomarker[] = [
-  {
-    name: 'HbA1c (Glycated Hemoglobin)',
-    value: '7.8',
-    unit: '%',
-    normalRange: '< 5.7 %',
-    status: 'Elevated',
-    clinicalNote: 'Indicates suboptimal glycemic control over the prior 90 days.',
-  },
-  {
-    name: 'LDL Cholesterol',
-    value: '164',
-    unit: 'mg/dL',
-    normalRange: '< 100 mg/dL',
-    status: 'Elevated',
-    clinicalNote: 'Elevated atherogenic lipoprotein level; dietary modification indicated.',
-  },
-  {
-    name: 'Serum Creatinine',
-    value: '1.4',
-    unit: 'mg/dL',
-    normalRange: '0.7 - 1.2 mg/dL',
-    status: 'Elevated',
-    clinicalNote: 'Borderline elevated; monitor hydration and retest in 6 weeks.',
-  },
-  {
-    name: 'Serum Potassium (K+)',
-    value: '3.2',
-    unit: 'mEq/L',
-    normalRange: '3.5 - 5.0 mEq/L',
-    status: 'Low',
-    clinicalNote: 'Mild hypokalemia; increase potassium-rich dietary intake.',
-  },
-];
+// Retained for test fixture typing only; never used as a component default
+export const DEFAULT_ABNORMAL_VALUES: AbnormalBiomarker[] = [];
 
 export const AbnormalValuesTable: React.FC<AbnormalValuesTableProps> = ({
-  abnormalValues = DEFAULT_ABNORMAL_VALUES,
+  abnormalValues = [],
   className = '',
 }) => {
+  if (!abnormalValues || abnormalValues.length === 0) {
+    return (
+      <div
+        data-testid="abnormal-values-empty"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-center space-y-2.5 ${className}`}
+      >
+        <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+          <CheckCircle2 className="w-5 h-5" />
+        </div>
+        <div>
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+            No Abnormal Biomarkers Flagged
+          </h4>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+            All extracted physiological parameters fall within standard physiological reference intervals, or no diagnostic report has been uploaded for analysis yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="abnormal-values-table"
@@ -73,7 +62,7 @@ export const AbnormalValuesTable: React.FC<AbnormalValuesTableProps> = ({
         </div>
 
         <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-900">
-          Action Required
+          Clinical Review Indicated
         </span>
       </div>
 
@@ -89,9 +78,9 @@ export const AbnormalValuesTable: React.FC<AbnormalValuesTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {abnormalValues.map((item) => {
-              const isCritical = item.status === 'Critical';
-              const isLow = item.status === 'Low';
+            {abnormalValues.map((item, idx) => {
+              const isCritical = String(item.status).toLowerCase() === 'critical';
+              const isLow = String(item.status).toLowerCase() === 'low';
               const badgeStyle = isCritical
                 ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200'
                 : isLow
@@ -99,7 +88,7 @@ export const AbnormalValuesTable: React.FC<AbnormalValuesTableProps> = ({
                 : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200';
 
               return (
-                <tr key={item.name} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                <tr key={`${item.name}-${idx}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                   <td className="py-3 font-bold text-slate-900 dark:text-white">{item.name}</td>
                   <td className="py-3 font-bold text-rose-600 dark:text-rose-400">
                     {item.value} <span className="text-xs text-slate-500 font-normal">{item.unit}</span>
@@ -107,7 +96,7 @@ export const AbnormalValuesTable: React.FC<AbnormalValuesTableProps> = ({
                   <td className="py-3 text-slate-600 dark:text-slate-400 font-mono">{item.normalRange}</td>
                   <td className="py-3">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeStyle}`}>
-                      {item.status.toUpperCase()}
+                      {String(item.status).toUpperCase()}
                     </span>
                   </td>
                   <td className="py-3 text-slate-600 dark:text-slate-300 max-w-sm leading-relaxed">

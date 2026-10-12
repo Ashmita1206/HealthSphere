@@ -16,6 +16,17 @@ export interface LiveChatPanelProps {
   className?: string;
 }
 
+export const INITIAL_SESSION_MESSAGES: ChatMessage[] = [
+  {
+    id: 'msg-sys',
+    senderName: 'System',
+    senderRole: 'system',
+    message: 'Encrypted consultation channel established. All data is HIPAA & DISHA compliant.',
+    timestamp: 'Session Active',
+  },
+];
+
+// Retained for test fixture typing and explicit mock tests only
 export const DEFAULT_TELEMEDICINE_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
@@ -41,7 +52,7 @@ export const DEFAULT_TELEMEDICINE_MESSAGES: ChatMessage[] = [
 ];
 
 export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
-  initialMessages = DEFAULT_TELEMEDICINE_MESSAGES,
+  initialMessages = INITIAL_SESSION_MESSAGES,
   isOtherTyping = false,
   onSendMessage,
   className = '',

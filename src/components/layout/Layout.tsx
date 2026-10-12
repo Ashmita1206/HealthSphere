@@ -5,6 +5,7 @@ import { Sidebar } from './sidebar/index';
 import { Footer } from './Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatBot } from '@/components/chat/ChatBot';
+import { AppLoadingFallback } from './AppLoadingFallback';
 
 interface LayoutProps {
   showSidebar?: boolean;
@@ -29,7 +30,11 @@ export function Layout({ showSidebar = false }: LayoutProps) {
 
   const isPublicPage = ["/", "/about", "/contact", "/privacy", "/terms"].includes(location.pathname);
 
-  if (showSidebar && !loading && !user) {
+  if (showSidebar && loading) {
+    return <AppLoadingFallback />;
+  }
+
+  if (showSidebar && !user) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 

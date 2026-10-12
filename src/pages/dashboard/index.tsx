@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { api } from "@/services/api";
@@ -23,6 +23,7 @@ import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
 import { useAnalytics } from "@/context/AnalyticsContext";
 import { useMedicalProfile } from "@/context/MedicalProfileContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ProfileCompletion } from "@/components/medical-profile/ProfileCompletion";
 import {
   HealthScoreCard,
@@ -43,11 +44,13 @@ import { HealthTrendCharts } from "./components/HealthTrendCharts";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { dashboardData: analyticsData, loading: analyticsLoading } = useAnalytics();
   const { profile: medicalProfile } = useMedicalProfile();
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
   const [dashboardData, setDashboardData] = useState<DashboardLogicData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [careCompletedMap, setCareCompletedMap] = useState<Record<string, boolean>>({});
   const [emergencyAlert, setEmergencyAlert] = useState<{
@@ -55,17 +58,70 @@ export default function DashboardPage() {
     title: string;
     message: string;
     severity: 'critical' | 'warning';
-  } | null>({
-    id: 'telemetry-status',
-    title: 'Wearable Telemetry Stream Active',
-    message: 'HealthSphere AI is continuously monitoring blood pressure, SpO2, and medication adherence for acute clinical breaches.',
-    severity: 'warning',
-  });
+  } | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!user) {
+      setProfile(createDefaultProfile());
+      setDashboardData(null);
+      setCareCompletedMap({});
+      setDashboardError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const [profileResult, dashboardResult] = await Promise.allSettled([
+      api.get<unknown>("/user/profile"),
+      aiService.getDashboardLogic(),
+    ]);
+
+    if (profileResult.status === "fulfilled") {
+      setProfile(normalizeProfileData(profileResult.value));
+    }
+
+    if (
+      dashboardResult.status === "fulfilled" &&
+      dashboardResult.value?.success &&
+      dashboardResult.value.data
+    ) {
+      setDashboardError(null);
+      const data = dashboardResult.value.data;
+      setDashboardData(data);
+
+      if (data.careActions && data.careActions.length > 0) {
+        const initialMap: Record<string, boolean> = {};
+        data.careActions.forEach((action) => {
+          initialMap[action.id] = !!action.isCompleted;
+        });
+        setCareCompletedMap(initialMap);
+        if (data.careActions[0]) {
+          setTaskCompleted(!!data.careActions[0].isCompleted);
+        }
+      }
+    } else if (dashboardResult.status === "rejected" || !dashboardResult.value?.success) {
+      setDashboardError("Could not retrieve AI health intelligence summary. Check connection.");
+    }
+
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
     let active = true;
 
-    async function fetchData() {
+    async function initialLoad() {
+      if (!user) {
+        if (active) {
+          setProfile(createDefaultProfile());
+          setDashboardData(null);
+          setCareCompletedMap({});
+          setDashboardError(null);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
 
       const [profileResult, dashboardResult] = await Promise.allSettled([
@@ -84,6 +140,7 @@ export default function DashboardPage() {
         dashboardResult.value?.success &&
         dashboardResult.value.data
       ) {
+        setDashboardError(null);
         const data = dashboardResult.value.data;
         setDashboardData(data);
 
@@ -97,17 +154,73 @@ export default function DashboardPage() {
             setTaskCompleted(!!data.careActions[0].isCompleted);
           }
         }
+      } else if (dashboardResult.status === "rejected" || !dashboardResult.value?.success) {
+        setDashboardError("Could not retrieve AI health intelligence summary. Check connection.");
       }
 
       setLoading(false);
     }
 
-    void fetchData();
+    void initialLoad();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id]);
+
+  const mappedRecommendations = useMemo(() => {
+    if (!dashboardData) return undefined;
+    if (!dashboardData.recommendations || dashboardData.recommendations.length === 0) {
+      return [];
+    }
+    return dashboardData.recommendations.map((rec: any, idx: number) => {
+      if (typeof rec === 'object' && rec !== null && rec.title) {
+        return {
+          id: rec.id || `rec-${idx}`,
+          category: rec.category || 'Preventive',
+          title: rec.title,
+          description: rec.description || rec.subtitle || rec.title,
+          impact: rec.impact || 'Moderate Impact',
+          actionLabel: rec.actionLabel,
+          actionRoute: rec.actionRoute,
+        };
+      }
+      return {
+        id: `rec-${idx}`,
+        category: 'Preventive' as const,
+        title: String(rec),
+        description: String(rec),
+        impact: 'Moderate Impact' as const,
+      };
+    });
+  }, [dashboardData]);
+
+  const mappedRiskAlerts = useMemo(() => {
+    if (!dashboardData) return undefined;
+    if (!dashboardData.riskAlerts || dashboardData.riskAlerts.length === 0) {
+      return [];
+    }
+    return dashboardData.riskAlerts.map((alert: any, idx: number) => {
+      if (typeof alert === 'object' && alert !== null && alert.title) {
+        return {
+          id: alert.id || `alert-${idx}`,
+          severity: alert.severity || 'moderate',
+          title: alert.title,
+          message: alert.detail || alert.message || alert.title,
+          timestamp: alert.timestamp || 'Latest evaluation',
+          route: alert.route,
+          actionText: alert.actionText,
+        };
+      }
+      return {
+        id: `alert-${idx}`,
+        severity: 'moderate' as const,
+        title: 'Clinical Risk Alert',
+        message: String(alert),
+        timestamp: 'Latest evaluation',
+      };
+    });
+  }, [dashboardData]);
 
   const handleToggleCareAction = async (actionId: string, medicineName?: string) => {
     const currentCompleted = !!careCompletedMap[actionId];
@@ -172,8 +285,24 @@ export default function DashboardPage() {
       variants={motionVariants.staggerContainer}
       className="space-y-8 pb-12"
     >
-      {/* 0. EMERGENCY BANNER & QUICK ACTIONS */}
+      {/* 0. EMERGENCY BANNER, SYSTEM ALERTS & QUICK ACTIONS */}
       <motion.div variants={motionVariants.contentReveal} className="space-y-4">
+        {dashboardError && (
+          <div data-testid="dashboard-error-banner" className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 flex items-center justify-between gap-3 text-amber-800 dark:text-amber-200 text-xs">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>{dashboardError}</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void fetchData()}
+              className="h-7 text-[11px] font-bold border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg cursor-pointer"
+            >
+              Retry Sync
+            </Button>
+          </div>
+        )}
         <EmergencyBanner
           alert={emergencyAlert}
           onOpenEmergency={() => navigate('/emergency')}
@@ -185,17 +314,17 @@ export default function DashboardPage() {
       {/* 1. SIGNATURE AI DIGITAL TWIN HEALTH SCORE CIRCLE */}
       <motion.div variants={motionVariants.contentReveal}>
         <AIHealthScoreCircle
-          score={analyticsData?.healthScore?.score ?? healthScore ?? 84}
-          confidence={92}
-          trendDelta={3.2}
-          statusLabel={healthScore !== undefined ? "Optimal Standing" : "Calibrated"}
+          score={analyticsData?.healthScore?.score ?? healthScore}
+          confidence={typeof (analyticsData?.healthScore?.score ?? healthScore) === 'number' ? 92 : undefined}
+          trendDelta={typeof (analyticsData?.healthScore?.score ?? healthScore) === 'number' ? (analyticsData?.weeklyActivity?.healthScoreDifference ?? 0) : undefined}
+          statusLabel={analyticsData?.healthScore?.level || (healthScore !== undefined ? "Active Standing" : "Pending Data")}
           onExploreBreakdown={() => navigate('/ai-health-score')}
         />
       </motion.div>
 
       {/* 2. 10 CLINICAL HEALTH SUB SCORE CARDS */}
       <motion.div variants={motionVariants.contentReveal}>
-        <HealthSubScoreGrid />
+        <HealthSubScoreGrid customScores={analyticsData?.healthScore?.breakdown} />
       </motion.div>
 
       {/* 3. SIGNATURE MOMENT: Health Daily Briefing */}
@@ -266,10 +395,10 @@ export default function DashboardPage() {
           <HealthTrendCharts />
 
           {/* AI Clinical Recommendations Card */}
-          <AIRecommendationsCard />
+          <AIRecommendationsCard recommendations={mappedRecommendations} />
 
           {/* Clinical Risk Alerts Panel */}
-          <RiskAlertsPanel />
+          <RiskAlertsPanel initialAlerts={mappedRiskAlerts} />
 
           {/* Activity Trend Chart */}
           <ActivityTrend trendData={analyticsData?.activityTrend} />
@@ -423,7 +552,7 @@ export default function DashboardPage() {
                   Digital Health ID & QR
                 </h4>
                 <p className="text-[10px] text-slate-300 font-mono">
-                  {medicalProfile?.healthId || "HS-2026-000123"}
+                  {medicalProfile?.healthId || "Not assigned"}
                 </p>
               </div>
             </div>

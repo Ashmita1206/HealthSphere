@@ -18,9 +18,38 @@ export const DEFAULT_ECG: ECGMetrics = {
 };
 
 export const LiveECGStrip: React.FC<{ metrics?: ECGMetrics; className?: string }> = ({
-  metrics = DEFAULT_ECG,
+  metrics,
   className = '',
 }) => {
+  if (!metrics) {
+    return (
+      <div
+        data-testid="live-ecg-strip"
+        className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 ${className}`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Ambulatory ECG Rhythm Strip
+              </h3>
+              <p className="text-xs text-slate-500">ECG Biosensor Disconnected</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+            OFFLINE
+          </span>
+        </div>
+        <div className="relative h-24 w-full bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center">
+          <p className="text-xs text-slate-500">No active continuous ECG biosensor stream connected.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="live-ecg-strip"

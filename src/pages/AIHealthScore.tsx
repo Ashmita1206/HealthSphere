@@ -117,13 +117,14 @@ export default function AIHealthScore() {
           </div>
 
           {/* Module 5: 7 Sub-Scores Grid */}
+          {/* Module 5: 7 Sub-Scores Grid */}
           <div className="space-y-3">
             <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
               Categorized AI Health Scores (7 Metrics)
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {healthScores?.scores &&
-                Object.entries(healthScores.scores).map(([key, val]) => (
+            {healthScores?.scores && Object.keys(healthScores.scores).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(healthScores.scores).map(([key, val]) => (
                   <div
                     key={key}
                     className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3"
@@ -156,7 +157,15 @@ export default function AIHealthScore() {
                     </div>
                   </div>
                 ))}
-            </div>
+              </div>
+            ) : (
+              <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs text-center space-y-2">
+                <p className="text-xs font-bold text-slate-700">No Sub-Scores Computed Yet</p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Log daily vitals, active prescriptions, or upload lab reports to calculate categorized clinical dimension scores.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Module 7: Predictive Analytics */}
@@ -164,9 +173,9 @@ export default function AIHealthScore() {
             <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
               Predictive Health Analytics (6 Risk Predictions)
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {predictions &&
-                Object.entries(predictions).map(([conditionKey, pred]) => (
+            {predictions && Object.keys(predictions).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(predictions).map(([conditionKey, pred]) => (
                   <div
                     key={conditionKey}
                     className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3"
@@ -197,7 +206,15 @@ export default function AIHealthScore() {
                     </div>
                   </div>
                 ))}
-            </div>
+              </div>
+            ) : (
+              <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs text-center space-y-2">
+                <p className="text-xs font-bold text-slate-700">Predictive Risk Models Pending</p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Longitudinal history and multi-parameter telemetry are required to compute probabilistic condition forecasts.
+                </p>
+              </div>
+            )}
           </div>
 
         </>
