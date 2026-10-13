@@ -6,7 +6,7 @@ import { securityService } from '../services/securityService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { offlineStorage } from '../services/offlineStorage';
 import { api, tokenStore, refreshTokenStore } from '../services/api';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import AppointmentsPage from '../pages/appointments/index';
 import MedicinesPage from '../pages/medicines/index';
 import { OfflineEmergencyCardModal } from '../components/offline/OfflineEmergencyCardModal';
