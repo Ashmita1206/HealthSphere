@@ -5,7 +5,7 @@ const Appointment = require('../models/Appointment');
 const Reminder = require('../models/Reminder');
 const DoseLog = require('../models/DoseLog');
 const { Donor, DonationRequest, DonationRecord } = require('../models/Donation');
-const { getAIHealthResponse } = require('../services/ai.service');
+const { getAIHealthResponse } = require('../services/aiService');
 const { computeRiskFromText } = require('../services/riskEngine');
 const {
   buildRecommendations,
