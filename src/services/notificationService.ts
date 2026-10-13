@@ -254,12 +254,19 @@ class NotificationService {
 
   public connectSocket(token?: string) {
     if (typeof window === 'undefined') return;
-    const activeToken = token || localStorage.getItem('healthsphere_token');
+    const activeToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('healthsphere_token') : null);
     if (activeToken) {
       notificationSocket.auth = { token: activeToken };
     }
     if (!notificationSocket.connected) {
       notificationSocket.connect();
+    }
+  }
+
+  public disconnectSocket() {
+    if (typeof window === 'undefined') return;
+    if (notificationSocket.connected) {
+      notificationSocket.disconnect();
     }
   }
 

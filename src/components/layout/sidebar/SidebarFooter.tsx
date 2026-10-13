@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,

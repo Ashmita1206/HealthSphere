@@ -18,7 +18,7 @@ global.ResizeObserver = class {
 
 // Mock useAuth
 const mockUseAuth = vi.fn();
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/context/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
 }));
 

@@ -263,6 +263,18 @@ async function evaluateTrigger(userId, trigger, triggerData = {}) {
   }
 }
 
+/**
+ * Convenience wrapper for automation verification and trigger evaluation
+ */
+async function evaluateAndTrigger(userId, trigger, triggerData = {}) {
+  const result = await evaluateTrigger(userId, trigger, triggerData);
+  return {
+    ...result,
+    rulesTriggered: result.matchedCount,
+    executions: result.executedPipelines,
+  };
+}
+
 module.exports = {
   getRules,
   createRule,
@@ -271,4 +283,5 @@ module.exports = {
   executeAction,
   executeActionPipeline,
   evaluateTrigger,
+  evaluateAndTrigger,
 };

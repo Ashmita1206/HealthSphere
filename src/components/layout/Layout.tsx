@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Sidebar } from './sidebar/index';
 import { Footer } from './Footer';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { ChatBot } from '@/components/chat/ChatBot';
 import { AppLoadingFallback } from './AppLoadingFallback';
 

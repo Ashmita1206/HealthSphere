@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Sidebar } from "@/components/layout/sidebar/Sidebar";
 
-vi.mock("@/contexts/AuthContext", () => ({
+vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({
     user: { name: "Dr. Sarah Mitchell", role: "doctor", email: "sarah@healthsphere.io" },
     logout: vi.fn(),

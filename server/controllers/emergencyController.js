@@ -25,7 +25,7 @@ async function triggerSos(req, res, next) {
         longitude: req.body.longitude,
         status: "active",
         nearestHelp,
-        contactAlerted: true
+        contactAlerted: false
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
@@ -53,7 +53,7 @@ async function triggerSos(req, res, next) {
       status: "triggered",
       location: { latitude: row.latitude, longitude: row.longitude },
       nearestHelp,
-      message: "Emergency services alerted"
+      message: "Emergency alert recorded. In-app notifications created. Please also contact local emergency services directly (911/112) for confirmed dispatch."
     });
   } catch (error) {
     next(error);

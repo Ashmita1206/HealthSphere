@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { notificationService, type AppNotification } from '@/services/notificationService';
 import { notificationSocket } from '@/services/socket';
 
@@ -22,29 +22,37 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     notificationService.getLocalNotifications()
   );
   const [loading, setLoading] = useState(false);
+  const isMountedRef = React.useRef(true);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) {
-      setNotifications([]);
+      if (isMountedRef.current) setNotifications([]);
       return;
     }
-    setLoading(true);
+    if (isMountedRef.current) setLoading(true);
     try {
       const data = await notificationService.getNotifications();
-      setNotifications(data);
+      if (isMountedRef.current) setNotifications(data);
+    } catch {
+      // safe fallback
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, [userId]);
 
   // Initial load when user signs in
   useEffect(() => {
+    isMountedRef.current = true;
     if (userId) {
       fetchNotifications();
       notificationService.connectSocket();
     } else {
       setNotifications([]);
     }
+    return () => {
+      isMountedRef.current = false;
+      notificationService.disconnectSocket();
+    };
   }, [userId, fetchNotifications]);
 
   // Subscribe to service-level listener & socket events

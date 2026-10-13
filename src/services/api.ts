@@ -19,22 +19,56 @@ export class ApiError extends Error {
 
 export const tokenStore = {
   get: () => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token || token === 'null' || token === 'undefined') return null;
-    return token.trim() || null;
+    try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token || token === 'null' || token === 'undefined') return null;
+      return token.trim() || null;
+    } catch {
+      return null;
+    }
   },
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token.trim()),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  set: (token: string) => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(TOKEN_KEY, token.trim());
+      }
+    } catch {}
+  },
+  clear: () => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    } catch {}
+  },
 };
 
 export const refreshTokenStore = {
   get: () => {
-    const token = localStorage.getItem(REFRESH_TOKEN_KEY);
-    if (!token || token === 'null' || token === 'undefined') return null;
-    return token.trim() || null;
+    try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+      const token = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!token || token === 'null' || token === 'undefined') return null;
+      return token.trim() || null;
+    } catch {
+      return null;
+    }
   },
-  set: (token: string) => localStorage.setItem(REFRESH_TOKEN_KEY, token.trim()),
-  clear: () => localStorage.removeItem(REFRESH_TOKEN_KEY),
+  set: (token: string) => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(REFRESH_TOKEN_KEY, token.trim());
+      }
+    } catch {}
+  },
+  clear: () => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+    } catch {}
+  },
 };
 
 let refreshPromise: Promise<string | null> | null = null;

@@ -23,7 +23,7 @@ import { motionVariants } from "@/design-system/tokens/motion";
 import { Bot, ShieldAlert, ArrowRight, Pill } from "lucide-react";
 import { useAnalytics } from "@/context/AnalyticsContext";
 import { useMedicalProfile } from "@/context/MedicalProfileContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { ProfileCompletion } from "@/components/medical-profile/ProfileCompletion";
 import {
   HealthScoreCard,
