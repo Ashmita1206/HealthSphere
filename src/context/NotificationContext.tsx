@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { notificationService, type AppNotification } from '@/services/notificationService';
 import { notificationSocket } from '@/services/socket';
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { api } from '@/services/api';

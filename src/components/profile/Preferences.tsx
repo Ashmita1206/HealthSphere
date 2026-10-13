@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Settings, Bell, Moon, Download, Printer, ShieldCheck, Globe } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import type { Profile } from '@/pages/profile/profileData';
 
 interface PreferencesProps {

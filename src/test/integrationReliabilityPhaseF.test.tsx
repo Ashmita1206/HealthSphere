@@ -15,7 +15,7 @@ const PATIENT_B = { id: 'usr-patient-b', email: 'bob@healthsphere.test', name: '
 let currentMockUser: { id: string; email: string; name?: string } | null = PATIENT_A;
 let mockGeoLocation: { latitude: number; longitude: number } | null = null;
 
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: currentMockUser,
     loading: false,
