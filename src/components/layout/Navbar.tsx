@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NotificationBell } from "@/components/notifications";
+import { EmergencyModal } from "@/components/emergency/EmergencyModal";
 
 /* ------------------------------------------------------------------ */
 /*  Global search destinations                                         */
@@ -120,11 +121,19 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const [publicMenuOpen, setPublicMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
 
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const isPublicPage = ["/", "/about", "/contact", "/privacy", "/terms"].includes(location.pathname);
+
+  /* ---------- Global Listener for Emergency SOS Modal ---------- */
+  useEffect(() => {
+    const handleOpenEmergency = () => setIsEmergencyModalOpen(true);
+    window.addEventListener("open-emergency-modal", handleOpenEmergency);
+    return () => window.removeEventListener("open-emergency-modal", handleOpenEmergency);
+  }, []);
 
   /* ---------- Scroll Listener for Sticky Header ---------- */
   useEffect(() => {
@@ -325,7 +334,15 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                         <Link
                           key={item.href}
                           to={item.href}
-                          onClick={() => setActiveDropdown(null)}
+                          onClick={(e) => {
+                            if (item.href === "/emergency") {
+                              e.preventDefault();
+                              setActiveDropdown(null);
+                              setIsEmergencyModalOpen(true);
+                            } else {
+                              setActiveDropdown(null);
+                            }
+                          }}
                           className="flex items-start gap-3 px-4 py-2.5 hover:bg-[#F8FAFC] transition-colors duration-150 group"
                         >
                           <div className="w-8 h-8 rounded-lg bg-[#F0FDFA] flex items-center justify-center shrink-0 group-hover:bg-[#CCFBF1] transition-colors duration-150">
@@ -385,14 +402,26 @@ export function Navbar({ onMenuClick }: NavbarProps) {
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {user ? (
             <>
-              {/* Emergency SOS Badge */}
-              <Link
-                to="/emergency"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200/80 transition-colors shrink-0"
+              {/* Emergency SOS Button (Desktop) */}
+              <button
+                type="button"
+                onClick={() => setIsEmergencyModalOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200/80 transition-colors shrink-0 shadow-xs cursor-pointer active:scale-95"
+                aria-label="Open Emergency Assistance SOS Dialog"
               >
                 <ShieldAlert className="w-4 h-4 animate-pulse text-rose-600" />
                 <span>Emergency SOS</span>
-              </Link>
+              </button>
+
+              {/* Emergency SOS Button (Mobile) */}
+              <button
+                type="button"
+                onClick={() => setIsEmergencyModalOpen(true)}
+                className="sm:hidden flex items-center justify-center w-9 h-9 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 transition-colors shrink-0 cursor-pointer"
+                aria-label="Open Emergency Assistance SOS Dialog"
+              >
+                <ShieldAlert className="w-4.5 h-4.5 text-rose-600 animate-pulse" />
+              </button>
 
               {/* Notification Bell Component */}
               <NotificationBell />
@@ -505,17 +534,35 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
               {/* Drawer Navigation Content */}
               <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-                {mobileNavLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    to={link.href}
-                    onClick={() => setPublicMenuOpen(false)}
-                    className="flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-[#334155] hover:text-[#0F766E] hover:bg-[#F0FDFA] transition-colors duration-150"
-                  >
-                    <link.icon className="w-4.5 h-4.5 text-[#0F766E] shrink-0" />
-                    <span>{link.label}</span>
-                  </Link>
-                ))}
+                {mobileNavLinks.map((link) => {
+                  if (link.label === "Emergency SOS") {
+                    return (
+                      <button
+                        key={link.label}
+                        type="button"
+                        onClick={() => {
+                          setPublicMenuOpen(false);
+                          setIsEmergencyModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors duration-150 text-left"
+                      >
+                        <link.icon className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+                        <span>{link.label}</span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={link.href}
+                      to={link.href}
+                      onClick={() => setPublicMenuOpen(false)}
+                      className="flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-[#334155] hover:text-[#0F766E] hover:bg-[#F0FDFA] transition-colors duration-150"
+                    >
+                      <link.icon className="w-4.5 h-4.5 text-[#0F766E] shrink-0" />
+                      <span>{link.label}</span>
+                    </Link>
+                  );
+                })}
               </nav>
 
               {/* Drawer Footer Actions */}
@@ -539,6 +586,12 @@ export function Navbar({ onMenuClick }: NavbarProps) {
           </>
         )}
       </AnimatePresence>
+
+      {/* Global Emergency SOS Modal */}
+      <EmergencyModal
+        open={isEmergencyModalOpen}
+        onOpenChange={setIsEmergencyModalOpen}
+      />
     </header>
   );
 }
