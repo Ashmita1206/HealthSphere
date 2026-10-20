@@ -172,10 +172,11 @@ describe('EmergencyModal — Global SOS Dialog & Safety Workflows', () => {
     const confirmBtn = screen.getByRole('button', { name: /Confirm & Send SOS/i });
     fireEvent.click(confirmBtn);
 
-    // API should be called with live coordinates
+    // API should be called with live coordinates and selected contact IDs
     expect(api.post).toHaveBeenCalledWith('/emergency/sos', {
       latitude: 37.7749,
       longitude: -122.4194,
+      contactIds: ['c-1', 'c-2'],
     });
 
     // Result view should render honest status
@@ -184,6 +185,51 @@ describe('EmergencyModal — Global SOS Dialog & Safety Workflows', () => {
       expect(screen.getByText(/Incident ID:/i)).toBeInTheDocument();
       expect(screen.getByText('Not Configured')).toBeInTheDocument();
       expect(screen.getByText(/External telephony gateway \(e\.g\., Twilio\) is unconfigured/i)).toBeInTheDocument();
+    });
+  });
+
+  it('SOS displays per-recipient Twilio delivery status when gateway is active', async () => {
+    (api.post as any).mockResolvedValueOnce({
+      status: 'triggered',
+      success: true,
+      incidentId: 'INC-TWILIO-777',
+      isTwilioConfigured: true,
+      dispatchRecords: [
+        {
+          contactId: 'c-1',
+          contactName: 'Dr. Evelyn Reed',
+          phone: '+15550101',
+          channel: 'sms',
+          status: 'queued',
+          messageSid: 'SM1234567890abcdef',
+        },
+        {
+          contactId: 'c-2',
+          contactName: 'Mark Johnson',
+          phone: '+15550102',
+          channel: 'sms',
+          status: 'delivered',
+          messageSid: 'SM9876543210fedcba',
+        },
+      ],
+      message: 'Emergency alert recorded. SMS queued for 2 contact(s).',
+    });
+
+    render(<EmergencyModal open={true} onOpenChange={vi.fn()} defaultView="sos_confirm" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Confirm Emergency SOS Alert')).toBeInTheDocument();
+    });
+
+    const confirmBtn = screen.getByRole('button', { name: /Confirm & Send SOS/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Twilio Active')).toBeInTheDocument();
+      expect(screen.getByText(/Contact SMS Delivery Tracking/i)).toBeInTheDocument();
+      expect(screen.getByText('Queued (Twilio)')).toBeInTheDocument();
+      expect(screen.getByText('Delivered')).toBeInTheDocument();
+      expect(screen.getByText(/SID: SM1234567890abcdef/i)).toBeInTheDocument();
     });
   });
 

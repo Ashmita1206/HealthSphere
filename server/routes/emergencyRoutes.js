@@ -10,8 +10,13 @@ const {
   createContact,
   updateContact,
   deleteContact,
+  twilioStatusCallback,
+  getSosStatus,
 } = require("../controllers/emergencyController");
 const eic = require("../controllers/emergencyIncidentController");
+
+// Twilio status webhook (MUST be public - Twilio does not have a user JWT)
+router.post("/twilio/status-callback", twilioStatusCallback);
 
 router.use(protect);
 router.get("/contacts", listContacts);
@@ -53,13 +58,16 @@ router.get(
 );
 const sosSchema = validate(
   Joi.object({
-    latitude: Joi.number().required(),
-    longitude: Joi.number().required()
+    latitude: Joi.number().optional().allow(null),
+    longitude: Joi.number().optional().allow(null),
+    contactIds: Joi.array().items(Joi.string()).optional(),
   })
 );
 
 router.post("/sos", sosSchema, triggerSos);
 router.post("/trigger-sos", sosSchema, triggerSos);
+router.get("/sos/status", getSosStatus);
+router.get("/sos/:id/status", getSosStatus);
 router.post("/resolve", resolveSos);
 router.post("/report", eic.reportEmergency);
 router.get("/history", eic.getEmergencyHistory);

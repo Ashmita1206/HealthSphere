@@ -145,10 +145,23 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
     timestamp: string;
     message?: string;
     errorMessage?: string;
+    isTwilioConfigured?: boolean;
+    dispatchRecords?: Array<{
+      contactId?: string;
+      contactName?: string;
+      phone?: string;
+      channel?: string;
+      status: string;
+      messageSid?: string | null;
+      errorCode?: string | null;
+      errorMessage?: string | null;
+      updatedAt?: string | Date;
+    }>;
   } | null>(null);
 
   // Copy feedback
   const [copiedCoords, setCopiedCoords] = useState(false);
+  const [copiedDialer, setCopiedDialer] = useState(false);
 
   // Sync default view on modal open
   useEffect(() => {
@@ -363,17 +376,25 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
       !Number.isNaN(geoLocation.latitude) &&
       !Number.isNaN(geoLocation.longitude);
 
-    const payload: { latitude?: number; longitude?: number } = {};
+    const payload: { latitude?: number; longitude?: number; contactIds?: string[] } = {};
     if (hasValidCoords) {
       payload.latitude = geoLocation.latitude;
       payload.longitude = geoLocation.longitude;
     }
+    if (selectedContactIds.size > 0) {
+      payload.contactIds = Array.from(selectedContactIds);
+    }
 
     try {
-      const res = await api.post<{ success?: boolean; status?: string; data?: any; message?: string }>(
-        '/emergency/sos',
-        payload
-      );
+      const res = await api.post<{
+        success?: boolean;
+        status?: string;
+        incidentId?: string;
+        isTwilioConfigured?: boolean;
+        dispatchRecords?: any[];
+        data?: any;
+        message?: string;
+      }>('/emergency/sos', payload);
 
       const isConfirmed = Boolean(
         res &&
@@ -386,7 +407,7 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
         throw new Error('Server did not return a confirmed emergency dispatch status.');
       }
 
-      const verifiedId = res.data?.id || res.data?._id || res.data?.incidentId || 'SOS-' + Date.now();
+      const verifiedId = res.incidentId || res.data?.id || res.data?._id || res.data?.incidentId || 'SOS-' + Date.now();
 
       setSosResult({
         success: true,
@@ -397,6 +418,8 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
         longitude: hasValidCoords ? geoLocation.longitude : undefined,
         timestamp: new Date().toLocaleTimeString(),
         message: res.message || 'Emergency alert recorded and in-app notifications generated.',
+        isTwilioConfigured: res.isTwilioConfigured ?? res.data?.isTwilioConfigured,
+        dispatchRecords: res.dispatchRecords ?? res.data?.dispatchRecords ?? [],
       });
       setCurrentView('sos_result');
     } catch (err: any) {
@@ -414,6 +437,31 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
       setIsSubmittingSOS(false);
     }
   };
+
+  // Live polling for Twilio delivery updates if any message is queued or sent
+  useEffect(() => {
+    if (
+      currentView !== 'sos_result' ||
+      !sosResult?.incidentId ||
+      !sosResult?.isTwilioConfigured ||
+      !sosResult?.dispatchRecords?.some((r) => r.status === 'queued' || r.status === 'sent')
+    ) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get<any>(`/emergency/sos/${sosResult.incidentId}/status`);
+        if (res && Array.isArray(res.dispatchRecords)) {
+          setSosResult((prev) => (prev ? { ...prev, dispatchRecords: res.dispatchRecords } : null));
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [currentView, sosResult?.incidentId, sosResult?.isTwilioConfigured]);
 
   // Handle Contact CRUD
   const handleSaveContact = async (e: React.FormEvent) => {
@@ -529,7 +577,7 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
         </DialogHeader>
 
         {/* ================= MODAL HEADER ================= */}
-        <div className="bg-gradient-to-r from-rose-700 via-rose-600 to-rose-700 text-white px-5 py-4 shrink-0 flex items-center justify-between">
+        <div className="bg-white border-b border-slate-200/80 text-slate-900 px-5 py-4 shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {currentView !== 'main' ? (
               <button
@@ -540,24 +588,24 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                   setEditingContactId(null);
                   setCurrentView('main');
                 }}
-                className="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/35 flex items-center justify-center transition-colors text-white"
+                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center transition-colors text-slate-700 cursor-pointer"
                 aria-label="Back to Emergency Overview"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-                <ShieldAlert className="w-6 h-6 text-white animate-pulse" />
+              <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5 text-teal-700" />
               </div>
             )}
             <div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 Emergency Assistance
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white uppercase tracking-wider">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-teal-800 border border-slate-200 uppercase tracking-wider">
                   24/7
                 </span>
               </h2>
-              <p className="text-xs text-rose-100 font-medium">
+              <p className="text-xs text-slate-500 font-medium">
                 Quick access to emergency help and your medical information.
               </p>
             </div>
@@ -572,20 +620,20 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
               {/* PRIMARY ACTION A & B */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* ACTION A: Call 112 */}
-                <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-200/80 text-rose-900">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-100">
                         Immediate Call
                       </span>
-                      <h4 className="text-sm font-extrabold text-slate-900 mt-1.5">
+                      <h4 className="text-sm font-bold text-slate-900 mt-1.5">
                         Call Emergency
                       </h4>
-                      <p className="text-[11px] text-slate-600 mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         Direct connection to national emergency dispatch (112).
                       </p>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 border border-rose-100 flex items-center justify-center shrink-0 shadow-xs">
                       <PhoneCall className="w-5 h-5" />
                     </div>
                   </div>
@@ -594,33 +642,44 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                     <Button
                       type="button"
                       onClick={handleCallEmergencyServices}
-                      className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black text-sm h-11 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                      className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-10 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
                       aria-label="Call 112 Emergency Services"
                     >
                       <Phone className="w-4 h-4" />
                       <span>Call 112</span>
                     </Button>
-                    <p className="text-[10px] text-slate-500 text-center mt-1.5 leading-tight">
-                      Opens native device dialer. HealthSphere does not verify call completion.
-                    </p>
+                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
+                      <span>Opens native device dialer</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText('112');
+                          setCopiedDialer(true);
+                          setTimeout(() => setCopiedDialer(false), 2000);
+                        }}
+                        className="text-teal-700 hover:underline font-semibold"
+                      >
+                        {copiedDialer ? 'Copied 112!' : 'Desktop? Copy 112'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* ACTION B: Send SOS Alert */}
-                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-100">
                         Broadcast Signal
                       </span>
-                      <h4 className="text-sm font-extrabold text-slate-900 mt-1.5">
+                      <h4 className="text-sm font-bold text-slate-900 mt-1.5">
                         Send SOS Alert
                       </h4>
-                      <p className="text-[11px] text-slate-600 mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         Transmit your live location to saved emergency contacts.
                       </p>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center shrink-0 shadow-xs">
                       <AlertTriangle className="w-5 h-5" />
                     </div>
                   </div>
@@ -629,13 +688,13 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                     <Button
                       type="button"
                       onClick={() => setCurrentView('sos_confirm')}
-                      className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-sm h-11 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                      className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs h-10 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
                       aria-label="Open SOS Confirmation view"
                     >
-                      <AlertTriangle className="w-4 h-4" />
+                      <AlertTriangle className="w-4 h-4 text-amber-300" />
                       <span>Send SOS Alert</span>
                     </Button>
-                    <p className="text-[10px] text-slate-500 text-center mt-1.5 leading-tight">
+                    <p className="text-[10px] text-slate-400 text-center mt-2 leading-tight">
                       Requires confirmation before dispatching. No alert is sent automatically.
                     </p>
                   </div>
@@ -996,16 +1055,86 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                   <div className="py-1">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-600">External Cellular SMS / Voice:</span>
-                      <Badge variant="outline" className="text-amber-800 bg-amber-50 border-amber-300">
-                        Not Configured
+                      <Badge variant="outline" className={sosResult.isTwilioConfigured ? "text-teal-800 bg-teal-50 border-teal-300" : "text-amber-800 bg-amber-50 border-amber-300"}>
+                        {sosResult.isTwilioConfigured ? 'Twilio Active' : 'Not Configured'}
                       </Badge>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1 leading-snug">
-                      External telephony gateway (e.g., Twilio) is unconfigured. Emergency contacts have not received an external SMS. Please dial their numbers directly below.
-                    </p>
+                    {sosResult.isTwilioConfigured ? (
+                      <p className="text-[10px] text-teal-800 mt-1 leading-snug">
+                        Twilio Programmable Messaging dispatched emergency SMS alerts. Carrier delivery confirmations are tracked below.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-500 mt-1 leading-snug">
+                        External telephony gateway (e.g., Twilio) is unconfigured. Emergency contacts have not received an external SMS. Please dial their numbers directly below.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Per-Recipient Dispatch Tracking */}
+              {sosResult.dispatchRecords && sosResult.dispatchRecords.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Contact SMS Delivery Tracking ({sosResult.dispatchRecords.length})
+                  </Label>
+                  <div className="space-y-2">
+                    {sosResult.dispatchRecords.map((rec, idx) => (
+                      <div
+                        key={rec.contactId || idx}
+                        className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate">
+                            {rec.contactName || 'Emergency Contact'}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                            {rec.phone || 'No phone'} • SMS
+                          </p>
+                          {rec.messageSid && (
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">
+                              SID: {rec.messageSid}
+                            </p>
+                          )}
+                          {rec.errorMessage && (
+                            <p className="text-[10px] text-rose-600 mt-0.5">
+                              {rec.errorMessage}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <Badge
+                            variant="outline"
+                            className={
+                              rec.status === 'delivered'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
+                                : rec.status === 'sent' || rec.status === 'queued'
+                                ? 'bg-teal-50 text-teal-800 border-teal-300 font-bold'
+                                : rec.status === 'failed'
+                                ? 'bg-rose-50 text-rose-800 border-rose-300 font-bold'
+                                : 'bg-amber-50 text-amber-800 border-amber-300 font-bold'
+                            }
+                          >
+                            {rec.status === 'queued'
+                              ? 'Queued (Twilio)'
+                              : rec.status === 'sent'
+                              ? 'Sent (In-Transit)'
+                              : rec.status === 'delivered'
+                              ? 'Delivered'
+                              : rec.status === 'unconfigured'
+                              ? 'Gateway Offline'
+                              : rec.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-tight italic">
+                    * Status is updated live based on carrier delivery receipts. HealthSphere never simulates a successful delivery.
+                  </p>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-2 pt-2">

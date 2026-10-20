@@ -2,6 +2,7 @@ const EmergencyAlert = require("../models/EmergencyAlert");
 const EmergencyNotification = require("../models/EmergencyNotification");
 const EmergencyContact = require("../models/EmergencyContact");
 const { recordTimelineEvent } = require("../services/timelineService");
+const { dispatchEmergencySmsBatch } = require("../services/twilioMessagingService");
 const logger = require("../utils/logger");
 
 const hospitals = [
@@ -17,24 +18,48 @@ function getNearestHospital(latitude, longitude) {
 
 async function triggerSos(req, res, next) {
   try {
-    const nearestHelp = getNearestHospital(req.body.latitude, req.body.longitude);
+    const { latitude, longitude, contactIds } = req.body;
+    const nearestHelp = getNearestHospital(latitude, longitude);
+
+    // 1. Fetch authorized emergency contacts for this user
+    let contactsQuery = { userId: req.user._id };
+    if (Array.isArray(contactIds) && contactIds.length > 0) {
+      contactsQuery._id = { $in: contactIds };
+    }
+    const contacts = await EmergencyContact.find(contactsQuery);
+
+    // 2. Dispatch SMS notifications via Twilio Programmable Messaging (handles credentials check, E.164 formatting, non-PHI template)
+    const callbackUrl = process.env.TWILIO_STATUS_CALLBACK_URL || undefined;
+    const smsDispatch = await dispatchEmergencySmsBatch({
+      contacts,
+      userName: req.user.name || req.user.email,
+      latitude,
+      longitude,
+      callbackUrl,
+    });
+
+    // 3. Upsert / update active EmergencyAlert
     const row = await EmergencyAlert.findOneAndUpdate(
       { userId: req.user._id, status: "active" },
       {
-        latitude: req.body.latitude,
-        longitude: req.body.longitude,
+        latitude,
+        longitude,
         status: "active",
         nearestHelp,
-        contactAlerted: false
+        contactAlerted: smsDispatch.queuedCount > 0,
+        dispatchRecords: smsDispatch.records,
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
+
+    // 4. In-app Notification
     await EmergencyNotification.create({
       userId: req.user._id,
       alertId: row._id,
       type: "contact_alert",
       message: `Emergency triggered near ${nearestHelp}`
     });
+
     recordTimelineEvent({
       userId: req.user._id,
       eventType: "emergency",
@@ -43,17 +68,39 @@ async function triggerSos(req, res, next) {
       description: `Emergency alert initiated near ${nearestHelp}`,
       relatedId: row._id,
     }).catch(() => {});
+
     logger.warn("Emergency SOS triggered", {
       userId: String(req.user._id),
-      latitude: req.body.latitude,
-      longitude: req.body.longitude,
-      nearestHelp
+      latitude,
+      longitude,
+      nearestHelp,
+      totalAttempted: smsDispatch.totalAttempted,
+      queuedCount: smsDispatch.queuedCount,
+      failedCount: smsDispatch.failedCount,
+      isConfigured: smsDispatch.isConfigured,
     });
+
+    let messageText = "Emergency alert recorded. In-app notifications created. Please also contact local emergency services directly (911/112) for confirmed dispatch.";
+    if (smsDispatch.isConfigured) {
+      if (smsDispatch.queuedCount > 0) {
+        messageText = `Emergency alert recorded. SMS queued for ${smsDispatch.queuedCount} contact(s). Please also contact local emergency services directly (911/112).`;
+      } else {
+        messageText = `Emergency alert recorded, but SMS could not be sent to contacts. Please contact local emergency services directly (911/112).`;
+      }
+    }
+
     res.json({
       status: "triggered",
+      incidentId: String(row._id),
       location: { latitude: row.latitude, longitude: row.longitude },
       nearestHelp,
-      message: "Emergency alert recorded. In-app notifications created. Please also contact local emergency services directly (911/112) for confirmed dispatch."
+      isTwilioConfigured: smsDispatch.isConfigured,
+      dispatchRecords: smsDispatch.records,
+      queuedCount: smsDispatch.queuedCount,
+      failedCount: smsDispatch.failedCount,
+      unconfiguredCount: smsDispatch.unconfiguredCount,
+      totalAttempted: smsDispatch.totalAttempted,
+      message: messageText,
     });
   } catch (error) {
     next(error);
@@ -237,6 +284,83 @@ async function deleteContact(req, res, next) {
   }
 }
 
+async function twilioStatusCallback(req, res, next) {
+  try {
+    const { MessageSid, SmsSid, MessageStatus, ErrorCode, ErrorMessage } = req.body || {};
+    const sid = MessageSid || SmsSid;
+
+    if (!sid) {
+      return res.status(400).send("MessageSid is required");
+    }
+
+    logger.info("[Twilio Webhook] Received status callback", {
+      sid,
+      status: MessageStatus,
+      errorCode: ErrorCode,
+    });
+
+    const updateFields = {
+      "dispatchRecords.$.status": MessageStatus || "unknown",
+      "dispatchRecords.$.updatedAt": new Date(),
+    };
+    if (ErrorCode) {
+      updateFields["dispatchRecords.$.errorCode"] = String(ErrorCode);
+    }
+    if (ErrorMessage) {
+      updateFields["dispatchRecords.$.errorMessage"] = ErrorMessage;
+    }
+
+    const updated = await EmergencyAlert.findOneAndUpdate(
+      { "dispatchRecords.messageSid": sid },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (updated) {
+      logger.info("[Twilio Webhook] Updated alert dispatch record", {
+        alertId: String(updated._id),
+        sid,
+        status: MessageStatus,
+      });
+    }
+
+    res.status(200).send("<Response></Response>");
+  } catch (error) {
+    logger.error("[Twilio Webhook] Processing error", { error: error.message });
+    res.status(200).send("<Response></Response>");
+  }
+}
+
+async function getSosStatus(req, res, next) {
+  try {
+    const alertId = req.params.id;
+    let query = { userId: req.user._id };
+    if (alertId && alertId !== "latest") {
+      query._id = alertId;
+    } else {
+      query.status = "active";
+    }
+
+    const alert = await EmergencyAlert.findOne(query).sort({ createdAt: -1 });
+    if (!alert) {
+      return res.status(404).json({ message: "No emergency alert found." });
+    }
+
+    res.json({
+      alertId: String(alert._id),
+      status: alert.status,
+      contactAlerted: alert.contactAlerted,
+      nearestHelp: alert.nearestHelp,
+      dispatchRecords: alert.dispatchRecords || [],
+      location: { latitude: alert.latitude, longitude: alert.longitude },
+      createdAt: alert.createdAt,
+      updatedAt: alert.updatedAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   triggerSos,
   resolveSos,
@@ -245,4 +369,7 @@ module.exports = {
   createContact,
   updateContact,
   deleteContact,
+  twilioStatusCallback,
+  getSosStatus,
 };
+
