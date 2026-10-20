@@ -185,10 +185,145 @@ describe('Twilio Messaging Service & Emergency SMS Backend Logic', () => {
         expect(res.queuedCount).toBe(0);
         expect(res.records[0].status).toBe('failed');
         expect(res.records[0].errorCode).toBe('21211');
-        expect(res.records[0].errorMessage).toContain('The \'To\' number is not a valid phone number.');
+        expect(res.records[0].errorMessage).toContain('not a valid SMS recipient');
       } finally {
         mockFetch.mockRestore();
       }
+    });
+
+    it('translates Twilio trial restriction code 21608 into clear actionable error', async () => {
+      process.env.TWILIO_ACCOUNT_SID = 'AC_TEST_MOCK_ACCOUNT_SID_VALID_99';
+      process.env.TWILIO_AUTH_TOKEN = 'mock_auth_token';
+      process.env.TWILIO_PHONE_NUMBER = '+15551234567';
+
+      const mockFetch = vi.spyOn(globalThis, 'fetch').mockImplementation((() =>
+        Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({
+            code: 21608,
+            message: 'The number +15559876543 is unverified. Trial accounts cannot send messages to unverified numbers.',
+          }),
+        } as Response)) as any);
+
+      try {
+        const contacts = [{ _id: 'c1', name: 'Unverified Trial Contact', phone: '+15559876543' }];
+        const res = await twilioService.dispatchEmergencySmsBatch({
+          contacts,
+          userName: 'Alex Johnson',
+          latitude: 37.7749,
+          longitude: -122.4194,
+        });
+
+        expect(res.failedCount).toBe(1);
+        expect(res.records[0].status).toBe('failed');
+        expect(res.records[0].errorCode).toBe('21608');
+        expect(res.records[0].errorMessage).toContain('is not a verified Caller ID');
+        expect(res.records[0].errorMessage).toContain('Twilio Trial Restriction');
+      } finally {
+        mockFetch.mockRestore();
+      }
+    });
+
+    it('formats authorized test alerts with [TEST ALERT] prefix and records isTestMode', async () => {
+      process.env.TWILIO_ACCOUNT_SID = 'AC_TEST_MOCK_ACCOUNT_SID_VALID_99';
+      process.env.TWILIO_AUTH_TOKEN = 'mock_auth_token';
+      process.env.TWILIO_PHONE_NUMBER = '+15551234567';
+
+      let sentBody = '';
+      const mockFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(((url: string, options: any) => {
+        const params = new URLSearchParams(typeof options.body === 'string' ? options.body : '');
+        sentBody = params.get('Body') || '';
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: async () => ({
+            sid: 'SM_TEST_VALID_SID',
+            status: 'queued',
+          }),
+        } as Response);
+      }) as any);
+
+      try {
+        const contacts = [{ _id: 'c1', name: 'Authorized Test Phone', phone: '+15551234567' }];
+        const res = await twilioService.dispatchEmergencySmsBatch({
+          contacts,
+          userName: 'Alex Johnson',
+          latitude: 37.7749,
+          longitude: -122.4194,
+          isTestMode: true,
+        });
+
+        expect(res.isTestMode).toBe(true);
+        expect(res.records[0].status).toBe('queued');
+        expect(sentBody).toContain('[TEST ALERT]');
+        expect(sentBody).toContain('This is an authorized TEST signal');
+      } finally {
+        mockFetch.mockRestore();
+      }
+    });
+  });
+
+  describe('validateTwilioWebhookSignature', () => {
+    it('validates authentic webhook requests signed with auth token', () => {
+      const crypto = require('crypto');
+      const authToken = 'secret_auth_token_xyz_123';
+      const url = 'https://healthsphere.org/api/emergency/twilio/status-callback';
+      const params = {
+        MessageSid: 'SM123456789',
+        MessageStatus: 'delivered',
+      };
+
+      // Construct expected signature as Twilio does
+      const sortedKeys = Object.keys(params).sort();
+      let data = url;
+      for (const key of sortedKeys) {
+        data += `${key}${params[key]}`;
+      }
+      const validSignature = crypto
+        .createHmac('sha1', authToken)
+        .update(Buffer.from(data, 'utf-8'))
+        .digest('base64');
+
+      const isValid = twilioService.validateTwilioWebhookSignature({
+        url,
+        params,
+        signature: validSignature,
+        authToken,
+      });
+
+      expect(isValid).toBe(true);
+    });
+
+    it('rejects tampered signatures or mismatched auth tokens', () => {
+      const isValid = twilioService.validateTwilioWebhookSignature({
+        url: 'https://healthsphere.org/api/emergency/twilio/status-callback',
+        params: { MessageSid: 'SM123456789' },
+        signature: 'invalid_forged_signature_base64==',
+        authToken: 'secret_auth_token_xyz_123',
+      });
+
+      expect(isValid).toBe(false);
+    });
+
+    it('rejects calls with missing signature or missing parameters', () => {
+      expect(
+        twilioService.validateTwilioWebhookSignature({
+          url: 'https://example.com',
+          params: {},
+          signature: '',
+          authToken: 'tok',
+        })
+      ).toBe(false);
+
+      expect(
+        twilioService.validateTwilioWebhookSignature({
+          url: '',
+          params: {},
+          signature: 'sig',
+          authToken: 'tok',
+        })
+      ).toBe(false);
     });
   });
 });

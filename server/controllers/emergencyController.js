@@ -1,8 +1,13 @@
+const mongoose = require("mongoose");
 const EmergencyAlert = require("../models/EmergencyAlert");
 const EmergencyNotification = require("../models/EmergencyNotification");
 const EmergencyContact = require("../models/EmergencyContact");
 const { recordTimelineEvent } = require("../services/timelineService");
-const { dispatchEmergencySmsBatch } = require("../services/twilioMessagingService");
+const {
+  dispatchEmergencySmsBatch,
+  validateTwilioWebhookSignature,
+  getTwilioConfig,
+} = require("../services/twilioMessagingService");
 const logger = require("../utils/logger");
 
 const hospitals = [
@@ -18,17 +23,34 @@ function getNearestHospital(latitude, longitude) {
 
 async function triggerSos(req, res, next) {
   try {
-    const { latitude, longitude, contactIds } = req.body;
+    const { latitude, longitude, contactIds, isTestMode, force } = req.body;
+
+    // 0. Duplicate submission protection (throttle within 10s unless explicitly forced)
+    const recentAlert = await EmergencyAlert.findOne({
+      userId: req.user._id,
+      createdAt: { $gte: new Date(Date.now() - 10000) },
+    });
+    if (recentAlert && !force) {
+      return res.status(429).json({
+        status: "throttled",
+        message: "An emergency alert was already triggered within the last 10 seconds. Please wait before broadcasting another alert to prevent duplicate messages.",
+        incidentId: String(recentAlert._id),
+      });
+    }
+
     const nearestHelp = getNearestHospital(latitude, longitude);
 
-    // 1. Fetch authorized emergency contacts for this user
+    // 1. Fetch authorized emergency contacts for this user (safely handling ObjectIds)
     let contactsQuery = { userId: req.user._id };
     if (Array.isArray(contactIds) && contactIds.length > 0) {
-      contactsQuery._id = { $in: contactIds };
+      const validIds = contactIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+      if (validIds.length > 0) {
+        contactsQuery._id = { $in: validIds };
+      }
     }
     const contacts = await EmergencyContact.find(contactsQuery);
 
-    // 2. Dispatch SMS notifications via Twilio Programmable Messaging (handles credentials check, E.164 formatting, non-PHI template)
+    // 2. Dispatch SMS notifications via Twilio Programmable Messaging
     const callbackUrl = process.env.TWILIO_STATUS_CALLBACK_URL || undefined;
     const smsDispatch = await dispatchEmergencySmsBatch({
       contacts,
@@ -36,6 +58,7 @@ async function triggerSos(req, res, next) {
       latitude,
       longitude,
       callbackUrl,
+      isTestMode: Boolean(isTestMode),
     });
 
     // 3. Upsert / update active EmergencyAlert
@@ -57,14 +80,14 @@ async function triggerSos(req, res, next) {
       userId: req.user._id,
       alertId: row._id,
       type: "contact_alert",
-      message: `Emergency triggered near ${nearestHelp}`
+      message: `${isTestMode ? "[TEST] " : ""}Emergency triggered near ${nearestHelp}`
     });
 
     recordTimelineEvent({
       userId: req.user._id,
       eventType: "emergency",
       category: "emergency",
-      title: "Emergency SOS Triggered",
+      title: isTestMode ? "Emergency SOS Test Triggered" : "Emergency SOS Triggered",
       description: `Emergency alert initiated near ${nearestHelp}`,
       relatedId: row._id,
     }).catch(() => {});
@@ -78,12 +101,13 @@ async function triggerSos(req, res, next) {
       queuedCount: smsDispatch.queuedCount,
       failedCount: smsDispatch.failedCount,
       isConfigured: smsDispatch.isConfigured,
+      isTestMode: Boolean(isTestMode),
     });
 
     let messageText = "Emergency alert recorded. In-app notifications created. Please also contact local emergency services directly (911/112) for confirmed dispatch.";
     if (smsDispatch.isConfigured) {
       if (smsDispatch.queuedCount > 0) {
-        messageText = `Emergency alert recorded. SMS queued for ${smsDispatch.queuedCount} contact(s). Please also contact local emergency services directly (911/112).`;
+        messageText = `${isTestMode ? "[TEST] " : ""}Emergency alert recorded. SMS queued for ${smsDispatch.queuedCount} contact(s). Please also contact local emergency services directly (911/112).`;
       } else {
         messageText = `Emergency alert recorded, but SMS could not be sent to contacts. Please contact local emergency services directly (911/112).`;
       }
@@ -95,6 +119,8 @@ async function triggerSos(req, res, next) {
       location: { latitude: row.latitude, longitude: row.longitude },
       nearestHelp,
       isTwilioConfigured: smsDispatch.isConfigured,
+      isStatusCallbackConfigured: smsDispatch.isStatusCallbackConfigured,
+      isTestMode: smsDispatch.isTestMode,
       dispatchRecords: smsDispatch.records,
       queuedCount: smsDispatch.queuedCount,
       failedCount: smsDispatch.failedCount,
@@ -286,6 +312,32 @@ async function deleteContact(req, res, next) {
 
 async function twilioStatusCallback(req, res, next) {
   try {
+    const config = getTwilioConfig();
+    const signature = req.headers["x-twilio-signature"];
+
+    // Webhook signature validation:
+    // If Twilio credentials and auth token are present, enforce signature verification
+    if (config.authToken) {
+      const webhookUrl =
+        config.statusCallbackUrl ||
+        `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+
+      const isValid = validateTwilioWebhookSignature({
+        url: webhookUrl,
+        params: req.body,
+        signature,
+        authToken: config.authToken,
+      });
+
+      if (!isValid) {
+        logger.warn("[Twilio Webhook] Rejected invalid webhook signature", {
+          url: webhookUrl,
+          hasSignature: Boolean(signature),
+        });
+        return res.status(403).send("Invalid Twilio signature");
+      }
+    }
+
     const { MessageSid, SmsSid, MessageStatus, ErrorCode, ErrorMessage } = req.body || {};
     const sid = MessageSid || SmsSid;
 

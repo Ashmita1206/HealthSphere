@@ -134,6 +134,7 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // SOS Submission state
+  const [isTestMode, setIsTestMode] = useState(false);
   const [isSubmittingSOS, setIsSubmittingSOS] = useState(false);
   const [sosResult, setSosResult] = useState<{
     success: boolean;
@@ -146,6 +147,8 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
     message?: string;
     errorMessage?: string;
     isTwilioConfigured?: boolean;
+    isStatusCallbackConfigured?: boolean;
+    isTestMode?: boolean;
     dispatchRecords?: Array<{
       contactId?: string;
       contactName?: string;
@@ -376,7 +379,14 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
       !Number.isNaN(geoLocation.latitude) &&
       !Number.isNaN(geoLocation.longitude);
 
-    const payload: { latitude?: number; longitude?: number; contactIds?: string[] } = {};
+    const payload: {
+      latitude?: number;
+      longitude?: number;
+      contactIds?: string[];
+      isTestMode?: boolean;
+    } = {
+      isTestMode: Boolean(isTestMode),
+    };
     if (hasValidCoords) {
       payload.latitude = geoLocation.latitude;
       payload.longitude = geoLocation.longitude;
@@ -391,6 +401,8 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
         status?: string;
         incidentId?: string;
         isTwilioConfigured?: boolean;
+        isStatusCallbackConfigured?: boolean;
+        isTestMode?: boolean;
         dispatchRecords?: any[];
         data?: any;
         message?: string;
@@ -411,26 +423,37 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
 
       setSosResult({
         success: true,
-        status: 'Created / In-App Dispatched',
+        status: isTestMode ? 'Test Alert Broadcast' : 'Created / In-App Dispatched',
         incidentId: verifiedId,
         locationShared: Boolean(hasValidCoords),
         latitude: hasValidCoords ? geoLocation.latitude : undefined,
         longitude: hasValidCoords ? geoLocation.longitude : undefined,
         timestamp: new Date().toLocaleTimeString(),
-        message: res.message || 'Emergency alert recorded and in-app notifications generated.',
+        message:
+          res.message ||
+          (isTestMode
+            ? 'Test emergency alert verified. Real SMS marked with [TEST ALERT] sent to authorized contacts.'
+            : 'Emergency alert recorded and in-app notifications generated.'),
         isTwilioConfigured: res.isTwilioConfigured ?? res.data?.isTwilioConfigured,
+        isStatusCallbackConfigured: res.isStatusCallbackConfigured ?? res.data?.isStatusCallbackConfigured,
+        isTestMode: res.isTestMode ?? res.data?.isTestMode ?? isTestMode,
         dispatchRecords: res.dispatchRecords ?? res.data?.dispatchRecords ?? [],
       });
       setCurrentView('sos_result');
     } catch (err: any) {
+      const isThrottled = err?.response?.status === 429 || err?.status === 429;
+      const errorMsg = isThrottled
+        ? 'Duplicate Alert Protection: An emergency alert was already triggered in the last 10 seconds. Please wait before broadcasting another alert to prevent duplicate messages.'
+        : err?.response?.data?.message ||
+          err?.message ||
+          'Failed to transmit emergency signal to server. Please dial 112 or call emergency contacts directly.';
+
       setSosResult({
         success: false,
-        status: 'Failed / Unconfirmed',
+        status: isThrottled ? 'Throttled (Anti-Duplicate)' : 'Failed / Unconfirmed',
         locationShared: Boolean(hasValidCoords),
         timestamp: new Date().toLocaleTimeString(),
-        errorMessage:
-          err?.message ||
-          'Failed to transmit emergency signal to server. Please dial 112 or call emergency contacts directly.',
+        errorMessage: errorMsg,
       });
       setCurrentView('sos_result');
     } finally {
@@ -954,6 +977,30 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                 )}
               </div>
 
+              {/* Authorized Test Alert Toggle */}
+              <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/90 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="test-mode-toggle" className="text-xs font-bold text-amber-950 cursor-pointer">
+                      Authorized Test Alert Mode
+                    </Label>
+                    <Badge variant="outline" className={isTestMode ? "bg-amber-200/80 text-amber-900 border-amber-400 text-[10px] font-extrabold" : "bg-slate-100 text-slate-600 text-[10px]"}>
+                      {isTestMode ? "ACTIVE (TEST)" : "LIVE SOS"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-amber-900/80 leading-tight">
+                    Dispatches a real Twilio SMS labeled <span className="font-mono font-bold">[TEST ALERT]</span> to authorized contacts without sounding emergency alarms.
+                  </p>
+                </div>
+                <input
+                  id="test-mode-toggle"
+                  type="checkbox"
+                  checked={isTestMode}
+                  onChange={(e) => setIsTestMode(e.target.checked)}
+                  className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer"
+                />
+              </div>
+
               {/* Buttons */}
               <div className="flex items-center gap-2 pt-2">
                 <Button
@@ -1026,6 +1073,19 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                 </div>
               )}
 
+              {/* Authorized Test Mode Banner */}
+              {sosResult.isTestMode && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2.5">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div>
+                    <h5 className="font-extrabold text-amber-950">Authorized Test Alert Mode</h5>
+                    <p className="text-[11px] text-amber-900/90 leading-tight mt-0.5">
+                      Messages were dispatched via Twilio with the prefix <span className="font-mono font-bold">[TEST ALERT]</span> to verified test contacts only.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Status Breakdown */}
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -1060,9 +1120,16 @@ export const EmergencyModal: React.FC<EmergencyModalProps> = ({
                       </Badge>
                     </div>
                     {sosResult.isTwilioConfigured ? (
-                      <p className="text-[10px] text-teal-800 mt-1 leading-snug">
-                        Twilio Programmable Messaging dispatched emergency SMS alerts. Carrier delivery confirmations are tracked below.
-                      </p>
+                      <div className="mt-1 space-y-1">
+                        <p className="text-[10px] text-teal-800 leading-snug">
+                          Twilio Programmable Messaging dispatched emergency SMS alerts.
+                        </p>
+                        {!sosResult.isStatusCallbackConfigured && (
+                          <div className="p-2 rounded-xl bg-amber-50 border border-amber-200/90 text-[10px] text-amber-900 leading-tight">
+                            <span className="font-bold">Status Callback Note:</span> <code className="font-mono text-[9px]">TWILIO_STATUS_CALLBACK_URL</code> is empty or not configured. The initial handoff to Twilio is verified (see SIDs below), but carrier delivery receipts are not automatically tracked via webhook.
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-[10px] text-slate-500 mt-1 leading-snug">
                         External telephony gateway (e.g., Twilio) is unconfigured. Emergency contacts have not received an external SMS. Please dial their numbers directly below.

@@ -61,6 +61,8 @@ const sosSchema = validate(
     latitude: Joi.number().optional().allow(null),
     longitude: Joi.number().optional().allow(null),
     contactIds: Joi.array().items(Joi.string()).optional(),
+    isTestMode: Joi.boolean().optional(),
+    force: Joi.boolean().optional(),
   })
 );
 

@@ -177,6 +177,7 @@ describe('EmergencyModal — Global SOS Dialog & Safety Workflows', () => {
       latitude: 37.7749,
       longitude: -122.4194,
       contactIds: ['c-1', 'c-2'],
+      isTestMode: false,
     });
 
     // Result view should render honest status
@@ -185,6 +186,75 @@ describe('EmergencyModal — Global SOS Dialog & Safety Workflows', () => {
       expect(screen.getByText(/Incident ID:/i)).toBeInTheDocument();
       expect(screen.getByText('Not Configured')).toBeInTheDocument();
       expect(screen.getByText(/External telephony gateway \(e\.g\., Twilio\) is unconfigured/i)).toBeInTheDocument();
+    });
+  });
+
+  it('SOS transmits in Authorized Test Alert mode when test toggle is activated', async () => {
+    (api.post as any).mockResolvedValueOnce({
+      status: 'triggered',
+      success: true,
+      incidentId: 'INC-TEST-101',
+      isTwilioConfigured: true,
+      isTestMode: true,
+      dispatchRecords: [
+        {
+          contactId: 'c-1',
+          contactName: 'Dr. Evelyn Reed',
+          phone: '+15550101',
+          channel: 'sms',
+          status: 'queued',
+          messageSid: 'SM_TEST_SID',
+        },
+      ],
+      message: 'Test emergency alert verified. Real SMS marked with [TEST ALERT] sent to authorized contacts.',
+    });
+
+    render(<EmergencyModal open={true} onOpenChange={vi.fn()} defaultView="sos_confirm" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Confirm Emergency SOS Alert')).toBeInTheDocument();
+    });
+
+    // Toggle test mode
+    const testModeCheckbox = screen.getByRole('checkbox', { name: /Authorized Test Alert Mode/i });
+    fireEvent.click(testModeCheckbox);
+
+    const confirmBtn = screen.getByRole('button', { name: /Confirm & Send SOS/i });
+    fireEvent.click(confirmBtn);
+
+    expect(api.post).toHaveBeenCalledWith('/emergency/sos', {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      contactIds: ['c-1', 'c-2'],
+      isTestMode: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Authorized Test Alert Mode/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText(/\[TEST ALERT\]/i)).toBeInTheDocument();
+    });
+  });
+
+  it('SOS gracefully handles HTTP 429 duplicate submission throttle', async () => {
+    (api.post as any).mockRejectedValueOnce({
+      response: {
+        status: 429,
+        data: { message: 'Too many requests' },
+      },
+    });
+
+    render(<EmergencyModal open={true} onOpenChange={vi.fn()} defaultView="sos_confirm" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Confirm Emergency SOS Alert')).toBeInTheDocument();
+    });
+
+    const confirmBtn = screen.getByRole('button', { name: /Confirm & Send SOS/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('SOS Transmission Unconfirmed')).toBeInTheDocument();
+      expect(screen.getByText(/Duplicate Alert Protection/i)).toBeInTheDocument();
     });
   });
 

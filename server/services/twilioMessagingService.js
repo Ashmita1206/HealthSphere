@@ -7,9 +7,19 @@
  * and status callback processing.
  */
 
+const crypto = require('crypto');
+const path = require('path');
 const logger = require('../utils/logger');
 
+// Ensure server/.env is loaded once at module initialization
+try {
+  require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+} catch {
+  // ignore
+}
+
 function getTwilioConfig() {
+
   const accountSid = (process.env.TWILIO_ACCOUNT_SID || '').trim();
   const authToken = (process.env.TWILIO_AUTH_TOKEN || '').trim();
   const phoneNumber = (process.env.TWILIO_PHONE_NUMBER || '').trim();
@@ -66,9 +76,10 @@ function formatE164(phone) {
 }
 
 /**
- * Constructs emergency SMS text WITHOUT exposing PHI (Protected Health Information)
+ * Constructs emergency SMS text WITHOUT exposing PHI (Protected Health Information).
+ * Supports explicit test mode labeling to prevent panic during verification.
  */
-function buildEmergencyMessageText({ userName, latitude, longitude }) {
+function buildEmergencyMessageText({ userName, latitude, longitude, isTestMode }) {
   const sender = (userName && userName.trim()) || 'Your contact';
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number' && !Number.isNaN(latitude) && !Number.isNaN(longitude);
   const locationLink = hasCoords
@@ -76,6 +87,10 @@ function buildEmergencyMessageText({ userName, latitude, longitude }) {
     : 'GPS coordinates unavailable';
 
   const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  if (isTestMode) {
+    return `[TEST ALERT] HEALTHSPHERE EMERGENCY SOS: This is an authorized TEST signal triggered by ${sender}. No actual emergency exists. Location: ${locationLink}. Time: ${timeStr}.`;
+  }
 
   return `HEALTHSPHERE SOS ALERT: ${sender} has triggered an urgent emergency signal. Location: ${locationLink}. Time: ${timeStr}. Please check on them immediately or call emergency services (112 / 911).`;
 }
@@ -133,18 +148,27 @@ async function sendTwilioMessage({ to, body, callbackUrl }) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      let friendlyError = data.message || `Twilio API error HTTP ${response.status}`;
+      if (data.code === 21608) {
+        friendlyError = `Twilio Trial Restriction: Recipient ${e164Check.e164} is not a verified Caller ID. On Twilio trial accounts, numbers must be verified in the Twilio Console before receiving SMS.`;
+      } else if (data.code === 21211) {
+        friendlyError = `Twilio Error: Phone number "${e164Check.e164}" is not a valid SMS recipient.`;
+      } else if (data.code === 20003) {
+        friendlyError = 'Twilio Authentication Error: Invalid Account SID or Auth Token in server/.env.';
+      }
+
       logger.warn('[Twilio SMS Dispatch Error]', {
         status: response.status,
         code: data.code,
-        message: data.message,
+        message: friendlyError,
         to: e164Check.e164,
       });
 
       return {
         success: false,
         status: 'failed',
-        errorCode: data.code || response.status,
-        error: data.message || `Twilio API error HTTP ${response.status}`,
+        errorCode: data.code ? String(data.code) : String(response.status),
+        error: friendlyError,
       };
     }
 
@@ -172,11 +196,44 @@ async function sendTwilioMessage({ to, body, callbackUrl }) {
 }
 
 /**
+ * Validates Twilio webhook X-Twilio-Signature header using HMAC-SHA1
+ */
+function validateTwilioWebhookSignature({ url, params, signature, authToken }) {
+  if (!signature || !authToken || !url) {
+    return false;
+  }
+
+  try {
+    const sortedKeys = Object.keys(params || {}).sort();
+    let data = url;
+    for (const key of sortedKeys) {
+      data += `${key}${params[key]}`;
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha1', authToken)
+      .update(Buffer.from(data, 'utf-8'))
+      .digest('base64');
+
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+
+    if (sigBuf.length !== expectedBuf.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(sigBuf, expectedBuf);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Dispatches emergency SMS to an array of contacts and collects individual delivery records
  */
-async function dispatchEmergencySmsBatch({ contacts, userName, latitude, longitude, callbackUrl }) {
+async function dispatchEmergencySmsBatch({ contacts, userName, latitude, longitude, callbackUrl, isTestMode }) {
   const config = getTwilioConfig();
-  const body = buildEmergencyMessageText({ userName, latitude, longitude });
+  const body = buildEmergencyMessageText({ userName, latitude, longitude, isTestMode });
 
   const records = [];
 
@@ -233,8 +290,12 @@ async function dispatchEmergencySmsBatch({ contacts, userName, latitude, longitu
     });
   }
 
+  const effectiveCallback = callbackUrl || config.statusCallbackUrl;
+
   return {
     isConfigured: config.isConfigured,
+    isStatusCallbackConfigured: Boolean(effectiveCallback),
+    isTestMode: Boolean(isTestMode),
     records,
     totalAttempted: contacts.length,
     queuedCount: records.filter((r) => r.status === 'queued' || r.status === 'sent').length,
@@ -248,5 +309,6 @@ module.exports = {
   formatE164,
   buildEmergencyMessageText,
   sendTwilioMessage,
+  validateTwilioWebhookSignature,
   dispatchEmergencySmsBatch,
 };
