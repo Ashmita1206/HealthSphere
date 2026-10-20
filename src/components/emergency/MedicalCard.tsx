@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Droplet, Phone, Download, Printer, QrCode } from 'lucide-react';
+import { Heart, Droplet, Phone, Download, Printer, ShieldCheck } from 'lucide-react';
 
 interface MedicalCardProps {
   profile: {
@@ -140,12 +140,12 @@ export const MedicalCard = memo(function MedicalCard({
           </div>
         )}
 
-        {/* QR Placeholder */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-          <div className="text-center">
-            <QrCode className="h-16 w-16 text-slate-300 mx-auto mb-2" />
-            <p className="text-[10px] text-slate-400">QR Code Placeholder</p>
-          </div>
+        {/* Privacy Note */}
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center gap-2 text-slate-500">
+          <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0" />
+          <p className="text-[10px] leading-snug">
+            Private Medical ID. Information is strictly restricted to your authenticated profile.
+          </p>
         </div>
 
         {/* Actions */}

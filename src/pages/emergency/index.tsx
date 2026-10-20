@@ -1,665 +1,471 @@
-import { useCallback, useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { api } from '@/services/api';
-import { type Location } from '@/services/locationsService';
-import {
-  createDefaultProfile,
-  normalizeProfileData,
-  type Profile,
-} from '@/pages/profile/profileData';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { EmergencyDashboard } from '@/components/emergency/EmergencyDashboard';
-import { SOSButton } from '@/components/emergency/SOSButton';
-import { EmergencyContacts, EmergencyContact } from '@/components/emergency/EmergencyContacts';
-import { MedicalCard } from '@/components/emergency/MedicalCard';
-import { NearbyHospitals } from '@/components/emergency/NearbyHospitals';
-import { NearbyAmbulances } from '@/components/emergency/NearbyAmbulances';
-import { BloodRequirement } from '@/components/emergency/BloodRequirement';
-import { EmergencyChecklist } from '@/components/emergency/EmergencyChecklist';
-import { LocationStatus } from '@/components/emergency/LocationStatus';
-import { EmergencyTimeline } from '@/components/emergency/EmergencyTimeline';
-import { EmergencyStats } from '@/components/emergency/EmergencyStats';
-import { EmergencySkeleton } from '@/components/emergency/EmergencySkeleton';
-import { downloadMedicalCard, printMedicalCard, exportEmergencyContactsToJSON, exportEmergencyContactsToCSV } from '@/components/emergency/emergencyExportUtils';
-import { ActiveAlertsBanner, EmergencyIncidentData } from '@/components/emergency/ActiveAlertsBanner';
-import { LiveRiskCards, LiveRiskMetric } from '@/components/emergency/LiveRiskCards';
-import { IncidentHistoryTable, IncidentRecord } from '@/components/emergency/IncidentHistoryTable';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { EmergencyModal } from '@/components/emergency/EmergencyModal';
+import {
+  Phone,
+  PhoneCall,
+  ShieldAlert,
+  AlertTriangle,
+  Users,
+  Heart,
+  Building2,
+  MapPin,
+  Clock,
+  ArrowRight,
+  Droplet,
+  ExternalLink,
+  ShieldCheck,
+  CheckCircle2,
+  RefreshCw,
+} from 'lucide-react';
 
-const RouteMap = lazy(() => import('@/components/RouteMap'));
-
-interface TimelineEvent {
+interface IncidentItem {
   id: string;
-  type: 'sos-triggered' | 'cancelled' | 'card-shared' | 'location-shared' | 'call-started';
+  severity: string;
+  triggerReason: string;
   timestamp: string;
-  description: string;
+  status: string;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  };
 }
-
-const calculateAge = (dateOfBirth: string): number | undefined => {
-  const birthDate = new Date(dateOfBirth);
-  if (Number.isNaN(birthDate.getTime())) return undefined;
-
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDifference = today.getMonth() - birthDate.getMonth();
-  if (
-    monthDifference < 0 ||
-    (monthDifference === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    age -= 1;
-  }
-
-  return age >= 0 ? age : undefined;
-};
 
 export default function EmergencyPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const { location: geoLocation, requestLocation } = useGeolocation();
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<Profile>(createDefaultProfile);
-  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
-  const [sosSent, setSosSent] = useState(0);
-  const [userLat, setUserLat] = useState<number | null>(null);
-  const [userLng, setUserLng] = useState<number | null>(null);
-  const [nearbyHospitalCount, setNearbyHospitalCount] = useState(0);
-  const [selectedHospital, setSelectedHospital] = useState<Location | null>(null);
-  const [showMap, setShowMap] = useState(false);
-  const locationEnabled = geoLocation !== null;
-  const [activeIncidents, setActiveIncidents] = useState<EmergencyIncidentData[]>([]);
-  const [incidentHistory, setIncidentHistory] = useState<IncidentRecord[]>([]);
-  const [liveRiskMetrics, setLiveRiskMetrics] = useState<LiveRiskMetric[]>([]);
-  const isTriggeringRef = useRef(false);
-  const userRef = useRef(user);
-  userRef.current = user;
 
-  const [checklistItems, setChecklistItems] = useState([
-    { id: 'medicines', label: 'Carry medicines', checked: false },
-    { id: 'identity', label: 'Identity card', checked: false },
-    { id: 'insurance', label: 'Insurance documents', checked: false },
-    { id: 'contact', label: 'Emergency contact', checked: false },
-    { id: 'water', label: 'Water bottle', checked: false },
-    { id: 'cash', label: 'Cash', checked: false },
-    { id: 'phone', label: 'Charged phone', checked: false },
-    { id: 'powerbank', label: 'Power bank', checked: false },
-    { id: 'firstaid', label: 'First aid kit', checked: false },
-    { id: 'snacks', label: 'Emergency snacks', checked: false },
-  ]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDefaultView, setModalDefaultView] = useState<
+    'main' | 'sos_confirm' | 'contacts' | 'medical_id' | 'hospitals' | 'location' | 'history'
+  >('main');
+
+  const [contactsCount, setContactsCount] = useState<number>(0);
+  const [bloodGroup, setBloodGroup] = useState<string>('');
+  const [activeIncidents, setActiveIncidents] = useState<IncidentItem[]>([]);
+  const [historyIncidents, setHistoryIncidents] = useState<IncidentItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Request location on mount
   useEffect(() => {
     void requestLocation();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [requestLocation]);
 
-  // Sync geolocation to local state
-  useEffect(() => {
-    if (geoLocation) {
-      setUserLat(geoLocation.latitude);
-      setUserLng(geoLocation.longitude);
-    }
-  }, [geoLocation]);
+  const openModalWithView = (
+    view: 'main' | 'sos_confirm' | 'contacts' | 'medical_id' | 'hospitals' | 'location' | 'history'
+  ) => {
+    setModalDefaultView(view);
+    setModalOpen(true);
+  };
 
-  const handleResolveIncident = useCallback(async (id: string) => {
-    try {
-      await api.put(`/emergency/${id}/resolve`, { status: 'resolved' });
-      setActiveIncidents((prev) => prev.filter((inc) => inc.id !== id));
-      toast({ title: 'Incident Resolved', description: 'Emergency alert marked resolved and recorded in audit log.' });
-    } catch (err: any) {
-      toast({
-        title: 'Resolution Failed',
-        description: err?.message || 'Failed to resolve emergency incident on server. Incident remains active.',
-        variant: 'destructive',
-      });
-    }
-  }, [toast]);
-
-  const sosReady = useMemo(() => {
-    return contacts.length > 0 && locationEnabled;
-  }, [contacts.length, locationEnabled]);
-
-  const profileAge = useMemo(
-    () => calculateAge(profile.date_of_birth),
-    [profile.date_of_birth],
-  );
-
-  const medicalCardComplete = useMemo(
-    () => Boolean(profile.full_name && profile.blood_type && profileAge),
-    [profile.full_name, profile.blood_type, profileAge],
-  );
-
-  const preparednessScore = useMemo(() => {
-    const completedChecklist = checklistItems.filter((item) => item.checked).length;
-    const contactScore = contacts.length > 0 ? 20 : 0;
-    const medicalScore = medicalCardComplete ? 20 : 0;
-    const locationScore = locationEnabled ? 20 : 0;
-    const checklistScore = (completedChecklist / checklistItems.length) * 40;
-    return Math.round(contactScore + medicalScore + locationScore + checklistScore);
-  }, [checklistItems, contacts.length, medicalCardComplete, locationEnabled]);
-
-  const fetchContacts = useCallback(async () => {
-    try {
-      const res = await api.get<any[]>('/emergency/contacts');
-      if (Array.isArray(res)) {
-        setContacts(
-          res.map((c: any) => ({
-            id: c._id || c.id,
-            name: c.name,
-            phone: c.phone,
-            relation: c.relation || 'Emergency Contact',
-          }))
-        );
-      }
-    } catch {
-      // Keep existing local list on error
-    }
-  }, []);
-
-  const fetchEmergencies = useCallback(async () => {
-    if (!userRef.current) {
-      setActiveIncidents([]);
-      setIncidentHistory([]);
+  const loadData = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
       return;
     }
-    const currentUserId = userRef.current.id;
 
+    setLoading(true);
     try {
-      const [activeRes, historyRes] = await Promise.allSettled([
+      const [contactsRes, profileRes, activeRes, historyRes] = await Promise.allSettled([
+        api.get<any[]>('/emergency/contacts'),
+        api.get<any>('/user/profile'),
         api.get<any>('/emergency/active'),
         api.get<any>('/emergency/history'),
       ]);
 
-      if (userRef.current?.id !== currentUserId) {
-        return;
+      if (contactsRes.status === 'fulfilled' && Array.isArray(contactsRes.value)) {
+        setContactsCount(contactsRes.value.length);
+      }
+
+      if (profileRes.status === 'fulfilled' && profileRes.value) {
+        setBloodGroup(profileRes.value.blood_type || profileRes.value.bloodGroup || '');
       }
 
       if (activeRes.status === 'fulfilled') {
-        const rawActive = activeRes.value;
-        const activeList = Array.isArray(rawActive)
-          ? rawActive
-          : Array.isArray(rawActive?.data)
-          ? rawActive.data
-          : [];
-
+        const raw = activeRes.value;
+        const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
         setActiveIncidents(
-          activeList.map((inc: any) => ({
+          list.map((inc: any) => ({
             id: inc._id || inc.id,
-            severity: inc.severity || 'HIGH',
-            triggerReason: inc.triggerReason || inc.description || 'Emergency Dispatch',
+            severity: inc.severity || 'CRITICAL',
+            triggerReason: inc.triggerReason || inc.description || 'Emergency SOS',
+            timestamp: inc.createdAt ? new Date(inc.createdAt).toLocaleString() : 'Just now',
             status: inc.status || 'active',
-            createdAt: inc.createdAt ? new Date(inc.createdAt).toLocaleTimeString() : 'Just now',
             location: inc.location,
-            assignedDoctor: inc.assignedDoctor,
           }))
         );
       }
 
       if (historyRes.status === 'fulfilled') {
-        const rawHistory = historyRes.value;
-        const historyList = Array.isArray(rawHistory)
-          ? rawHistory
-          : Array.isArray(rawHistory?.data)
-          ? rawHistory.data
-          : [];
-
-        setIncidentHistory(
-          historyList.map((h: any) => ({
-            id: h._id || h.id || '',
-            severity: h.severity || 'HIGH',
-            triggerReason: h.triggerReason || h.description || 'Emergency SOS',
-            timestamp: h.createdAt ? new Date(h.createdAt).toLocaleString() : 'Recent',
-            duration: h.duration || '5 mins',
-            doctorName: h.doctorName,
-            status: h.status || 'resolved',
-            outcomeNote: h.outcomeNote || 'Emergency event resolved.',
+        const raw = historyRes.value;
+        const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+        setHistoryIncidents(
+          list.map((inc: any) => ({
+            id: inc._id || inc.id,
+            severity: inc.severity || 'HIGH',
+            triggerReason: inc.triggerReason || inc.description || 'Emergency SOS',
+            timestamp: inc.createdAt ? new Date(inc.createdAt).toLocaleString() : 'Recent',
+            status: inc.status || 'resolved',
+            location: inc.location,
           }))
         );
       }
     } catch {
-      // Retain honest clean state on error
+      // retain state
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    let active = true;
+    void loadData();
+  }, [loadData]);
 
-    const fetchData = async () => {
-      setLoading(true);
-      if (!user) {
-        if (active) {
-          setProfile(createDefaultProfile());
-          setContacts([]);
-          setActiveIncidents([]);
-          setIncidentHistory([]);
-          setLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const [profileRes, contactsRes] = await Promise.allSettled([
-          api.get<unknown>('/user/profile'),
-          api.get<any>('/emergency/contacts'),
-        ]);
-
-        if (active) {
-          const profileData = profileRes.status === 'fulfilled' ? profileRes.value : createDefaultProfile();
-          setProfile(normalizeProfileData(profileData));
-
-          if (contactsRes.status === 'fulfilled') {
-            const rawContacts = contactsRes.value;
-            const contactsList = Array.isArray(rawContacts)
-              ? rawContacts
-              : Array.isArray(rawContacts?.data)
-              ? rawContacts.data
-              : [];
-
-            setContacts(
-              contactsList.map((c: any) => ({
-                id: c._id || c.id,
-                name: c.name,
-                phone: c.phone,
-                relation: c.relation || 'Emergency Contact',
-              }))
-            );
-          }
-        }
-      } catch {
-        if (active) setProfile(createDefaultProfile());
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    void fetchData();
-    if (user) {
-      void fetchEmergencies();
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [user, fetchEmergencies]);
-
-  const handleSOSTriggered = useCallback(async () => {
-    if (isTriggeringRef.current) return false;
-    isTriggeringRef.current = true;
-
-    try {
-      const payload: { latitude?: number; longitude?: number } = {};
-      if (
-        typeof userLat === 'number' &&
-        typeof userLng === 'number' &&
-        !Number.isNaN(userLat) &&
-        !Number.isNaN(userLng)
-      ) {
-        payload.latitude = userLat;
-        payload.longitude = userLng;
-      }
-
-      const res = await api.post<{ success?: boolean; status?: string; data?: any }>('/emergency/sos', payload);
-
-      const isConfirmed = Boolean(
-        res &&
-          (res.status === 'triggered' ||
-            res.success === true ||
-            (res.data && (res.data.id || res.data._id || res.data.incidentId || res.data.status === 'active')))
-      );
-
-      if (!isConfirmed) {
-        throw new Error('Server did not acknowledge emergency dispatch');
-      }
-
-      setSosSent((prev) => prev + 1);
-
-      const locationShared = typeof payload.latitude === 'number' && typeof payload.longitude === 'number';
-      const eventDescription = locationShared
-        ? `SOS emergency alert triggered with live coordinates (${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)})`
-        : 'SOS emergency alert triggered (GPS coordinates unavailable)';
-
-      const newEvent: TimelineEvent = {
-        id: `event-${Date.now()}`,
-        type: 'sos-triggered',
-        timestamp: new Date().toISOString(),
-        description: eventDescription,
-      };
-      setTimeline((prev) => [newEvent, ...prev]);
-
-      if (res && res.data && (res.data.id || res.data._id || res.data.incidentId)) {
-        const verifiedId = res.data.id || res.data._id || res.data.incidentId;
-        setActiveIncidents((prev) => [
-          {
-            id: verifiedId,
-            severity: res.data.severity || 'CRITICAL',
-            triggerReason: res.data.triggerReason || 'SOS Button Manual Emergency Dispatch',
-            status: res.data.status || 'active',
-            createdAt: res.data.createdAt ? new Date(res.data.createdAt).toLocaleTimeString() : 'Just now',
-            location: res.data.location || (locationShared ? {
-              latitude: payload.latitude!,
-              longitude: payload.longitude!,
-              address: 'Live GPS Coordinates Broadcasted',
-            } : undefined),
-          },
-          ...prev,
-        ]);
-      } else {
-        await fetchEmergencies();
-      }
-
-      toast({
-        title: 'Emergency Request Submitted',
-        description: locationShared
-          ? 'Emergency alert and coordinates transmitted.'
-          : 'Emergency alert transmitted without GPS coordinates.',
-        variant: 'destructive',
-      });
-      return true;
-    } catch (_err: unknown) {
-      toast({
-        title: 'Emergency Dispatch Unconfirmed',
-        description: 'Emergency dispatch could not be confirmed. Retries may create duplicate incidents. Call emergency contacts or 911 / 112 immediately.',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      isTriggeringRef.current = false;
-    }
-  }, [fetchEmergencies, toast, userLat, userLng]);
-
-  const handleAddContact = useCallback(async (contact: EmergencyContact) => {
-    try {
-      await api.post('/emergency/contacts', {
-        name: contact.name,
-        phone: contact.phone,
-        relation: contact.relation,
-      });
-      await fetchContacts();
-      toast({ title: 'Emergency Contact Added' });
-    } catch (err: any) {
-      toast({
-        title: 'Failed to Add Contact',
-        description: err?.message || 'Could not save emergency contact.',
-        variant: 'destructive',
-      });
-    }
-  }, [fetchContacts, toast]);
-
-  const handleEditContact = useCallback(async (contact: EmergencyContact) => {
-    try {
-      await api.put(`/emergency/contacts/${contact.id}`, {
-        name: contact.name,
-        phone: contact.phone,
-        relation: contact.relation,
-      });
-      await fetchContacts();
-      toast({ title: 'Emergency Contact Updated' });
-    } catch (err: any) {
-      toast({
-        title: 'Failed to Update Contact',
-        description: err?.message || 'Could not update emergency contact.',
-        variant: 'destructive',
-      });
-    }
-  }, [fetchContacts, toast]);
-
-  const handleDeleteContact = useCallback(async (id: string) => {
-    try {
-      await api.delete(`/emergency/contacts/${id}`);
-      await fetchContacts();
-      toast({ title: 'Emergency Contact Deleted' });
-    } catch (err: any) {
-      toast({
-        title: 'Failed to Delete Contact',
-        description: err?.message || 'Could not delete emergency contact.',
-        variant: 'destructive',
-      });
-    }
-  }, [fetchContacts, toast]);
-
-  const handleBloodRequest = useCallback(async (data: any) => {
-    try {
-      await api.post('/health/donation-requests', data);
-    } catch {
-      // fallback
-    }
-    toast({
-      title: 'Blood Request Generated',
-      description: 'Emergency blood request sent',
-    });
-  }, [toast]);
-
-  const handleLocationRefresh = useCallback(() => {
-    void requestLocation();
-    toast({ title: 'Location Refreshed' });
-  }, [requestLocation, toast]);
-
-  const handleLocationChange = useCallback((lat: number, lng: number) => {
-    setUserLat(lat);
-    setUserLng(lng);
-  }, []);
-
-  const handleHospitalsLoaded = useCallback((count: number) => {
-    setNearbyHospitalCount(count);
-  }, []);
-
-  const handleHospitalSelect = useCallback((hospital: Location) => {
-    setSelectedHospital(hospital);
-    setShowMap(true);
-  }, []);
-
-  const handleChecklistToggle = useCallback((id: string) => {
-    setChecklistItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
-    );
-  }, []);
-
-  const handleDownloadCard = useCallback(() => {
-    downloadMedicalCard({
-      name: profile.full_name,
-      bloodGroup: profile.blood_type,
-      age: profileAge,
-      allergies: profile.allergies ?? [],
-      chronicDiseases: profile.chronic_diseases ?? [],
-      surgeries: profile.surgeries ?? [],
-      emergencyContact: contacts.find((c) => c.priority === 'primary')?.phone,
-      healthId: user?.id,
-    });
-    toast({ title: 'Medical Card Downloaded' });
-  }, [profile, profileAge, contacts, toast, user?.id]);
-
-  const handlePrintCard = useCallback(() => {
-    printMedicalCard({
-      name: profile.full_name,
-      bloodGroup: profile.blood_type,
-      age: profileAge,
-      allergies: profile.allergies ?? [],
-      chronicDiseases: profile.chronic_diseases ?? [],
-      surgeries: profile.surgeries ?? [],
-      emergencyContact: contacts.find((c) => c.priority === 'primary')?.phone,
-      healthId: user?.id,
-    });
-  }, [profile, profileAge, contacts, user?.id]);
-
-  const handleExportContactsJSON = useCallback(() => {
-    exportEmergencyContactsToJSON(contacts);
-    toast({ title: 'Contacts Exported to JSON' });
-  }, [contacts, toast]);
-
-  const handleExportContactsCSV = useCallback(() => {
-    exportEmergencyContactsToCSV(contacts);
-    toast({ title: 'Contacts Exported to CSV' });
-  }, [contacts, toast]);
-
-  if (loading) {
-    return (
-      <div className="space-y-6 pb-12">
-        <PageHeader
-          title="Emergency SOS"
-          description="Quick emergency access and preparedness tools."
-          breadcrumbs={[{ label: 'Emergency' }]}
-          badge="Emergency"
-        />
-        <EmergencySkeleton />
-      </div>
-    );
-  }
+  const handleCallEmergencyServices = () => {
+    window.open('tel:112', '_self');
+  };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 max-w-5xl mx-auto">
       {/* Header */}
-      <PageHeader
-        title="Emergency SOS"
-        description="Quick emergency access and preparedness tools."
-        breadcrumbs={[{ label: 'Emergency' }]}
-        badge="Emergency"
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+        <div>
+          <PageHeader
+            title="Emergency SOS"
+            description="Rapid-response emergency actions, medical identity, and verified healthcare services."
+            breadcrumbs={[{ label: 'Emergency' }]}
+            badge="Emergency 24/7"
+          />
+        </div>
 
-      {/* Dashboard */}
-      <EmergencyDashboard
-        sosReady={sosReady}
-        emergencyContactsCount={contacts.length}
-        medicalCardComplete={medicalCardComplete}
-        locationEnabled={locationEnabled}
-      />
-
-      {/* Active Alerts Banner (renders ALL CLEAR when activeIncidents is empty) */}
-      <ActiveAlertsBanner
-        incidents={activeIncidents}
-        onResolve={handleResolveIncident}
-        onCallAssignedDoctor={(phone) => window.open(`tel:${phone}`)}
-      />
-
-      {/* Live Risk Telemetry (honest empty/standby state when no wearables streaming) */}
-      <LiveRiskCards metrics={liveRiskMetrics} />
-
-      {/* SOS Button */}
-      <div className="flex justify-center py-2">
-        <SOSButton onSOSTriggered={handleSOSTriggered} />
+        <div className="shrink-0">
+          <Button
+            type="button"
+            onClick={() => openModalWithView('main')}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
+          >
+            <ShieldAlert className="w-4 h-4 animate-pulse" />
+            <span>Open Emergency Dialog</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <EmergencyStats
-        sosSent={sosSent}
-        emergencyContacts={contacts.length}
-        nearbyHospitals={nearbyHospitalCount}
-        preparednessScore={preparednessScore}
-      />
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Emergency Contacts */}
-          <EmergencyContacts
-            contacts={contacts}
-            onAdd={handleAddContact}
-            onEdit={handleEditContact}
-            onDelete={handleDeleteContact}
-          />
-
-          {/* Nearby Hospitals */}
-          <NearbyHospitals
-            userLat={userLat}
-            userLng={userLng}
-            onHospitalSelect={handleHospitalSelect}
-            onHospitalsLoaded={handleHospitalsLoaded}
-          />
-
-          {/* Route Map (shown after selecting a hospital) */}
-          {showMap && selectedHospital && userLat != null && userLng != null && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900">
-                  Route to {selectedHospital.name}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowMap(false)}
-                  className="text-xs text-slate-500 hover:text-slate-700 font-bold"
-                >
-                  Close Map
-                </button>
-              </div>
-              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: 350 }}>
-                <Suspense fallback={
-                  <div className="h-full w-full flex items-center justify-center bg-slate-50">
-                    <p className="text-xs text-slate-500">Loading map...</p>
+      {/* Active Alerts Banner if any real active incidents exist */}
+      {activeIncidents.length > 0 && (
+        <div className="space-y-2">
+          {activeIncidents.map((incident) => (
+            <div
+              key={incident.id}
+              className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 animate-bounce" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-rose-600 text-white text-[10px] font-black uppercase">
+                      ACTIVE {incident.severity} ALERT
+                    </Badge>
+                    <span className="text-xs text-slate-500 font-mono">
+                      {incident.timestamp}
+                    </span>
                   </div>
-                }>
-                  <RouteMap
-                    userLat={userLat}
-                    userLng={userLng}
-                    destLat={selectedHospital.latitude}
-                    destLng={selectedHospital.longitude}
-                  />
-                </Suspense>
+                  <p className="text-xs font-bold text-slate-900 mt-1">
+                    {incident.triggerReason}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await api.put(`/emergency/${incident.id}/resolve`, { status: 'resolved' });
+                    await loadData();
+                  } catch (err: any) {
+                    alert(err?.message || 'Could not resolve incident');
+                  }
+                }}
+                className="bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold"
+              >
+                Resolve Incident
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* PRIMARY EMERGENCY ACTIONS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Action A: Call 112 */}
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-50 via-white to-rose-50/50 border border-rose-200/90 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-rose-200 text-rose-950">
+                Action A • Direct Dialer
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                <PhoneCall className="w-5 h-5" />
               </div>
             </div>
-          )}
+            <h3 className="text-lg font-black text-slate-900 mt-3 font-heading">
+              Call Emergency Services
+            </h3>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Instantly connect to national emergency dispatch (112) using your phone's native telecommunications dialer.
+            </p>
+          </div>
 
-          {/* Nearby Ambulances (Explicitly labeled as Simulated Dispatch) */}
-          <NearbyAmbulances />
-
-          {/* Emergency Timeline */}
-          <EmergencyTimeline events={timeline} />
-
-          {/* Incident History Audit Log */}
-          <IncidentHistoryTable incidents={incidentHistory} />
+          <div>
+            <Button
+              type="button"
+              onClick={handleCallEmergencyServices}
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black text-sm h-12 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <Phone className="w-4 h-4" />
+              <span>Call 112</span>
+            </Button>
+            <p className="text-[10px] text-slate-500 text-center mt-2 leading-tight">
+              Opens native phone dialer. HealthSphere does not claim or verify call completion.
+            </p>
+          </div>
         </div>
 
-        {/* Right Column */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Medical Card */}
-          <MedicalCard
-            profile={{
-              name: profile.full_name,
-              bloodGroup: profile.blood_type,
-              age: profileAge,
-              allergies: profile.allergies ?? [],
-              chronicDiseases: profile.chronic_diseases ?? [],
-              surgeries: profile.surgeries ?? [],
-              emergencyContact: contacts.find((c) => c.priority === 'primary')?.phone,
-              healthId: user?.id,
-            }}
-            onDownload={handleDownloadCard}
-            onPrint={handlePrintCard}
-          />
+        {/* Action B: Send SOS Alert */}
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-50 via-white to-amber-50/50 border border-amber-200/90 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-amber-200 text-amber-950">
+                Action B • Confirmed Signal
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 mt-3 font-heading">
+              Send Emergency SOS Alert
+            </h3>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Broadcasts an urgent incident record with your coordinates to your saved emergency contacts.
+            </p>
+          </div>
 
-          {/* Blood Requirement */}
-          <BloodRequirement onRequest={handleBloodRequest} />
-
-          {/* Emergency Checklist */}
-          <EmergencyChecklist
-            items={checklistItems}
-            onToggle={handleChecklistToggle}
-          />
-
-          {/* Location Status */}
-          <LocationStatus
-            onRefresh={handleLocationRefresh}
-            onLocationChange={handleLocationChange}
-          />
+          <div>
+            <Button
+              type="button"
+              onClick={() => openModalWithView('sos_confirm')}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-sm h-12 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Open SOS Alert Confirmation</span>
+            </Button>
+            <p className="text-[10px] text-slate-500 text-center mt-2 leading-tight">
+              Confirmation required before dispatching. Prevents accidental or duplicate submissions.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Export Actions */}
-      <div className="flex gap-3 justify-center">
-        <button
-          type="button"
-          onClick={handleExportContactsJSON}
-          className="px-4 py-2 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-        >
-          Export Contacts (JSON)
-        </button>
-        <button
-          type="button"
-          onClick={handleExportContactsCSV}
-          className="px-4 py-2 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-        >
-          Export Contacts (CSV)
-        </button>
+      {/* SECONDARY QUICK ACTIONS (4 COMPACT CARDS) */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-black text-slate-500 uppercase tracking-wider px-1">
+          Quick Access Emergency Resources
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* 1. Emergency Contacts */}
+          <div
+            onClick={() => openModalWithView('contacts')}
+            className="p-4 rounded-2xl bg-white hover:bg-teal-50/50 border border-slate-200 hover:border-teal-300 transition-all cursor-pointer shadow-xs group flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Users className="w-5 h-5" />
+              </div>
+              <Badge variant="outline" className="text-xs font-bold px-2 py-0.5 border-teal-200 text-teal-800 bg-teal-50">
+                {contactsCount} Saved
+              </Badge>
+            </div>
+            <div className="mt-4">
+              <h4 className="text-sm font-bold text-slate-900">
+                Emergency Contacts
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage, add, and dial contacts.
+              </p>
+            </div>
+          </div>
+
+          {/* 2. Medical ID */}
+          <div
+            onClick={() => openModalWithView('medical_id')}
+            className="p-4 rounded-2xl bg-white hover:bg-rose-50/50 border border-slate-200 hover:border-rose-300 transition-all cursor-pointer shadow-xs group flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Heart className="w-5 h-5" />
+              </div>
+              {bloodGroup && (
+                <Badge className="text-xs font-black bg-rose-600 text-white px-2 py-0.5">
+                  {bloodGroup}
+                </Badge>
+              )}
+            </div>
+            <div className="mt-4">
+              <h4 className="text-sm font-bold text-slate-900">
+                Emergency Medical ID
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Allergies, conditions, and history.
+              </p>
+            </div>
+          </div>
+
+          {/* 3. Nearby Hospitals */}
+          <div
+            onClick={() => openModalWithView('hospitals')}
+            className="p-4 rounded-2xl bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 transition-all cursor-pointer shadow-xs group flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <Badge variant="outline" className="text-xs font-bold px-2 py-0.5 border-blue-200 text-blue-800 bg-blue-50">
+                OpenStreetMap
+              </Badge>
+            </div>
+            <div className="mt-4">
+              <h4 className="text-sm font-bold text-slate-900">
+                Nearby Hospitals
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Locate verified ER emergency rooms.
+              </p>
+            </div>
+          </div>
+
+          {/* 4. Share Location */}
+          <div
+            onClick={() => openModalWithView('location')}
+            className="p-4 rounded-2xl bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer shadow-xs group flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <Badge variant="outline" className="text-xs font-bold px-2 py-0.5 border-emerald-200 text-emerald-800 bg-emerald-50">
+                {geoLocation ? 'Active GPS' : 'Standby'}
+              </Badge>
+            </div>
+            <div className="mt-4">
+              <h4 className="text-sm font-bold text-slate-900">
+                Share Location
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Broadcast live coordinates.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* BLOOD & ORGAN REQUISITION NAVIGATION BANNER (Clean Link to Existing Route) */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-teal-50 via-white to-teal-50 border border-teal-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Droplet className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-slate-900 font-heading">
+              Blood & Organ Donation Module
+            </h4>
+            <p className="text-xs text-slate-600 mt-0.5 leading-snug">
+              Looking for blood inventory, organ registry, or donor coordination? Visit the dedicated Blood & Organ portal.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          to="/blood-donation"
+          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-extrabold shadow-sm transition-all"
+        >
+          <span>Visit Blood & Organ</span>
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* EMERGENCY HISTORY & AUDIT LOG CARD */}
+      <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">
+                Emergency Incident Audit Log ({historyIncidents.length + activeIncidents.length})
+              </h4>
+              <p className="text-xs text-slate-500">
+                Verified persisted records of manual SOS broadcasts and triage events.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => openModalWithView('history')}
+            className="text-xs font-bold rounded-xl"
+          >
+            View Full Log
+          </Button>
+        </div>
+
+        {historyIncidents.length === 0 && activeIncidents.length === 0 ? (
+          <div className="py-6 text-center text-xs text-slate-400">
+            No emergency incidents recorded in your audit history.
+          </div>
+        ) : (
+          <div className="space-y-2 pt-2">
+            {[...activeIncidents, ...historyIncidents].slice(0, 3).map((item) => (
+              <div
+                key={item.id}
+                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={item.status === 'active' ? "bg-rose-100 text-rose-800" : "bg-slate-200 text-slate-700"}>
+                      {item.status.toUpperCase()}
+                    </Badge>
+                    <span className="font-bold text-slate-800">{item.triggerReason}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{item.timestamp}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px] text-slate-500 font-mono">
+                  {item.location?.latitude ? 'GPS Shared' : 'No GPS'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Emergency Modal Instance */}
+      <EmergencyModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        defaultView={modalDefaultView}
+      />
     </div>
   );
 }
