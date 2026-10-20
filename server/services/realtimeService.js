@@ -171,6 +171,29 @@ function streamLiveNotification(userId, notification, options = {}) {
   return true;
 }
 
+/**
+ * Broadcast sanitized real-time blood request mutation
+ */
+function broadcastBloodRequest(event, data) {
+  if (!ioInstance) return;
+
+  try {
+    const payload = {
+      ...data,
+      timestamp: new Date().toISOString(),
+    };
+
+    ioInstance.emit(event, payload);
+
+    const collabNs = ioInstance.of('/collaboration');
+    if (collabNs) {
+      collabNs.emit(event, payload);
+    }
+  } catch (err) {
+    logger.warn(`Failed to broadcast blood request event ${event}`, { error: err.message });
+  }
+}
+
 module.exports = {
   setIO,
   getIO,
@@ -183,6 +206,8 @@ module.exports = {
   broadcastConsultationMessage,
   broadcastConsultationSignal,
   streamLiveNotification,
+  broadcastBloodRequest,
   presenceService,
 };
+
 

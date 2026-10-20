@@ -1,13 +1,10 @@
-// TODO: Backend integration required for real donor APIs
-// TODO: Backend integration required for blood bank APIs
-// TODO: Backend integration required for hospital integration
-
-interface Donor {
+export interface ExportDonor {
   id: string;
   name: string;
   bloodGroup: string;
-  age: number;
-  city: string;
+  age?: number;
+  city?: string;
+  approximateArea?: string;
   lastDonation?: string;
   availability: 'available' | 'unavailable';
   distance?: number;
@@ -16,11 +13,13 @@ interface Donor {
   totalDonations?: number;
 }
 
-interface BloodRequest {
+export interface ExportBloodRequest {
   id: string;
   patientName: string;
   bloodGroup: string;
+  componentType?: string;
   hospital: string;
+  approximateArea?: string;
   unitsRequired: number;
   requiredDate: string;
   urgency: 'critical' | 'high' | 'normal';
@@ -29,19 +28,21 @@ interface BloodRequest {
   notes?: string;
 }
 
-export function exportDonorsToCSV(donors: Donor[]): void {
-  // TODO: Backend integration for real donor data export
-  const headers = ['Name', 'Blood Group', 'Age', 'City', 'Availability', 'Last Donation', 'Phone', 'Email', 'Total Donations'];
+function formatDateSafe(dateStr?: string): string {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+}
+
+export function exportDonorsToCSV(donors: ExportDonor[]): void {
+  const headers = ['Name', 'Blood Group', 'City / Area', 'Availability', 'Last Donation', 'Privacy Status'];
   const rows = donors.map((donor) => [
-    donor.name,
-    donor.bloodGroup,
-    donor.age,
-    donor.city,
-    donor.availability,
-    donor.lastDonation ? new Date(donor.lastDonation).toLocaleDateString() : 'N/A',
-    donor.phone || 'N/A',
-    donor.email || 'N/A',
-    donor.totalDonations || 0,
+    donor.name || 'Consented Volunteer',
+    donor.bloodGroup || 'Not specified',
+    donor.approximateArea || donor.city || 'Regional Health Network',
+    donor.availability || 'available',
+    formatDateSafe(donor.lastDonation),
+    'Confidential (Platform Dispatch Only)',
   ]);
 
   const csvContent = [
@@ -60,18 +61,29 @@ export function exportDonorsToCSV(donors: Donor[]): void {
   document.body.removeChild(link);
 }
 
-export function exportRequestsToCSV(requests: BloodRequest[]): void {
-  // TODO: Backend integration for real request data export
-  const headers = ['Patient Name', 'Blood Group', 'Hospital', 'Units Required', 'Required Date', 'Urgency', 'Status', 'Contact Number'];
+export function exportRequestsToCSV(requests: ExportBloodRequest[]): void {
+  const headers = [
+    'Patient Reference',
+    'Blood Group',
+    'Component',
+    'Hospital / Facility',
+    'Area',
+    'Units Required',
+    'Required By',
+    'Urgency',
+    'Status',
+  ];
+
   const rows = requests.map((request) => [
-    request.patientName,
+    request.patientName || 'Blood Recipient',
     request.bloodGroup,
+    request.componentType || 'Whole Blood',
     request.hospital,
-    request.unitsRequired,
-    new Date(request.requiredDate).toLocaleDateString(),
+    request.approximateArea || 'Regional',
+    request.unitsRequired || 1,
+    formatDateSafe(request.requiredDate),
     request.urgency,
     request.status,
-    request.contactNumber || 'N/A',
   ]);
 
   const csvContent = [
@@ -90,8 +102,7 @@ export function exportRequestsToCSV(requests: BloodRequest[]): void {
   document.body.removeChild(link);
 }
 
-export function printDonorList(donors: Donor[]): void {
-  // TODO: Backend integration for real donor data printing
+export function printDonorList(donors: ExportDonor[]): void {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
@@ -99,54 +110,57 @@ export function printDonorList(donors: Donor[]): void {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Blood Donor List - HealthSphere</title>
+        <title>Blood Donor Registry - HealthSphere</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .logo { font-size: 24px; font-weight: bold; color: #0d9488; }
-          .date { color: #64748b; margin-top: 10px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
-          th { background-color: #f1f5f9; font-weight: bold; }
-          .badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; }
+          .header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; }
+          .logo { font-size: 20px; font-weight: bold; color: #0f766e; }
+          .date { color: #64748b; font-size: 12px; margin-top: 6px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
+          th { background-color: #f8fafc; font-weight: bold; }
+          .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
           .badge-available { background-color: #dcfce7; color: #166534; }
           .badge-unavailable { background-color: #f1f5f9; color: #64748b; }
-          .footer { margin-top: 30px; text-align: center; color: #64748b; font-size: 12px; }
+          .footer { margin-top: 24px; text-align: center; color: #64748b; font-size: 11px; }
         </style>
       </head>
       <body>
         <div class="header">
-          <div class="logo">HealthSphere - Blood Donation</div>
-          <div class="date">Generated on ${new Date().toLocaleDateString()}</div>
+          <div class="logo">HealthSphere — Voluntary Blood Donor Directory</div>
+          <div class="date">Generated: ${new Date().toLocaleString()}</div>
         </div>
         <table>
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Donor Reference</th>
               <th>Blood Group</th>
-              <th>Age</th>
-              <th>City</th>
+              <th>Approximate Region</th>
               <th>Availability</th>
-              <th>Last Donation</th>
-              <th>Contact</th>
+              <th>Last Donation Date</th>
+              <th>Dispatch Channel</th>
             </tr>
           </thead>
           <tbody>
-            ${donors.map((donor) => `
+            ${donors
+              .map(
+                (donor) => `
               <tr>
-                <td>${donor.name}</td>
+                <td><strong>${donor.name}</strong></td>
                 <td>${donor.bloodGroup}</td>
-                <td>${donor.age}</td>
-                <td>${donor.city}</td>
+                <td>${donor.approximateArea || donor.city || 'Regional Health Network'}</td>
                 <td><span class="badge ${donor.availability === 'available' ? 'badge-available' : 'badge-unavailable'}">${donor.availability}</span></td>
-                <td>${donor.lastDonation ? new Date(donor.lastDonation).toLocaleDateString() : 'N/A'}</td>
-                <td>${donor.phone || 'N/A'}</td>
+                <td>${formatDateSafe(donor.lastDonation)}</td>
+                <td>In-App Platform Dispatch</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
         <div class="footer">
           Total Donors: ${donors.length} | Available: ${donors.filter((d) => d.availability === 'available').length}
+          <br/>Protected under HealthSphere Clinical Privacy Protocol. No unconsented donor PII disclosed.
         </div>
       </body>
     </html>
@@ -157,8 +171,7 @@ export function printDonorList(donors: Donor[]): void {
   printWindow.print();
 }
 
-export function printRequestList(requests: BloodRequest[]): void {
-  // TODO: Backend integration for real request data printing
+export function printRequestList(requests: ExportBloodRequest[]): void {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
@@ -166,60 +179,61 @@ export function printRequestList(requests: BloodRequest[]): void {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Blood Request List - HealthSphere</title>
+        <title>Clinical Blood Requests - HealthSphere</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .logo { font-size: 24px; font-weight: bold; color: #e11d48; }
-          .date { color: #64748b; margin-top: 10px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
-          th { background-color: #f1f5f9; font-weight: bold; }
-          .badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-          .badge-critical { background-color: #fecaca; color: #991b1b; }
-          .badge-high { background-color: #fed7aa; color: #9a3412; }
-          .badge-normal { background-color: #dbeafe; color: #1e40af; }
-          .badge-active { background-color: #dcfce7; color: #166534; }
-          .badge-fulfilled { background-color: #f1f5f9; color: #64748b; }
-          .badge-cancelled { background-color: #fecaca; color: #991b1b; }
-          .footer { margin-top: 30px; text-align: center; color: #64748b; font-size: 12px; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; }
+          .header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; }
+          .logo { font-size: 20px; font-weight: bold; color: #be123c; }
+          .date { color: #64748b; font-size: 12px; margin-top: 6px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
+          th { background-color: #f8fafc; font-weight: bold; }
+          .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+          .badge-critical { background-color: #ffe4e6; color: #9f1239; }
+          .badge-high { background-color: #ffedd5; color: #9a3412; }
+          .badge-normal { background-color: #f1f5f9; color: #334155; }
+          .footer { margin-top: 24px; text-align: center; color: #64748b; font-size: 11px; }
         </style>
       </head>
       <body>
         <div class="header">
-          <div class="logo">HealthSphere - Blood Requests</div>
-          <div class="date">Generated on ${new Date().toLocaleDateString()}</div>
+          <div class="logo">HealthSphere — Active Blood Requisition Schedule</div>
+          <div class="date">Generated: ${new Date().toLocaleString()}</div>
         </div>
         <table>
           <thead>
             <tr>
-              <th>Patient Name</th>
+              <th>Recipient</th>
               <th>Blood Group</th>
-              <th>Hospital</th>
+              <th>Component</th>
+              <th>Hospital / Facility</th>
               <th>Units</th>
-              <th>Required Date</th>
+              <th>Required By</th>
               <th>Urgency</th>
               <th>Status</th>
-              <th>Contact</th>
             </tr>
           </thead>
           <tbody>
-            ${requests.map((request) => `
+            ${requests
+              .map(
+                (req) => `
               <tr>
-                <td>${request.patientName}</td>
-                <td>${request.bloodGroup}</td>
-                <td>${request.hospital}</td>
-                <td>${request.unitsRequired}</td>
-                <td>${new Date(request.requiredDate).toLocaleDateString()}</td>
-                <td><span class="badge badge-${request.urgency}">${request.urgency}</span></td>
-                <td><span class="badge badge-${request.status}">${request.status}</span></td>
-                <td>${request.contactNumber || 'N/A'}</td>
+                <td><strong>${req.patientName}</strong></td>
+                <td>${req.bloodGroup}</td>
+                <td>${req.componentType || 'Whole Blood'}</td>
+                <td>${req.hospital}</td>
+                <td>${req.unitsRequired}</td>
+                <td>${formatDateSafe(req.requiredDate)}</td>
+                <td><span class="badge badge-${req.urgency}">${req.urgency}</span></td>
+                <td>${req.status}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
         <div class="footer">
-          Total Requests: ${requests.length} | Active: ${requests.filter((r) => r.status === 'active').length} | Critical: ${requests.filter((r) => r.urgency === 'critical' && r.status === 'active').length}
+          Total Requisitions: ${requests.length} | Open: ${requests.filter((r) => r.status === 'active').length}
         </div>
       </body>
     </html>

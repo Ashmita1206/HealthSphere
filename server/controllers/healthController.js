@@ -4,7 +4,10 @@ const Medicine = require('../models/Medicine');
 const Appointment = require('../models/Appointment');
 const Reminder = require('../models/Reminder');
 const DoseLog = require('../models/DoseLog');
+const Notification = require('../models/Notification');
 const { Donor, DonationRequest, DonationRecord } = require('../models/Donation');
+const bloodBankService = require('../services/bloodBankService');
+const { broadcastBloodRequest, broadcastNotification } = require('../services/realtimeService');
 const { getAIHealthResponse } = require('../services/ai.service');
 const { computeRiskFromText } = require('../services/riskEngine');
 const {
@@ -350,53 +353,210 @@ async function updateAppointment(req, res, next) {
     next(e);
   }
 }
+function sanitizeBloodRequest(r) {
+  return {
+    id: (r._id || r.id).toString(),
+    bloodGroup: r.bloodType || 'Not specified',
+    componentType: r.componentType || 'whole_blood',
+    hospital: r.hospital || 'Medical Facility',
+    approximateArea: r.approximateArea || '',
+    unitsRequired: r.unitsRequired || 1,
+    requiredDate: r.requiredDate ? new Date(r.requiredDate).toISOString() : new Date().toISOString(),
+    urgency: r.urgency || 'normal',
+    status: r.status || 'active',
+    updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : new Date().toISOString(),
+  };
+}
+
 async function listDonors(req, res, next) {
   try {
-    const rows = await Donor.find({}).sort({ createdAt: -1 });
-    res.json(rows);
+    const rows = await Donor.find({
+      consentToDiscover: { $ne: false },
+      status: { $ne: 'inactive' },
+    })
+      .populate('userId', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const donors = rows.map((d) => {
+      const rawName = d.userId?.name || '';
+      const firstName = rawName.split(' ')[0];
+      const displayName = firstName ? `${firstName} (Volunteer Donor)` : 'Consented Volunteer Donor';
+
+      return {
+        id: d._id.toString(),
+        name: displayName,
+        bloodGroup: d.bloodType || 'Not specified',
+        city: d.city || d.approximateArea || 'Local Area',
+        approximateArea: d.approximateArea || d.city || 'Local Area',
+        availability: d.isAvailable ? 'available' : 'unavailable',
+        lastDonation: d.lastDonationDate ? new Date(d.lastDonationDate).toISOString() : undefined,
+        contactPreference: d.contactPreference || 'in-app',
+      };
+    });
+
+    res.json(donors);
   } catch (e) {
     next(e);
   }
 }
+
 async function listDonationRequests(req, res, next) {
   try {
-    const rows = await DonationRequest.find({}).sort({ createdAt: -1 });
-    res.json(rows);
+    const currentUserId = req.user?._id ? req.user._id.toString() : null;
+    const rows = await DonationRequest.find({}).sort({ createdAt: -1 }).lean();
+
+    const mapped = rows.map((r) => {
+      const isOwner = Boolean(currentUserId && r.userId && r.userId.toString() === currentUserId);
+      const safeRequiredDate = r.requiredDate
+        ? new Date(r.requiredDate).toISOString()
+        : r.requiredBy && !isNaN(new Date(r.requiredBy).getTime())
+          ? new Date(r.requiredBy).toISOString()
+          : new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+
+      return {
+        id: (r._id || r.id).toString(),
+        userId: r.userId ? r.userId.toString() : undefined,
+        patientName: isOwner
+          ? (r.patientName || 'Blood Recipient')
+          : (r.patientName ? `${r.patientName.charAt(0)}. (Patient)` : 'Blood Recipient'),
+        bloodGroup: r.bloodType || 'Not specified',
+        componentType: r.componentType || 'whole_blood',
+        hospital: r.hospital || 'Medical Facility',
+        approximateArea: r.approximateArea || '',
+        unitsRequired: r.unitsRequired || r.unitsNeeded || 1,
+        requiredDate: safeRequiredDate,
+        urgency: r.urgency || 'normal',
+        contactPhone: isOwner ? (r.contactPhone || '') : undefined,
+        notes: isOwner ? (r.notes || '') : (r.notes ? 'Clinical blood request registered' : ''),
+        status: r.status || 'active',
+        createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
+        updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : new Date().toISOString(),
+        isOwner,
+      };
+    });
+
+    res.json(mapped);
   } catch (e) {
     next(e);
   }
 }
+
 async function registerDonor(req, res, next) {
   try {
-    res
-      .status(201)
-      .json(
-        await Donor.create({
-          userId: req.user._id,
-          bloodType: req.body.blood_type,
-          organType: req.body.organ_type,
-          donationType: req.body.willing_to_donate,
-        }),
-      );
+    const b = req.body || {};
+    const bloodType = b.bloodType || b.blood_type;
+    const organType = b.organType || b.organ_type;
+    const donationType = b.donationType || b.willing_to_donate || 'blood';
+    const city = b.city || 'Local Area';
+    const approximateArea = b.approximateArea || b.approximate_area || city;
+    const isAvailable = b.isAvailable !== undefined ? Boolean(b.isAvailable) : true;
+    const consentToDiscover = b.consentToDiscover !== undefined ? Boolean(b.consentToDiscover) : true;
+    const contactPreference = b.contactPreference || 'in-app';
+
+    const updated = await Donor.findOneAndUpdate(
+      { userId: req.user._id },
+      {
+        $set: {
+          bloodType,
+          organType,
+          donationType,
+          city,
+          approximateArea,
+          isAvailable,
+          consentToDiscover,
+          contactPreference,
+          status: 'active',
+        },
+      },
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    res.status(201).json(updated);
   } catch (e) {
     next(e);
   }
 }
+
+async function contactDonor(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { message, urgency, bloodGroup } = req.body || {};
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid donor ID' });
+    }
+
+    const donor = await Donor.findById(id).populate('userId', 'name email');
+    if (!donor) {
+      return res.status(404).json({ message: 'Donor not found' });
+    }
+
+    if (!donor.isAvailable) {
+      return res.status(400).json({ message: 'Donor is currently marked as unavailable for donations' });
+    }
+
+    const recipientUserId = donor.userId?._id || donor.userId;
+    if (recipientUserId) {
+      const notification = await Notification.create({
+        userId: recipientUserId,
+        title: `Blood Donation Inquiry (${bloodGroup || donor.bloodType || 'Urgent'})`,
+        message: message || `A HealthSphere patient/hospital coordinator has sent a voluntary donation inquiry. Urgency: ${urgency || 'Normal'}. Please review in the Blood Donation registry.`,
+        type: 'health',
+        priority: urgency === 'critical' ? 'critical' : 'high',
+        severity: urgency === 'critical' ? 'critical' : 'normal',
+        route: '/blood-donation',
+        metadata: {
+          requesterId: req.user._id,
+          donorId: donor._id,
+          bloodGroup: bloodGroup || donor.bloodType,
+        },
+      });
+
+      broadcastNotification(recipientUserId, notification);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Inquiry routed securely through HealthSphere platform. Donor notified without disclosing private contact credentials.',
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
 async function createDonationRequest(req, res, next) {
   try {
-    res
-      .status(201)
-      .json(
-        await DonationRequest.create({
-          userId: req.user._id,
-          requestType: req.body.request_type || req.body.requestType,
-          bloodType: req.body.blood_type || req.body.bloodType,
-          organType: req.body.organ_type || req.body.organType,
-          urgency: req.body.urgency,
-          notes: req.body.notes,
-          status: req.body.status || 'pending',
-        }),
-      );
+    const b = req.body || {};
+    const safeRequiredDate = b.requiredDate
+      ? new Date(b.requiredDate)
+      : b.required_date
+        ? new Date(b.required_date)
+        : b.requiredBy && !isNaN(new Date(b.requiredBy).getTime())
+          ? new Date(b.requiredBy)
+          : new Date(Date.now() + 48 * 3600 * 1000);
+
+    const doc = await DonationRequest.create({
+      userId: req.user._id,
+      patientName: b.patientName || b.patient_name || 'Blood Recipient',
+      requestType: b.request_type || b.requestType || 'blood',
+      bloodType: b.blood_type || b.bloodType || 'O+',
+      componentType: b.component_type || b.componentType || 'whole_blood',
+      hospital: b.hospital || 'Medical Facility',
+      approximateArea: b.approximate_area || b.approximateArea || '',
+      unitsRequired: Number(b.unitsRequired || b.units_required || b.unitsNeeded || 1),
+      requiredDate: safeRequiredDate,
+      urgency: b.urgency || 'normal',
+      contactPhone: b.contactPhone || b.contact_phone || '',
+      organType: b.organ_type || b.organType,
+      notes: b.notes || b.additionalNotes || '',
+      status: b.status || 'active',
+    });
+
+    // Broadcast sanitized real-time event
+    broadcastBloodRequest('blood:request-created', sanitizeBloodRequest(doc));
+
+    res.status(201).json(doc);
   } catch (e) {
     if (e.name === 'ValidationError') {
       return res.status(400).json({ message: 'Validation failed', details: e.message });
@@ -404,6 +564,7 @@ async function createDonationRequest(req, res, next) {
     next(e);
   }
 }
+
 async function updateDonationRequest(req, res, next) {
   try {
     const { id } = req.params;
@@ -428,13 +589,39 @@ async function updateDonationRequest(req, res, next) {
     const updates = {};
     const b = req.body || {};
 
-    if (b.status !== undefined) updates.status = b.status;
+    if (b.status !== undefined) {
+      // Validate allowed status transitions
+      const current = request.status;
+      const target = b.status;
+      if (current === 'fulfilled' && target === 'cancelled') {
+        return res.status(400).json({ message: 'Validation failed', details: 'Cannot cancel an already fulfilled blood request' });
+      }
+      if (current === 'cancelled' && target === 'fulfilled') {
+        return res.status(400).json({ message: 'Validation failed', details: 'Cannot fulfill an already cancelled blood request' });
+      }
+      updates.status = target;
+    }
+
     if (b.notes !== undefined) updates.notes = b.notes;
     if (b.urgency !== undefined) updates.urgency = b.urgency;
     if (b.requestType !== undefined) updates.requestType = b.requestType;
     if (b.request_type !== undefined) updates.requestType = b.request_type;
     if (b.bloodType !== undefined) updates.bloodType = b.bloodType;
     if (b.blood_type !== undefined) updates.bloodType = b.blood_type;
+    if (b.componentType !== undefined) updates.componentType = b.componentType;
+    if (b.component_type !== undefined) updates.componentType = b.component_type;
+    if (b.patientName !== undefined) updates.patientName = b.patientName;
+    if (b.patient_name !== undefined) updates.patientName = b.patient_name;
+    if (b.hospital !== undefined) updates.hospital = b.hospital;
+    if (b.approximateArea !== undefined) updates.approximateArea = b.approximateArea;
+    if (b.approximate_area !== undefined) updates.approximateArea = b.approximate_area;
+    if (b.unitsRequired !== undefined) updates.unitsRequired = Number(b.unitsRequired);
+    if (b.units_required !== undefined) updates.unitsRequired = Number(b.units_required);
+    if (b.unitsNeeded !== undefined) updates.unitsRequired = Number(b.unitsNeeded);
+    if (b.requiredDate !== undefined) updates.requiredDate = b.requiredDate ? new Date(b.requiredDate) : null;
+    if (b.required_date !== undefined) updates.requiredDate = b.required_date ? new Date(b.required_date) : null;
+    if (b.contactPhone !== undefined) updates.contactPhone = b.contactPhone;
+    if (b.contact_phone !== undefined) updates.contactPhone = b.contact_phone;
     if (b.organType !== undefined) updates.organType = b.organType;
     if (b.organ_type !== undefined) updates.organType = b.organ_type;
 
@@ -450,6 +637,13 @@ async function updateDonationRequest(req, res, next) {
       { new: true, runValidators: true }
     );
 
+    // Broadcast sanitized real-time events
+    const sanitized = sanitizeBloodRequest(updated);
+    broadcastBloodRequest('blood:request-updated', sanitized);
+    if (updates.status !== undefined) {
+      broadcastBloodRequest('blood:request-status-changed', sanitized);
+    }
+
     res.status(200).json(updated);
   } catch (e) {
     if (e.name === 'ValidationError') {
@@ -461,6 +655,7 @@ async function updateDonationRequest(req, res, next) {
     next(e);
   }
 }
+
 async function deleteDonationRequest(req, res, next) {
   try {
     const { id } = req.params;
@@ -483,7 +678,38 @@ async function deleteDonationRequest(req, res, next) {
     }
 
     await DonationRequest.deleteOne({ _id: id, userId: req.user._id });
+
+    // Broadcast sanitized real-time deletion
+    broadcastBloodRequest('blood:request-deleted', { id });
+
     res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function listBloodBanks(req, res, next) {
+  try {
+    const banks = await bloodBankService.listBloodBanks(req.query);
+    res.json(banks);
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function listBloodStock(req, res, next) {
+  try {
+    const stock = await bloodBankService.listBloodStock(req.query);
+    res.json(stock);
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function getBloodBankSyncStatus(req, res, next) {
+  try {
+    const status = await bloodBankService.getSyncStatus();
+    res.json(status);
   } catch (e) {
     next(e);
   }
@@ -674,9 +900,13 @@ module.exports = {
   listDonors,
   listDonationRequests,
   registerDonor,
+  contactDonor,
   createDonationRequest,
   updateDonationRequest,
   deleteDonationRequest,
+  listBloodBanks,
+  listBloodStock,
+  getBloodBankSyncStatus,
   listMyDonations,
   createMyDonation,
   chat,
@@ -684,3 +914,4 @@ module.exports = {
   toggleDose,
   getTodayDoses,
 };
+
