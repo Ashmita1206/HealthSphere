@@ -45,6 +45,21 @@ const donationRequestUpdateSchema = Joi.object({
   blood_type: Joi.string().trim().allow("").max(20),
   organType: Joi.string().trim().allow("").max(100),
   organ_type: Joi.string().trim().allow("").max(100),
+  patientName: Joi.string().trim().allow("").max(200),
+  patient_name: Joi.string().trim().allow("").max(200),
+  componentType: Joi.string().trim().allow("").valid("whole_blood", "prbc", "platelets", "ffp", "cryo"),
+  component_type: Joi.string().trim().allow("").valid("whole_blood", "prbc", "platelets", "ffp", "cryo"),
+  hospital: Joi.string().trim().allow("").max(200),
+  approximateArea: Joi.string().trim().allow("").max(200),
+  approximate_area: Joi.string().trim().allow("").max(200),
+  unitsRequired: Joi.number().min(1).max(50),
+  units_required: Joi.number().min(1).max(50),
+  unitsNeeded: Joi.number().min(1).max(50),
+  requiredDate: Joi.date().iso().allow(null),
+  required_date: Joi.date().iso().allow(null),
+  requiredBy: Joi.string().trim().allow("").max(100),
+  contactPhone: Joi.string().trim().allow("").max(50),
+  contact_phone: Joi.string().trim().allow("").max(50),
 }).min(1);
 
 router.use(protect);
@@ -64,12 +79,16 @@ router.put("/appointments/:id", c.updateAppointment);
 router.delete("/appointments/:id", c.deleteAppointment);
 router.get("/donors", c.listDonors);
 router.post("/donors", c.registerDonor);
+router.post("/donors/:id/contact", c.contactDonor);
 router.get("/donation-requests", c.listDonationRequests);
 router.post("/donation-requests", c.createDonationRequest);
 router.put("/donation-requests/:id", validate(donationRequestUpdateSchema), c.updateDonationRequest);
 router.delete("/donation-requests/:id", c.deleteDonationRequest);
 router.get("/my-donations", c.listMyDonations);
 router.post("/my-donations", c.createMyDonation);
+router.get("/blood-banks", c.listBloodBanks);
+router.get("/blood-stock", c.listBloodStock);
+router.get("/blood-banks/sync-status", c.getBloodBankSyncStatus);
 router.get("/insights", c.getInsights);
 router.get("/intelligence", hic.getHealthIntelligence);
 router.get("/scores", hic.getHealthScores);

@@ -1,5 +1,16 @@
 import { memo } from 'react';
-import { X, Phone, Mail, MapPin, Calendar, Droplet, Activity, FileText, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import {
+  MapPin,
+  Calendar,
+  Droplet,
+  Send,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  Lock,
+  Phone,
+  Mail,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,52 +20,15 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { DonationHistory } from './DonationHistory';
-
-interface Donor {
-  id: string;
-  name: string;
-  bloodGroup: string;
-  age: number;
-  city: string;
-  lastDonation?: string;
-  availability: 'available' | 'unavailable';
-  distance?: number;
-  phone?: string;
-  email?: string;
-  totalDonations?: number;
-  medicalNotes?: string;
-  eligibilityStatus?: 'eligible' | 'not-eligible' | 'maybe-eligible';
-  donationHistory?: Array<{
-    date: string;
-    location: string;
-    units: number;
-  }>;
-}
+import { Donor } from './DonorCard';
 
 interface DonorDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   donor: Donor | null;
   onContact: (donor: Donor) => void;
+  contactLoading?: boolean;
 }
-
-const bloodGroupColors: Record<string, string> = {
-  'A+': 'bg-red-50 text-red-700 border-red-200',
-  'A-': 'bg-orange-50 text-orange-700 border-orange-200',
-  'B+': 'bg-blue-50 text-blue-700 border-blue-200',
-  'B-': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  'AB+': 'bg-purple-50 text-purple-700 border-purple-200',
-  'AB-': 'bg-pink-50 text-pink-700 border-pink-200',
-  'O+': 'bg-teal-50 text-teal-700 border-teal-200',
-  'O-': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-};
-
-const eligibilityColors: Record<string, { color: string; icon: typeof CheckCircle2 }> = {
-  eligible: { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  'not-eligible': { color: 'bg-rose-50 text-rose-700 border-rose-200', icon: AlertCircle },
-  'maybe-eligible': { color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-};
 
 const maskPhone = (phone?: string) => {
   if (!phone || phone.toLowerCase().includes('contact')) return 'Protected (Dispatch via Platform)';
@@ -72,17 +46,31 @@ const maskEmail = (email?: string) => {
   return `${name.slice(0, 1)}***@${domain}`;
 };
 
+const bloodGroupColors: Record<string, string> = {
+  'A+': 'bg-rose-50 text-rose-800 border-rose-200',
+  'A-': 'bg-orange-50 text-orange-800 border-orange-200',
+  'B+': 'bg-teal-50 text-teal-800 border-teal-200',
+  'B-': 'bg-indigo-50 text-indigo-800 border-indigo-200',
+  'AB+': 'bg-purple-50 text-purple-800 border-purple-200',
+  'AB-': 'bg-pink-50 text-pink-800 border-pink-200',
+  'O+': 'bg-teal-50 text-teal-800 border-teal-200',
+  'O-': 'bg-emerald-50 text-emerald-800 border-emerald-200',
+};
+
 export const DonorDrawer = memo(function DonorDrawer({
   open,
   onOpenChange,
   donor,
   onContact,
+  contactLoading = false,
 }: DonorDrawerProps) {
   if (!donor) return null;
 
-  const lastDonationDate = donor.lastDonation ? new Date(donor.lastDonation) : null;
-  const eligibility = eligibilityColors[donor.eligibilityStatus || 'maybe-eligible'];
-  const EligibilityIcon = eligibility.icon;
+  const isAvailable = donor.availability === 'available';
+
+  const lastDonationDate = donor.lastDonation && !isNaN(new Date(donor.lastDonation).getTime())
+    ? new Date(donor.lastDonation)
+    : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -96,173 +84,136 @@ export const DonorDrawer = memo(function DonorDrawer({
                   {donor.name}
                 </SheetTitle>
                 <SheetDescription className="text-xs text-slate-500 mt-1">
-                  Blood Donor Profile
+                  Consented Voluntary Blood Donor Profile
                 </SheetDescription>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => onOpenChange(false)}
-                className="shrink-0 h-8 w-8 rounded-lg"
+              <Badge
+                className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 ${
+                  isAvailable
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}
               >
-                <X className="h-4 w-4" />
-              </Button>
+                {isAvailable ? 'Available' : 'Unavailable'}
+              </Badge>
             </div>
           </SheetHeader>
 
-          {/* Blood Group Badge */}
-          <Badge
-            className={`text-sm font-bold uppercase tracking-wider py-2 px-4 ${bloodGroupColors[donor.bloodGroup] || 'bg-slate-100 text-slate-700 border-slate-200'}`}
-          >
-            {donor.bloodGroup || 'Not specified'}
-          </Badge>
+          {/* Blood Group Highlight Card */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 flex items-center justify-center font-bold text-lg">
+                <Droplet className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                  Blood Group
+                </p>
+                <Badge
+                  className={`text-sm font-extrabold uppercase mt-0.5 ${
+                    bloodGroupColors[donor.bloodGroup] || 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  {donor.bloodGroup || 'Not specified'}
+                </Badge>
+              </div>
+            </div>
 
-          {/* Personal Details */}
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                  <Droplet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Blood Group
+            <div className="text-right">
+              <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                Status
+              </p>
+              <p className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1 justify-end">
+                {isAvailable ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Eligible to Donate</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Unavailable</span>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Location & Details */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Location & Verification
+            </h4>
+            <div className="space-y-2 text-xs text-slate-600">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Approximate Region</p>
+                  <p className="font-semibold text-slate-800 truncate">
+                    {donor.approximateArea || donor.city || 'Regional Health Network'}
                   </p>
-                  <p className="text-sm font-bold text-slate-900">{donor.bloodGroup || 'Not specified'}</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                  <Activity className="w-4 h-4" />
+              {lastDonationDate && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+                  <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Last Recorded Donation</p>
+                    <p className="font-semibold text-slate-800">
+                      {lastDonationDate.toLocaleDateString(undefined, {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Age
-                  </p>
-                  <p className="text-sm font-bold text-slate-900">{donor.age ? `${donor.age} years` : 'Age not recorded'}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Location
-                  </p>
-                  <p className="text-sm font-bold text-slate-900">{donor.city}</p>
-                  {donor.distance !== undefined && (
-                    <p className="text-xs text-slate-500">{donor.distance} km away</p>
-                  )}
-                </div>
-              </div>
+              )}
 
               {donor.phone && (
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center shrink-0">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Phone (Privacy Masked)
-                    </p>
-                    <p className="text-sm font-mono font-bold text-slate-900">{maskPhone(donor.phone)}</p>
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+                  <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Phone (Privacy Masked)</p>
+                    <p className="font-semibold text-slate-800 font-mono">{maskPhone(donor.phone)}</p>
                   </div>
                 </div>
               )}
 
               {donor.email && (
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Email (Privacy Masked)
-                    </p>
-                    <p className="text-sm font-mono font-bold text-slate-900">{maskEmail(donor.email)}</p>
-                  </div>
-                </div>
-              )}
-
-              {lastDonationDate && (
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 text-orange-700 flex items-center justify-center shrink-0">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Last Donation
-                    </p>
-                    <p className="text-sm font-bold text-slate-900">
-                      {lastDonationDate.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </p>
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+                  <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Email (Privacy Masked)</p>
+                    <p className="font-semibold text-slate-800 font-mono">{maskEmail(donor.email)}</p>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Eligibility Status */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${eligibility.color}`}>
-                  <EligibilityIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                    Eligibility Status
-                  </p>
-                  <p className="text-sm font-bold text-slate-900 capitalize">
-                    {donor.eligibilityStatus?.replace('-', ' ') || 'Pending'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {donor.medicalNotes && (
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Medical Notes
-                </p>
-                <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl">{donor.medicalNotes}</p>
-              </div>
-            )}
           </div>
 
-          {/* Donation History */}
-          {donor.donationHistory && donor.donationHistory.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                Donation History ({donor.donationHistory.length})
-              </p>
-              <DonationHistory history={donor.donationHistory} />
+          {/* Privacy & Dispatch Notice */}
+          <div className="p-4 rounded-2xl bg-teal-50/70 border border-teal-200/80 text-teal-900 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-xs">
+              <Lock className="w-4 h-4 text-teal-800" />
+              <span>Donor Privacy Protected</span>
             </div>
-          )}
+            <p className="text-[11px] leading-relaxed text-teal-800/90">
+              Personal contact details (phone numbers and home addresses) are strictly confidential under HealthSphere patient privacy policies. Initiating a contact request dispatches a secure platform alert directly to the donor.
+            </p>
+          </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-4 border-t border-slate-100">
+          {/* Action Button */}
+          <div className="pt-2">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => onContact(donor)}
-              className="flex-1 h-9 text-xs font-bold rounded-lg"
-              disabled={donor.availability !== 'available'}
+              disabled={!isAvailable || contactLoading}
+              className="w-full h-10 text-xs font-bold rounded-xl bg-teal-800 hover:bg-teal-900 text-white shadow-md flex items-center justify-center gap-2"
             >
-              <Phone className="h-3.5 w-3.5 mr-1.5" />
-              Contact Donor
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 h-9 text-xs font-bold rounded-lg"
-            >
-              <Mail className="h-3.5 w-3.5 mr-1.5" />
-              Send Message
+              <Send className="w-4 h-4" />
+              <span>{contactLoading ? 'Dispatching Request...' : 'Send Contact Request'}</span>
             </Button>
           </div>
         </div>

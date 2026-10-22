@@ -1,5 +1,13 @@
 import { useState, useMemo } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  HelpCircle,
+  RefreshCw,
+  ShieldAlert,
+  ArrowRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -10,13 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-interface EligibilityResult {
-  status: 'eligible' | 'not-eligible' | 'maybe-eligible';
-  message: string;
-  color: string;
-  icon: typeof CheckCircle2;
-}
+import {
+  evaluateEligibility,
+  ELIGIBILITY_DISCLAIMER,
+  AGE_OPTIONS,
+  WEIGHT_OPTIONS,
+} from './eligibilityRules';
 
 export function EligibilityChecker() {
   const [age, setAge] = useState<string>('');
@@ -26,85 +33,16 @@ export function EligibilityChecker() {
   const [pregnancy, setPregnancy] = useState<string>('');
   const [recentDonation, setRecentDonation] = useState<string>('');
 
-  const result = useMemo((): EligibilityResult => {
-    if (!age || !weight) {
-      return {
-        status: 'maybe-eligible',
-        message: 'Complete the questionnaire to check eligibility',
-        color: 'bg-slate-50 text-slate-700 border-slate-200',
-        icon: AlertCircle,
-      };
-    }
-
-    const ageNum = parseInt(age);
-    const weightNum = parseInt(weight);
-
-    // Age check
-    if (ageNum < 18 || ageNum > 65) {
-      return {
-        status: 'not-eligible',
-        message: 'Age must be between 18 and 65 years',
-        color: 'bg-rose-50 text-rose-700 border-rose-200',
-        icon: XCircle,
-      };
-    }
-
-    // Weight check
-    if (weightNum < 50) {
-      return {
-        status: 'not-eligible',
-        message: 'Weight must be at least 50 kg',
-        color: 'bg-rose-50 text-rose-700 border-rose-200',
-        icon: XCircle,
-      };
-    }
-
-    // Health checks
-    if (hasFever === 'yes' || recentSurgery === 'yes') {
-      return {
-        status: 'not-eligible',
-        message: 'Not eligible due to recent health conditions',
-        color: 'bg-rose-50 text-rose-700 border-rose-200',
-        icon: XCircle,
-      };
-    }
-
-    if (pregnancy === 'yes') {
-      return {
-        status: 'not-eligible',
-        message: 'Not eligible during pregnancy',
-        color: 'bg-rose-50 text-rose-700 border-rose-200',
-        icon: XCircle,
-      };
-    }
-
-    if (recentDonation === 'yes') {
-      return {
-        status: 'not-eligible',
-        message: 'Must wait 3 months between donations',
-        color: 'bg-rose-50 text-rose-700 border-rose-200',
-        icon: XCircle,
-      };
-    }
-
-    if (pregnancy === 'unsure' || recentDonation === 'unsure') {
-      return {
-        status: 'maybe-eligible',
-        message: 'Please consult a healthcare provider',
-        color: 'bg-amber-50 text-amber-700 border-amber-200',
-        icon: AlertCircle,
-      };
-    }
-
-    return {
-      status: 'eligible',
-      message: 'You are eligible to donate blood',
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      icon: CheckCircle2,
-    };
+  const evaluation = useMemo(() => {
+    return evaluateEligibility({
+      age,
+      weight,
+      hasFever,
+      recentSurgery,
+      pregnancy,
+      recentDonation,
+    });
   }, [age, weight, hasFever, recentSurgery, pregnancy, recentDonation]);
-
-  const ResultIcon = result.icon;
 
   const handleReset = () => {
     setAge('');
@@ -115,132 +53,194 @@ export function EligibilityChecker() {
     setRecentDonation('');
   };
 
+  const getStatusIcon = () => {
+    switch (evaluation.status) {
+      case 'eligible':
+        return CheckCircle2;
+      case 'not-eligible':
+        return XCircle;
+      case 'maybe-eligible':
+        return AlertCircle;
+      default:
+        return HelpCircle;
+    }
+  };
+
+  const StatusIcon = getStatusIcon();
+
   return (
-    <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white">
-      <CardContent className="p-6 space-y-6">
+    <Card className="rounded-2xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
+      <CardContent className="p-5 space-y-5">
         <div>
-          <h3 className="text-lg font-extrabold text-slate-900 font-heading">
-            Eligibility Checker
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-extrabold text-slate-900 font-heading">
+              Eligibility Pre-Check
+            </h3>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+              Clinical Guide
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-1">
-            Answer a few questions to check if you can donate blood.
+            Preliminary screening questionnaire for voluntary whole blood donors.
           </p>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Age
+        <div className="space-y-3.5">
+          {/* Age selection */}
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              1. Age Group *
             </Label>
             <Select value={age} onValueChange={setAge}>
-              <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
-                <SelectValue placeholder="Select age range" />
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20">
+                <SelectValue placeholder="Select age bracket" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="18-25">18-25 years</SelectItem>
-                <SelectItem value="26-35">26-35 years</SelectItem>
-                <SelectItem value="36-45">36-45 years</SelectItem>
-                <SelectItem value="46-55">46-55 years</SelectItem>
-                <SelectItem value="56-65">56-65 years</SelectItem>
-                <SelectItem value="65+">Over 65 years</SelectItem>
-                <SelectItem value="under-18">Under 18 years</SelectItem>
+                {Object.entries(AGE_OPTIONS).map(([val, item]) => (
+                  <SelectItem key={val} value={val} className="text-xs">
+                    {item.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Weight
+          {/* Weight selection */}
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              2. Body Weight *
             </Label>
             <Select value={weight} onValueChange={setWeight}>
-              <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
-                <SelectValue placeholder="Select weight range" />
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20">
+                <SelectValue placeholder="Select weight bracket" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="50-60">50-60 kg</SelectItem>
-                <SelectItem value="61-70">61-70 kg</SelectItem>
-                <SelectItem value="71-80">71-80 kg</SelectItem>
-                <SelectItem value="81-90">81-90 kg</SelectItem>
-                <SelectItem value="90+">Over 90 kg</SelectItem>
-                <SelectItem value="under-50">Under 50 kg</SelectItem>
+                {Object.entries(WEIGHT_OPTIONS).map(([val, item]) => (
+                  <SelectItem key={val} value={val} className="text-xs">
+                    {item.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Do you have fever or infection?
+          {/* Fever / infection status */}
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              3. Current fever, cold, or infection? *
             </Label>
             <Select value={hasFever} onValueChange={setHasFever}>
-              <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
-                <SelectValue placeholder="Select option" />
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20">
+                <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="no">No</SelectItem>
-                <SelectItem value="yes">Yes</SelectItem>
+                <SelectItem value="no" className="text-xs">No - Feeling well and healthy</SelectItem>
+                <SelectItem value="yes" className="text-xs">Yes - Active symptoms / illness</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Recent surgery (last 6 months)?
+          {/* Major surgery */}
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              4. Major surgery in last 6 months? *
             </Label>
             <Select value={recentSurgery} onValueChange={setRecentSurgery}>
-              <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
-                <SelectValue placeholder="Select option" />
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20">
+                <SelectValue placeholder="Select surgery history" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="no">No</SelectItem>
-                <SelectItem value="yes">Yes</SelectItem>
+                <SelectItem value="no" className="text-xs">No major surgeries</SelectItem>
+                <SelectItem value="yes" className="text-xs">Yes, within past 6 months</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Are you pregnant?
+          {/* Pregnancy */}
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              5. Are you currently pregnant? *
             </Label>
             <Select value={pregnancy} onValueChange={setPregnancy}>
-              <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20">
                 <SelectValue placeholder="Select option" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="no">No</SelectItem>
-                <SelectItem value="yes">Yes</SelectItem>
-                <SelectItem value="unsure">Unsure</SelectItem>
+                <SelectItem value="no" className="text-xs">No / Not applicable</SelectItem>
+                <SelectItem value="yes" className="text-xs">Yes</SelectItem>
+                <SelectItem value="unsure" className="text-xs">Unsure / Postpartum &lt; 6 months</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Donated blood in last 3 months?
+          {/* Recent blood donation */}
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              6. Donated blood within last 3 months? *
             </Label>
             <Select value={recentDonation} onValueChange={setRecentDonation}>
-              <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
-                <SelectValue placeholder="Select option" />
+              <SelectTrigger className="h-9 text-xs rounded-xl border-slate-200 focus:ring-teal-700/20">
+                <SelectValue placeholder="Select donation history" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="no">No</SelectItem>
-                <SelectItem value="yes">Yes</SelectItem>
-                <SelectItem value="unsure">Unsure</SelectItem>
+                <SelectItem value="no" className="text-xs">No, last donation was 3+ months ago</SelectItem>
+                <SelectItem value="yes" className="text-xs">Yes, donated within last 3 months</SelectItem>
+                <SelectItem value="unsure" className="text-xs">Unsure of exact date</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <div className={`p-4 rounded-xl border ${result.color}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 bg-white">
-              <ResultIcon className="w-5 h-5" />
+        {/* Evaluation Output Card */}
+        <div className={`p-4 rounded-xl border ${evaluation.color} space-y-3 transition-colors`}>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-white border border-current flex items-center justify-center shrink-0 shadow-xs">
+              <StatusIcon className="w-5 h-5" />
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider">
-                {result.status.replace('-', ' ')}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider">
+                {evaluation.status === 'incomplete'
+                  ? 'Screening Pending'
+                  : evaluation.status.replace('-', ' ')}
               </p>
-              <p className="text-sm font-bold">{result.message}</p>
+              <p className="text-xs font-bold mt-0.5 leading-snug">{evaluation.message}</p>
             </div>
+          </div>
+
+          {evaluation.isComplete && evaluation.reasons.length > 0 && (
+            <div className="pt-2 border-t border-current/15 space-y-1 text-[11px] leading-relaxed">
+              <span className="font-bold uppercase text-[9px] tracking-wider block opacity-75">
+                Key Findings:
+              </span>
+              <ul className="list-disc list-inside space-y-0.5">
+                {evaluation.reasons.map((reason, idx) => (
+                  <li key={idx} className="font-normal">
+                    {reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {evaluation.isComplete && (
+            <div className="pt-2 border-t border-current/15 text-[11px] leading-relaxed">
+              <span className="font-bold uppercase text-[9px] tracking-wider block opacity-75">
+                Recommended Next Step:
+              </span>
+              <p className="font-medium mt-0.5 flex items-center gap-1.5">
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                <span>{evaluation.nextSteps}</span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Legal and Clinical Disclaimer */}
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-600 text-[11px] leading-relaxed flex items-start gap-2">
+          <ShieldAlert className="w-4 h-4 text-teal-800 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold text-slate-800">Clinical Notice: </span>
+            <span>{ELIGIBILITY_DISCLAIMER}</span>
           </div>
         </div>
 
@@ -248,10 +248,10 @@ export function EligibilityChecker() {
           type="button"
           variant="outline"
           onClick={handleReset}
-          className="w-full h-10 text-xs font-bold rounded-lg"
+          className="w-full h-9 text-xs font-bold rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
         >
-          <RefreshCw className="h-3.5 w-3.5 mr-2" />
-          Reset
+          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+          Reset Questionnaire
         </Button>
       </CardContent>
     </Card>
