@@ -21,6 +21,14 @@ const { handleUserMessage } = require('../services/chatHandler.service');
 
 const jwt = require('jsonwebtoken');
 
+/**
+ * Extract the authenticated user ID from the verified JWT attached to the socket.
+ * The token payload uses `id` (from tokenService.generateTokens).
+ */
+function getAuthUserId(socket) {
+  return socket.user?.id || socket.user?._id || null;
+}
+
 function registerChatSocket(io) {
   io.use((socket, next) => {
     try {
@@ -52,16 +60,19 @@ function registerChatSocket(io) {
 
     socket.on(events.START_CONVERSATION, async ({ userId }) => {
       try {
-        if (!userId) {
+        // SECURITY: Use the authenticated identity from the verified JWT,
+        // ignoring any client-supplied userId to prevent impersonation.
+        const authenticatedUserId = getAuthUserId(socket);
+        if (!authenticatedUserId) {
           return socket.emit(
             events.CHAT_ERROR,
-            failure('User ID is required.'),
+            failure('Authentication required.'),
           );
         }
 
-        await validateUser(userId);
+        await validateUser(authenticatedUserId);
 
-        const conversation = await createConversation(userId);
+        const conversation = await createConversation(authenticatedUserId);
 
         createSession(conversation._id.toString());
 
@@ -76,7 +87,7 @@ function registerChatSocket(io) {
         logger.info('Conversation Started', {
           socketId: socket.id,
           conversationId: conversation._id,
-          userId,
+          userId: authenticatedUserId,
         });
       } catch (error) {
         logger.error('Start Conversation Failed', {
@@ -114,6 +125,16 @@ function registerChatSocket(io) {
           );
         }
 
+        // SECURITY: Verify the authenticated user owns this conversation.
+        // Uses generic error message to avoid leaking conversation existence.
+        const authenticatedUserId = getAuthUserId(socket);
+        if (!authenticatedUserId || String(conversation.user) !== String(authenticatedUserId)) {
+          return socket.emit(
+            events.CHAT_ERROR,
+            failure('Conversation not found.'),
+          );
+        }
+
         loadHistory(conversationId, conversation.messages);
 
         socket.emit(events.CONVERSATION_LOADED, success(conversation));
@@ -144,6 +165,17 @@ function registerChatSocket(io) {
           return socket.emit(
             events.CHAT_ERROR,
             failure('Conversation ID and message are required.'),
+          );
+        }
+
+        // SECURITY: Verify the authenticated user owns this conversation
+        // before allowing message submission.
+        const authenticatedUserId = getAuthUserId(socket);
+        const conversation = await getConversation(conversationId);
+        if (!conversation || !authenticatedUserId || String(conversation.user) !== String(authenticatedUserId)) {
+          return socket.emit(
+            events.CHAT_ERROR,
+            failure('Conversation not found.'),
           );
         }
 
@@ -186,12 +218,23 @@ function registerChatSocket(io) {
     ==========================================
     */
 
-    socket.on(events.END_CONVERSATION, ({ conversationId }) => {
+    socket.on(events.END_CONVERSATION, async ({ conversationId }) => {
       try {
         if (!conversationId) {
           return socket.emit(
             events.CHAT_ERROR,
             failure('Conversation ID is required.'),
+          );
+        }
+
+        // SECURITY: Verify the authenticated user owns this conversation
+        // before allowing it to be ended.
+        const authenticatedUserId = getAuthUserId(socket);
+        const conversation = await getConversation(conversationId);
+        if (!conversation || !authenticatedUserId || String(conversation.user) !== String(authenticatedUserId)) {
+          return socket.emit(
+            events.CHAT_ERROR,
+            failure('Conversation not found.'),
           );
         }
 

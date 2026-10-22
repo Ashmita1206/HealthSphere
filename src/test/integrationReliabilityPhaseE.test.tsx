@@ -12,7 +12,7 @@ import ReportsPage from '@/pages/Reports';
 const MOCK_USER = { id: 'usr-100', email: 'patient@healthsphere.test', name: 'Neeraj Patient' };
 
 // Mock contexts and hooks
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: MOCK_USER,
     loading: false,

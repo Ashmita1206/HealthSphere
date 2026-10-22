@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   AlertCircle,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   collaborationService,
   StaffPresence,

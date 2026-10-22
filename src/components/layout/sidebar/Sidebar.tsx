@@ -12,7 +12,6 @@ import {
   Bot,
   Eye,
   Heart,
-  AlertTriangle,
   Droplets,
   Bell,
   User,
@@ -78,7 +77,6 @@ const navGroups: NavGroupData[] = [
   {
     title: "SYSTEM & SUPPORT",
     items: [
-      { icon: AlertTriangle, label: "Emergency 24/7", href: "/emergency", alert: true },
       { icon: Bell, label: "Notifications", href: "/notifications" },
       { icon: BarChart3, label: "Admin Analytics", href: "/admin/analytics", badge: "OS" },
       { icon: Droplets, label: "Blood & Organ", href: "/blood-donation" },

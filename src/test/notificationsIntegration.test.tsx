@@ -11,7 +11,7 @@ import { notificationSocket } from '@/services/socket';
 import { api } from '@/services/api';
 
 // Mock AuthContext
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 'test-user-123', email: 'patient@healthsphere.io' },
     loading: false,

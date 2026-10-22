@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { ShareProvider, useMedicalShare } from '@/context/ShareContext';
 import { DoctorProvider, useDoctor } from '@/context/DoctorContext';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SharedRecordViewer } from '@/components/share/SharedRecordViewer';
 import { DonorDrawer } from '@/components/bloodDonation/DonorDrawer';
 import { DonorCard } from '@/components/bloodDonation/DonorCard';

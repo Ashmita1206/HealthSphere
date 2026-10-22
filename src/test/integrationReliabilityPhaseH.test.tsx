@@ -17,7 +17,7 @@ let mockCurrentUser: { id: string; email: string; name?: string } | null = PATIE
 let mockGeoLocation: { latitude: number; longitude: number } | null = null;
 let toastSpy = vi.fn();
 
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: mockCurrentUser,
     loading: false,

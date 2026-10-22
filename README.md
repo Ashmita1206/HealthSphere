@@ -120,7 +120,7 @@ HealthSphere/
 │   └── services/               # Gemini AI engine, OCR, and context builders
 ├── src/                        # React Frontend Application
 │   ├── components/             # UI primitives and feature modules
-│   ├── contexts/               # React Context Providers (AuthContext, ThemeContext)
+│   ├── context/                # React Context Providers (AuthContext, ThemeContext)
 │   ├── pages/                  # Page routes (Dashboard, AIChat, Emergency, Timeline)
 │   ├── services/               # Frontend API client (`api.ts`)
 │   └── utils/                  # Utility helpers and timeline adapters

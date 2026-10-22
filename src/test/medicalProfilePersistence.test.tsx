@@ -10,7 +10,7 @@ import { medicalProfileService, type MedicalProfileData } from '@/services/medic
 const mockAuthUser = { id: 'usr-123456', name: 'Neeraj Sharma', email: 'neeraj@healthsphere.test' };
 
 // Mock AuthContext
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: mockAuthUser,
   }),

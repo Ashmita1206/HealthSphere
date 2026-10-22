@@ -7,7 +7,24 @@ const emergencyAlertSchema = new mongoose.Schema(
     longitude: { type: Number, required: true },
     status: { type: String, enum: ["active", "resolved"], default: "active" },
     nearestHelp: String,
-    contactAlerted: { type: Boolean, default: false }
+    contactAlerted: { type: Boolean, default: false },
+    dispatchRecords: [
+      {
+        contactId: String,
+        contactName: String,
+        phone: String,
+        channel: { type: String, default: "sms" },
+        status: {
+          type: String,
+          enum: ["pending", "queued", "sent", "delivered", "undelivered", "failed", "unconfigured"],
+          default: "pending",
+        },
+        messageSid: String,
+        errorCode: String,
+        errorMessage: String,
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
