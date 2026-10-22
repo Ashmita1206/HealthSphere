@@ -598,7 +598,7 @@ export default function BloodDonationPage() {
         <PageHeader
           title="Blood Donation & Requests"
           description="Find verified blood donors, manage urgent requisitions, and discover authorized donation facilities."
-          breadcrumbs={[{ label: 'Blood Donation & Requests' }]}
+          breadcrumbs={[{ label: 'Blood Donation' }]}
           badge="Health Registry"
         />
         <DonationSkeleton />
@@ -612,7 +612,7 @@ export default function BloodDonationPage() {
       <PageHeader
         title="Blood Donation & Requests"
         description="Find verified voluntary blood donors, manage clinical blood requisitions, and discover certified facility inventory."
-        breadcrumbs={[{ label: 'Blood Donation & Requests' }]}
+        breadcrumbs={[{ label: 'Blood Donation' }]}
         badge="Life Saving Network"
         actions={
           <div className="flex items-center gap-2">

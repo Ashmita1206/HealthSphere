@@ -9,7 +9,10 @@ export interface Donor {
   id: string;
   name: string;
   bloodGroup: string;
+  age?: number;
   city?: string;
+  phone?: string;
+  email?: string;
   approximateArea?: string;
   lastDonation?: string;
   availability: 'available' | 'unavailable';
@@ -90,7 +93,7 @@ export const DonorCard = memo(function DonorCard({
                     {donor.bloodGroup || 'Not specified'}
                   </Badge>
                   <span className="text-xs text-slate-400">•</span>
-                  <span className="text-xs text-slate-500">Consented Volunteer</span>
+                  <span className="text-xs text-slate-500">{donor.age ? `${donor.age} yrs` : 'Age not recorded'}</span>
                 </div>
               </div>
             </div>

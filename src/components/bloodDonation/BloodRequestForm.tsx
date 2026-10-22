@@ -62,7 +62,6 @@ const emptyForm: BloodRequestFormData = {
 
 const createFormState = (data?: BloodRequestFormData): BloodRequestFormData => ({
   ...emptyForm,
-  requiredDate: getDefaultRequiredDate(),
   ...data,
   requiredDate: data?.requiredDate
     ? data.requiredDate.includes('T')

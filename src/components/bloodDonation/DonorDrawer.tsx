@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   Clock,
   Lock,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,22 @@ interface DonorDrawerProps {
   onContact: (donor: Donor) => void;
   contactLoading?: boolean;
 }
+
+const maskPhone = (phone?: string) => {
+  if (!phone || phone.toLowerCase().includes('contact')) return 'Protected (Dispatch via Platform)';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) return '***-***-****';
+  return `(***) ***-${digits.slice(-4)}`;
+};
+
+const maskEmail = (email?: string) => {
+  if (!email || email.toLowerCase().includes('portal')) return 'Protected (Dispatch via Platform)';
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***@***.***';
+  const name = parts[0];
+  const domain = parts[1];
+  return `${name.slice(0, 1)}***@${domain}`;
+};
 
 const bloodGroupColors: Record<string, string> = {
   'A+': 'bg-rose-50 text-rose-800 border-rose-200',
@@ -149,6 +167,26 @@ export const DonorDrawer = memo(function DonorDrawer({
                         year: 'numeric',
                       })}
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {donor.phone && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+                  <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Phone (Privacy Masked)</p>
+                    <p className="font-semibold text-slate-800 font-mono">{maskPhone(donor.phone)}</p>
+                  </div>
+                </div>
+              )}
+
+              {donor.email && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+                  <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Email (Privacy Masked)</p>
+                    <p className="font-semibold text-slate-800 font-mono">{maskEmail(donor.email)}</p>
                   </div>
                 </div>
               )}
