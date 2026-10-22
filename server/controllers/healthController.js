@@ -914,4 +914,3 @@ module.exports = {
   toggleDose,
   getTodayDoses,
 };
-

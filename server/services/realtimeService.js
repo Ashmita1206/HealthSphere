@@ -209,5 +209,3 @@ module.exports = {
   broadcastBloodRequest,
   presenceService,
 };
-
-

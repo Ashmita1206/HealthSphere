@@ -58,7 +58,7 @@ async function seedFixturesIfEmpty() {
     const count = await BloodBank.countDocuments();
     if (count === 0) {
       const createdBanks = await BloodBank.insertMany(FIXTURE_BLOOD_BANKS);
-      
+
       const stockRecords = [];
       const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
       const components = ["whole_blood", "prbc", "platelets"];
