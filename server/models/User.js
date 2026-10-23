@@ -17,6 +17,18 @@ const userSchema = new mongoose.Schema(
     emergencyContactName: String,
     emergencyContactPhone: String,
     healthScore: { type: Number, default: 75 },
+    preferences: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => ({
+        language: 'en',
+        units: 'metric',
+        notification_preferences: {
+          email: true,
+          sms: true,
+          push: true,
+        },
+      }),
+    },
     role: {
       type: String,
       enum: ['patient', 'doctor', 'admin', 'nurse'],

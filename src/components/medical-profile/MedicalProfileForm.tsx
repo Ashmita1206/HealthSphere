@@ -20,21 +20,31 @@ import {
   Trash2,
   Save,
   Check,
+  X,
+  AlertCircle,
+  FileCheck,
 } from 'lucide-react';
 import type { MedicalProfileData, EmergencyContact } from '@/services/medicalProfileService';
 
 interface MedicalProfileFormProps {
   initialData?: MedicalProfileData | null;
+  initialTab?: 'personal' | 'vitals' | 'clinical' | 'emergency' | 'lifestyle';
   onSave: (data: Partial<MedicalProfileData>) => Promise<boolean>;
+  onCancel?: () => void;
 }
 
 export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
   initialData,
+  initialTab = 'personal',
   onSave,
+  onCancel,
 }) => {
-  const [activeTab, setActiveTab] = useState<'personal' | 'vitals' | 'clinical' | 'emergency' | 'lifestyle'>('personal');
+  const [activeTab, setActiveTab] = useState<
+    'personal' | 'vitals' | 'clinical' | 'emergency' | 'lifestyle'
+  >(initialTab);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Form State
   const [fullName, setFullName] = useState(initialData?.fullName || '');
@@ -44,11 +54,25 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
   const [height, setHeight] = useState(initialData?.height ? String(initialData.height) : '');
   const [weight, setWeight] = useState(initialData?.weight ? String(initialData.weight) : '');
   const [organDonor, setOrganDonor] = useState(initialData?.organDonor || false);
+  const [streetAddress, setStreetAddress] = useState(initialData?.address?.street || '');
+  const [city, setCity] = useState(initialData?.address?.city || '');
+  const [stateRegion, setStateRegion] = useState(initialData?.address?.state || '');
 
-  // Dynamic Array Fields
+  // Allergies & tags
   const [allergiesText, setAllergiesText] = useState(initialData?.allergies?.join(', ') || '');
-  const [chronicDiseasesText, setChronicDiseasesText] = useState(initialData?.chronicDiseases?.join(', ') || '');
-  const [medicationsText, setMedicationsText] = useState(initialData?.currentMedications?.join(', ') || '');
+  const [newAllergy, setNewAllergy] = useState('');
+
+  // Chronic diseases & tags
+  const [chronicDiseasesText, setChronicDiseasesText] = useState(
+    initialData?.chronicDiseases?.join(', ') || ''
+  );
+  const [newCondition, setNewCondition] = useState('');
+
+  // Current medications & tags
+  const [medicationsText, setMedicationsText] = useState(
+    initialData?.currentMedications?.join(', ') || ''
+  );
+  const [newMedication, setNewMedication] = useState('');
 
   // Emergency Contacts
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>(
@@ -56,14 +80,24 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
   );
 
   // Insurance
-  const [insuranceProvider, setInsuranceProvider] = useState(initialData?.insurance?.provider || '');
+  const [insuranceProvider, setInsuranceProvider] = useState(
+    initialData?.insurance?.provider || ''
+  );
   const [policyNumber, setPolicyNumber] = useState(initialData?.insurance?.policyNumber || '');
 
   // Lifestyle
   const [smoking, setSmoking] = useState(initialData?.lifestyle?.smoking || 'never');
   const [alcohol, setAlcohol] = useState(initialData?.lifestyle?.alcohol || 'never');
-  const [activityLevel, setActivityLevel] = useState(initialData?.lifestyle?.activityLevel || 'moderate');
+  const [activityLevel, setActivityLevel] = useState(
+    initialData?.lifestyle?.activityLevel || 'moderate'
+  );
   const [diet, setDiet] = useState(initialData?.lifestyle?.diet || 'balanced');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     if (initialData) {
@@ -73,7 +107,10 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
       setBloodGroup(initialData.bloodGroup || 'Unknown');
       setHeight(initialData.height ? String(initialData.height) : '');
       setWeight(initialData.weight ? String(initialData.weight) : '');
-      setOrganDonor(!!initialData.organDonor);
+      setOrganDonor(Boolean(initialData.organDonor));
+      setStreetAddress(initialData.address?.street || '');
+      setCity(initialData.address?.city || '');
+      setStateRegion(initialData.address?.state || '');
       setAllergiesText(initialData.allergies?.join(', ') || '');
       setChronicDiseasesText(initialData.chronicDiseases?.join(', ') || '');
       setMedicationsText(initialData.currentMedications?.join(', ') || '');
@@ -87,6 +124,33 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
     }
   }, [initialData]);
 
+  const handleAddTag = (
+    text: string,
+    currentCsv: string,
+    setter: (val: string) => void,
+    clearInput: () => void
+  ) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const existing = currentCsv
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!existing.includes(trimmed)) {
+      const updated = [...existing, trimmed].join(', ');
+      setter(updated);
+    }
+    clearInput();
+  };
+
+  const handleRemoveTag = (tag: string, currentCsv: string, setter: (val: string) => void) => {
+    const existing = currentCsv
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s && s.toLowerCase() !== tag.toLowerCase());
+    setter(existing.join(', '));
+  };
+
   const handleAddContact = () => {
     setEmergencyContacts((prev) => [
       ...prev,
@@ -98,17 +162,80 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
     setEmergencyContacts((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpdateContact = (index: number, field: keyof EmergencyContact, val: string | boolean) => {
+  const handleUpdateContact = (
+    index: number,
+    field: keyof EmergencyContact,
+    val: string | boolean
+  ) => {
     setEmergencyContacts((prev) => {
       const updated = [...prev];
+      if (field === 'isPrimary' && val === true) {
+        return updated.map((c, i) => ({
+          ...c,
+          isPrimary: i === index,
+        }));
+      }
       updated[index] = { ...updated[index], [field]: val };
       return updated;
     });
   };
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full legal name is required.';
+    }
+
+    if (height) {
+      const h = parseFloat(height);
+      if (isNaN(h) || h < 20 || h > 300) {
+        newErrors.height = 'Height must be between 20 cm and 300 cm.';
+      }
+    }
+
+    if (weight) {
+      const w = parseFloat(weight);
+      if (isNaN(w) || w < 2 || w > 500) {
+        newErrors.weight = 'Weight must be between 2 kg and 500 kg.';
+      }
+    }
+
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      if (!isNaN(dob.getTime()) && dob > new Date()) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future.';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) {
+      return;
+    }
+
     setSaving(true);
+
+    const parsedAllergies = allergiesText
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const parsedChronic = chronicDiseasesText
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const parsedMeds = medicationsText
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const validContacts = emergencyContacts.filter((c) => c.name.trim() && c.phone.trim());
 
     const payload: Partial<MedicalProfileData> = {
       fullName: fullName.trim() || 'HealthSphere Patient',
@@ -118,19 +245,10 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
       height: height ? parseFloat(height) : null,
       weight: weight ? parseFloat(weight) : null,
       organDonor,
-      allergies: allergiesText
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-      chronicDiseases: chronicDiseasesText
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-      currentMedications: medicationsText
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-      emergencyContacts: emergencyContacts.filter((c) => c.name.trim() && c.phone.trim()),
+      allergies: parsedAllergies,
+      chronicDiseases: parsedChronic,
+      currentMedications: parsedMeds,
+      emergencyContacts: validContacts,
       insurance: {
         provider: insuranceProvider.trim(),
         policyNumber: policyNumber.trim(),
@@ -141,13 +259,50 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
         activityLevel,
         diet,
       },
+      address: {
+        street: streetAddress.trim(),
+        city: city.trim(),
+        state: stateRegion.trim(),
+      },
     };
 
-    const success = await onSave(payload);
-    setSaving(false);
-    if (success) {
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      const success = await onSave(payload);
+      if (success) {
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3500);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelClick = () => {
+    if (initialData) {
+      setFullName(initialData.fullName || '');
+      setDateOfBirth(initialData.dateOfBirth || '');
+      setGender(initialData.gender || 'male');
+      setBloodGroup(initialData.bloodGroup || 'Unknown');
+      setHeight(initialData.height ? String(initialData.height) : '');
+      setWeight(initialData.weight ? String(initialData.weight) : '');
+      setOrganDonor(Boolean(initialData.organDonor));
+      setStreetAddress(initialData.address?.street || '');
+      setCity(initialData.address?.city || '');
+      setStateRegion(initialData.address?.state || '');
+      setAllergiesText(initialData.allergies?.join(', ') || '');
+      setChronicDiseasesText(initialData.chronicDiseases?.join(', ') || '');
+      setMedicationsText(initialData.currentMedications?.join(', ') || '');
+      setEmergencyContacts(initialData.emergencyContacts || []);
+      setInsuranceProvider(initialData.insurance?.provider || '');
+      setPolicyNumber(initialData.insurance?.policyNumber || '');
+      setSmoking(initialData.lifestyle?.smoking || 'never');
+      setAlcohol(initialData.lifestyle?.alcohol || 'never');
+      setActivityLevel(initialData.lifestyle?.activityLevel || 'moderate');
+      setDiet(initialData.lifestyle?.diet || 'balanced');
+      setErrors({});
+    }
+    if (onCancel) {
+      onCancel();
     }
   };
 
@@ -162,25 +317,31 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
   return (
     <Card className="rounded-2xl border border-slate-200/80 shadow-xs bg-white overflow-hidden">
       <CardHeader className="border-b border-slate-100 pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-sm font-extrabold text-slate-900 font-heading">
-              Edit Lifelong Medical Profile
-            </CardTitle>
-            <CardDescription className="text-[11px] text-slate-500">
-              Keep your digital health identity and clinical history current
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                <FileCheck className="h-4 w-4" />
+              </div>
+              <CardTitle className="text-sm sm:text-base font-extrabold text-slate-900 font-heading">
+                Edit Lifelong Medical Profile
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs text-slate-500 mt-0.5">
+              Structured clinical demographic records, emergency dispatch info, and vitals.
             </CardDescription>
           </div>
+
           {savedSuccess && (
-            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              <Check className="w-3.5 h-3.5" />
-              Saved
+            <span className="self-start sm:self-center flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              Changes Saved Successfully
             </span>
           )}
         </div>
 
         {/* Tab Strip */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-3 pb-1 -mb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-3 pb-1 -mb-1 scrollbar-none" role="tablist">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -188,11 +349,13 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-teal-700 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
+                    ? 'bg-teal-700 text-white shadow-xs'
+                    : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -203,51 +366,81 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-5">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="p-4 sm:p-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* TAB 1: PERSONAL */}
           {activeTab === 'personal' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="fullName" className="text-xs font-bold text-slate-700">
-                  Full Legal Name
-                </Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Johnathan Doe"
-                  className="rounded-xl text-xs h-9"
-                  required
-                />
-              </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName" className="text-xs font-bold text-slate-700">
+                    Full Legal Name <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: '' }));
+                    }}
+                    placeholder="e.g. Johnathan Doe"
+                    className={`rounded-xl text-xs h-9 ${errors.fullName ? 'border-rose-400' : ''}`}
+                  />
+                  {errors.fullName && (
+                    <p className="text-[11px] text-rose-600 flex items-center gap-1 font-medium">
+                      <AlertCircle className="w-3 h-3" /> {errors.fullName}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="dob" className="text-xs font-bold text-slate-700">
-                  Date of Birth
-                </Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  className="rounded-xl text-xs h-9"
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="dob" className="text-xs font-bold text-slate-700">
+                    Date of Birth
+                  </Label>
+                  <Input
+                    id="dob"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => {
+                      setDateOfBirth(e.target.value);
+                      if (errors.dateOfBirth) setErrors((prev) => ({ ...prev, dateOfBirth: '' }));
+                    }}
+                    className={`rounded-xl text-xs h-9 ${errors.dateOfBirth ? 'border-rose-400' : ''}`}
+                  />
+                  {errors.dateOfBirth && (
+                    <p className="text-[11px] text-rose-600 flex items-center gap-1 font-medium">
+                      <AlertCircle className="w-3 h-3" /> {errors.dateOfBirth}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700">Gender</Label>
-                <Select value={gender} onValueChange={(val) => setGender(val)}>
-                  <SelectTrigger className="rounded-xl text-xs h-9">
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700">Gender</Label>
+                  <Select value={gender} onValueChange={(val) => setGender(val)}>
+                    <SelectTrigger className="rounded-xl text-xs h-9">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="streetAddress" className="text-xs font-bold text-slate-700">
+                    Street Address
+                  </Label>
+                  <Input
+                    id="streetAddress"
+                    value={streetAddress}
+                    onChange={(e) => setStreetAddress(e.target.value)}
+                    placeholder="e.g. 100 Medical Center Blvd"
+                    className="rounded-xl text-xs h-9"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -279,10 +472,18 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                   id="height"
                   type="number"
                   value={height}
-                  onChange={(e) => setHeight(e.target.value)}
+                  onChange={(e) => {
+                    setHeight(e.target.value);
+                    if (errors.height) setErrors((prev) => ({ ...prev, height: '' }));
+                  }}
                   placeholder="e.g. 175"
-                  className="rounded-xl text-xs h-9"
+                  className={`rounded-xl text-xs h-9 ${errors.height ? 'border-rose-400' : ''}`}
                 />
+                {errors.height && (
+                  <p className="text-[11px] text-rose-600 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3 h-3" /> {errors.height}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -293,10 +494,18 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                   id="weight"
                   type="number"
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onChange={(e) => {
+                    setWeight(e.target.value);
+                    if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
+                  }}
                   placeholder="e.g. 70"
-                  className="rounded-xl text-xs h-9"
+                  className={`rounded-xl text-xs h-9 ${errors.weight ? 'border-rose-400' : ''}`}
                 />
+                {errors.weight && (
+                  <p className="text-[11px] text-rose-600 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3 h-3" /> {errors.weight}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-3 pt-6">
@@ -305,9 +514,12 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                   id="organDonor"
                   checked={organDonor}
                   onChange={(e) => setOrganDonor(e.target.checked)}
-                  className="w-4 h-4 text-teal-600 rounded"
+                  className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-600"
                 />
-                <Label htmlFor="organDonor" className="text-xs font-bold text-slate-800 cursor-pointer">
+                <Label
+                  htmlFor="organDonor"
+                  className="text-xs font-bold text-slate-800 cursor-pointer"
+                >
                   Registered Organ Donor
                 </Label>
               </div>
@@ -316,43 +528,210 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
 
           {/* TAB 3: CLINICAL HISTORY */}
           {activeTab === 'clinical' && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
+            <div className="space-y-5">
+              {/* Allergies */}
+              <div className="space-y-2">
                 <Label htmlFor="allergies" className="text-xs font-bold text-slate-700">
-                  Allergies (comma-separated)
+                  Allergies (comma-separated or add tags)
                 </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="newAllergy"
+                    value={newAllergy}
+                    onChange={(e) => setNewAllergy(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag(newAllergy, allergiesText, setAllergiesText, () =>
+                          setNewAllergy('')
+                        );
+                      }
+                    }}
+                    placeholder="Type an allergy and press Enter (e.g. Penicillin)"
+                    className="rounded-xl text-xs h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleAddTag(newAllergy, allergiesText, setAllergiesText, () =>
+                        setNewAllergy('')
+                      )
+                    }
+                    className="h-9 px-3 text-xs font-bold rounded-xl"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {allergiesText
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold"
+                      >
+                        {item}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(item, allergiesText, setAllergiesText)}
+                          className="hover:text-rose-950 p-0.5 rounded cursor-pointer"
+                          aria-label={`Remove allergy ${item}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+
                 <Input
                   id="allergies"
                   value={allergiesText}
                   onChange={(e) => setAllergiesText(e.target.value)}
-                  placeholder="e.g. Penicillin, Peanuts, Sulfa drugs"
-                  className="rounded-xl text-xs h-9"
+                  placeholder="Or edit as comma-separated list..."
+                  className="rounded-xl text-xs h-8 text-slate-500 bg-slate-50/60"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              {/* Chronic Conditions */}
+              <div className="space-y-2 border-t border-slate-100 pt-3">
                 <Label htmlFor="chronic" className="text-xs font-bold text-slate-700">
-                  Chronic Conditions & Diseases (comma-separated)
+                  Chronic Conditions & Diseases (comma-separated or add tags)
                 </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="newCondition"
+                    value={newCondition}
+                    onChange={(e) => setNewCondition(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag(newCondition, chronicDiseasesText, setChronicDiseasesText, () =>
+                          setNewCondition('')
+                        );
+                      }
+                    }}
+                    placeholder="Type condition and press Enter (e.g. Asthma)"
+                    className="rounded-xl text-xs h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleAddTag(newCondition, chronicDiseasesText, setChronicDiseasesText, () =>
+                        setNewCondition('')
+                      )
+                    }
+                    className="h-9 px-3 text-xs font-bold rounded-xl"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {chronicDiseasesText
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold"
+                      >
+                        {item}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleRemoveTag(item, chronicDiseasesText, setChronicDiseasesText)
+                          }
+                          className="hover:text-amber-950 p-0.5 rounded cursor-pointer"
+                          aria-label={`Remove condition ${item}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+
                 <Input
                   id="chronic"
                   value={chronicDiseasesText}
                   onChange={(e) => setChronicDiseasesText(e.target.value)}
-                  placeholder="e.g. Hypertension, Asthma, Type 2 Diabetes"
-                  className="rounded-xl text-xs h-9"
+                  placeholder="Or edit as comma-separated list..."
+                  className="rounded-xl text-xs h-8 text-slate-500 bg-slate-50/60"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              {/* Current Medications */}
+              <div className="space-y-2 border-t border-slate-100 pt-3">
                 <Label htmlFor="meds" className="text-xs font-bold text-slate-700">
-                  Current Medications (comma-separated)
+                  Current Medications (comma-separated or add tags)
                 </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="newMedication"
+                    value={newMedication}
+                    onChange={(e) => setNewMedication(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag(newMedication, medicationsText, setMedicationsText, () =>
+                          setNewMedication('')
+                        );
+                      }
+                    }}
+                    placeholder="Type medication and press Enter (e.g. Montelukast 10mg)"
+                    className="rounded-xl text-xs h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleAddTag(newMedication, medicationsText, setMedicationsText, () =>
+                        setNewMedication('')
+                      )
+                    }
+                    className="h-9 px-3 text-xs font-bold rounded-xl"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {medicationsText
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold"
+                      >
+                        {item}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(item, medicationsText, setMedicationsText)}
+                          className="hover:text-teal-950 p-0.5 rounded cursor-pointer"
+                          aria-label={`Remove medication ${item}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+
                 <Input
                   id="meds"
                   value={medicationsText}
                   onChange={(e) => setMedicationsText(e.target.value)}
-                  placeholder="e.g. Metformin 500mg, Lisinopril 10mg"
-                  className="rounded-xl text-xs h-9"
+                  placeholder="Or edit as comma-separated list..."
+                  className="rounded-xl text-xs h-8 text-slate-500 bg-slate-50/60"
                 />
               </div>
             </div>
@@ -371,24 +750,25 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={handleAddContact}
-                    className="text-[11px] font-bold h-7 rounded-lg gap-1"
+                    className="text-xs font-bold h-8 rounded-xl gap-1 border-slate-200 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" /> Add Contact
                   </Button>
                 </div>
 
                 {emergencyContacts.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic py-2">
-                    No emergency contacts added. Click above to add trusted contacts.
+                  <p className="text-xs text-slate-500 italic py-2">
+                    No emergency contacts added yet. Click &quot;Add Contact&quot; above to list
+                    trusted relatives or responders.
                   </p>
                 ) : (
                   emergencyContacts.map((contact, idx) => (
                     <div
                       key={idx}
-                      className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 items-center"
+                      className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 items-center"
                     >
                       <Input
-                        placeholder="Contact Name"
+                        placeholder="Contact Name *"
                         value={contact.name}
                         onChange={(e) => handleUpdateContact(idx, 'name', e.target.value)}
                         className="rounded-lg text-xs h-8 bg-white"
@@ -399,18 +779,30 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                         onChange={(e) => handleUpdateContact(idx, 'relationship', e.target.value)}
                         className="rounded-lg text-xs h-8 bg-white"
                       />
-                      <div className="flex items-center gap-2">
-                        <Input
-                          placeholder="Phone Number"
-                          value={contact.phone}
-                          onChange={(e) => handleUpdateContact(idx, 'phone', e.target.value)}
-                          className="rounded-lg text-xs h-8 bg-white flex-1"
-                        />
+                      <Input
+                        placeholder="Phone Number *"
+                        value={contact.phone}
+                        onChange={(e) => handleUpdateContact(idx, 'phone', e.target.value)}
+                        className="rounded-lg text-xs h-8 bg-white"
+                      />
+                      <div className="flex items-center justify-between sm:justify-end gap-2">
+                        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(contact.isPrimary)}
+                            onChange={(e) =>
+                              handleUpdateContact(idx, 'isPrimary', e.target.checked)
+                            }
+                            className="rounded text-teal-600"
+                          />
+                          <span>Primary</span>
+                        </label>
                         <button
                           type="button"
                           onClick={() => handleRemoveContact(idx)}
-                          className="text-slate-400 hover:text-rose-600 p-1 rounded-md cursor-pointer"
+                          className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg cursor-pointer transition-colors"
                           title="Delete contact"
+                          aria-label={`Delete emergency contact ${contact.name || idx + 1}`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -420,7 +812,7 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                 <div className="space-y-1.5">
                   <Label htmlFor="insurance" className="text-xs font-bold text-slate-700">
                     Insurance Provider
@@ -516,12 +908,22 @@ export const MedicalProfileForm: React.FC<MedicalProfileFormProps> = ({
             </div>
           )}
 
-          {/* Form Actions */}
+          {/* Form Actions: Save & Cancel */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={handleCancelClick}
+              className="rounded-xl text-xs font-bold h-9 px-4 border-slate-200 cursor-pointer"
+            >
+              Cancel
+            </Button>
+
             <Button
               type="submit"
               disabled={saving}
-              className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold gap-2 h-9 px-4 rounded-xl cursor-pointer"
+              className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold gap-2 h-9 px-5 rounded-xl cursor-pointer shadow-xs transition-all"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? 'Saving...' : 'Save Medical Profile'}</span>

@@ -70,6 +70,8 @@ export interface MedicalProfileData {
   lifestyle: LifestyleInfo;
   address: AddressInfo;
   notes?: string;
+  primaryPhysician?: string;
+  preferredHospital?: string;
   qrData?: string;
   completionPercentage: number;
   createdAt?: string;

@@ -88,7 +88,7 @@ export const useMedicalProfile = () => {
     return {
       profile: null,
       loading: false,
-      completion: { percentage: 0, missingFields: [] },
+      completion: 0,
       saveProfile: async () => false,
       refreshProfile: async () => {},
     };

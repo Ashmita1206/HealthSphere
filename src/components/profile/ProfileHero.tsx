@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   Camera,
-  Download,
   Printer,
   ShieldCheck,
   Sparkles,
-  QrCode,
-  CheckCircle2,
   FileJson,
+  Droplet,
+  User,
+  Calendar,
+  Edit3,
+  HeartHandshake,
 } from 'lucide-react';
 import type { Profile } from '@/pages/profile/profileData';
 import { useToast } from '@/hooks/use-toast';
@@ -20,16 +22,20 @@ import { useToast } from '@/hooks/use-toast';
 interface ProfileHeroProps {
   profile: Profile;
   completionScore: number;
+  healthId?: string;
   onExportJson: () => void;
   onPrintCard: () => void;
   onOpenAvatarModal?: () => void;
+  onEditProfile?: () => void;
 }
 
 export const ProfileHero = memo(function ProfileHero({
   profile,
   completionScore,
+  healthId,
   onExportJson,
   onPrintCard,
+  onEditProfile,
 }: ProfileHeroProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { toast } = useToast();
@@ -39,14 +45,21 @@ export const ProfileHero = memo(function ProfileHero({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Please select an image file (PNG, JPG, WEBP).',
+        variant: 'destructive',
+      });
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (ev) => {
       setAvatarUrl(ev.target?.result as string);
-      toast({ title: 'Avatar Updated', description: 'Profile picture updated successfully.' });
+      toast({
+        title: 'Avatar Updated',
+        description: 'Profile picture updated successfully.',
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -58,102 +71,165 @@ export const ProfileHero = memo(function ProfileHero({
     return name[0].toUpperCase();
   };
 
+  const age = (() => {
+    if (!profile.date_of_birth) return null;
+    const dob = new Date(profile.date_of_birth);
+    if (isNaN(dob.getTime())) return null;
+    const diffMs = Date.now() - dob.getTime();
+    const ageDt = new Date(diffMs);
+    const calculated = Math.abs(ageDt.getUTCFullYear() - 1970);
+    return calculated > 0 && calculated < 130 ? calculated : null;
+  })();
+
+  const realHealthId = healthId || (profile as unknown as { healthId?: string }).healthId || null;
+
   return (
-    <Card className="rounded-3xl border border-slate-200/80 shadow-md bg-gradient-to-br from-teal-950 via-teal-900 to-slate-950 text-white overflow-hidden">
-      <CardContent className="p-6 sm:p-8">
+    <Card className="rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs bg-white text-slate-900 overflow-hidden">
+      <CardContent className="p-5 sm:p-7">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          {/* Avatar & Personal Meta */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="relative group">
-              <Avatar className="h-24 w-24 rounded-3xl border-4 border-teal-500/40 shadow-xl ring-4 ring-teal-900/50">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={profile.full_name} className="object-cover" />}
-                <AvatarFallback className="bg-teal-700 text-white font-extrabold text-3xl font-heading rounded-3xl">
+          {/* Left: Avatar & Patient Demographics */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 w-full lg:w-auto">
+            <div className="relative group shrink-0">
+              <Avatar className="h-20 w-20 sm:h-22 sm:w-22 rounded-2xl border-2 border-teal-600/30 shadow-xs ring-4 ring-teal-50">
+                {avatarUrl && (
+                  <AvatarImage
+                    src={avatarUrl}
+                    alt={profile.full_name || 'Patient'}
+                    className="object-cover"
+                  />
+                )}
+                <AvatarFallback className="bg-teal-700 text-white font-extrabold text-2xl font-heading rounded-2xl">
                   {getInitials(profile.full_name)}
                 </AvatarFallback>
               </Avatar>
 
-              <label className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-2xl bg-teal-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95">
-                <Camera className="h-4 w-4" />
+              <label
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-xl bg-teal-700 text-white shadow-md transition-transform hover:scale-110 active:scale-95 focus-within:ring-2 focus-within:ring-teal-600"
+                title="Update profile photo"
+                aria-label="Upload profile photo"
+              >
+                <Camera className="h-3.5 w-3.5" />
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarFileChange}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2 min-w-0 flex-1">
+              {/* Patient Name & Clinical Badges */}
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-2xl sm:text-3xl font-extrabold font-heading text-white">
+                <h2 className="text-xl sm:text-2xl font-extrabold font-heading text-slate-900 tracking-tight">
                   {profile.full_name || 'Patient Name'}
                 </h2>
-                {profile.blood_type && (
-                  <Badge className="bg-rose-600 text-white border-rose-500 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                    {profile.blood_type}
+
+                {realHealthId && (
+                  <span className="font-mono text-[11px] font-bold text-teal-800 bg-teal-50 border border-teal-200/90 px-2 py-0.5 rounded-md">
+                    ID: {realHealthId}
+                  </span>
+                )}
+
+                {profile.blood_type && profile.blood_type !== 'Unknown' && (
+                  <Badge className="bg-rose-50 text-rose-800 border-rose-200 text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Droplet className="w-3 h-3 text-rose-600" />
+                    <span>{profile.blood_type}</span>
                   </Badge>
                 )}
+
                 {profile.organ_donor && (
-                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full">
-                    Organ Donor
+                  <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <HeartHandshake className="w-3 h-3 text-emerald-600" />
+                    <span>Organ Donor</span>
                   </Badge>
                 )}
               </div>
 
-              <p className="text-xs text-teal-200/80 flex items-center gap-1.5 flex-wrap">
-                <span>{profile.gender || 'Not specified'}</span>
-                <span>•</span>
-                <span>{profile.date_of_birth ? `DOB: ${profile.date_of_birth}` : 'DOB Not set'}</span>
-                <span>•</span>
-                <span className="font-mono text-teal-300 font-bold">
-                  ID: {profile.phone ? `HS-${profile.phone.slice(-4)}` : 'Not assigned'}
+              {/* Demographic Details */}
+              <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
+                <span className="flex items-center gap-1 font-medium">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="capitalize">{profile.gender || 'Gender unrecorded'}</span>
                 </span>
-              </p>
+                <span className="text-slate-300">•</span>
+                <span className="flex items-center gap-1 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>
+                    {profile.date_of_birth
+                      ? `DOB: ${profile.date_of_birth}${age ? ` (${age} yrs)` : ''}`
+                      : 'DOB not recorded'}
+                  </span>
+                </span>
+              </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <ShieldCheck className="h-4 w-4 text-teal-400" />
-                <span className="text-[11px] font-semibold text-teal-200">
-                  {profile.insurance_provider ? `${profile.insurance_provider}${profile.insurance_policy_number ? ` (${profile.insurance_policy_number})` : ''}` : 'No insurance policy linked'}
+              {/* Insurance Summary */}
+              <div className="flex items-center gap-2 text-xs text-slate-600">
+                <ShieldCheck className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                <span className="truncate">
+                  {profile.insurance_provider
+                    ? `${profile.insurance_provider}${
+                        profile.insurance_policy_number
+                          ? ` (Policy: ${profile.insurance_policy_number})`
+                          : ''
+                      }`
+                    : 'No insurance policy recorded'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Quick Actions & Completion Bar */}
-          <div className="w-full lg:w-auto flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-4 border-t lg:border-t-0 lg:border-l border-teal-800/80 pt-4 lg:pt-0 lg:pl-6">
+          {/* Right: Profile Completeness Score & Quick Actions */}
+          <div className="w-full lg:w-auto flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3.5 border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6">
             {/* Completion indicator */}
-            <div className="w-full sm:w-56 space-y-1.5 bg-white/10 p-3 rounded-2xl border border-white/10">
-              <div className="flex items-center justify-between text-[11px] font-bold">
-                <span className="text-teal-200 flex items-center gap-1">
-                  <Sparkles className="h-3.5 w-3.5 text-teal-400" /> Profile Strength
+            <div className="w-full sm:w-56 space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-700 flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+                  <span>Profile Completeness</span>
                 </span>
-                <span className="text-white font-extrabold">{completionScore}%</span>
+                <span className="text-slate-900 font-extrabold">{completionScore}%</span>
               </div>
-              <Progress value={completionScore} className="h-2 bg-teal-950" />
+              <Progress value={completionScore} className="h-2 bg-slate-200" />
             </div>
 
-            {/* Quick Action Buttons */}
-            <div className="flex gap-2 w-full sm:w-auto">
+            {/* Actions group */}
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+              {onEditProfile && (
+                <Button
+                  type="button"
+                  onClick={onEditProfile}
+                  className="flex-1 sm:flex-initial bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold h-9 px-3.5 gap-1.5 shadow-xs cursor-pointer transition-all"
+                  aria-label="Edit Profile Details"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  <span>Edit Details</span>
+                </Button>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={onExportJson}
-                className="flex-1 sm:flex-initial bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl text-xs font-bold gap-1.5"
+                className="flex-1 sm:flex-initial bg-white hover:bg-slate-50 text-slate-700 border-slate-200 rounded-xl text-xs font-semibold h-9 px-3 gap-1.5 cursor-pointer"
                 title="Download Profile JSON"
+                aria-label="Export Profile JSON"
               >
-                <FileJson className="h-3.5 w-3.5 text-teal-300" />
+                <FileJson className="h-3.5 w-3.5 text-teal-700" />
                 <span>Export JSON</span>
               </Button>
 
               <Button
                 type="button"
+                variant="outline"
                 size="sm"
                 onClick={onPrintCard}
-                className="flex-1 sm:flex-initial bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-initial bg-white hover:bg-slate-50 text-slate-700 border-slate-200 rounded-xl text-xs font-semibold h-9 px-3 gap-1.5 cursor-pointer"
                 title="Print Medical ID Card"
+                aria-label="Print Medical ID Card"
               >
-                <Printer className="h-3.5 w-3.5" />
+                <Printer className="h-3.5 w-3.5 text-teal-700" />
                 <span>Print Card</span>
               </Button>
             </div>
