@@ -7,6 +7,7 @@ export interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
   loading: boolean;
+  error: string | null;
   fetchNotifications: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -22,19 +23,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     notificationService.getLocalNotifications()
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isMountedRef = React.useRef(true);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) {
-      if (isMountedRef.current) setNotifications([]);
+      if (isMountedRef.current) {
+        setNotifications([]);
+        setError(null);
+      }
       return;
     }
-    if (isMountedRef.current) setLoading(true);
+    if (isMountedRef.current) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await notificationService.getNotifications();
-      if (isMountedRef.current) setNotifications(data);
-    } catch {
-      // safe fallback
+      if (isMountedRef.current) {
+        setNotifications(data);
+        setError(null);
+      }
+    } catch (err: any) {
+      if (isMountedRef.current) {
+        setError(err?.message || 'Failed to fetch notifications');
+      }
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
@@ -119,6 +132,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         notifications,
         unreadCount,
         loading,
+        error,
         fetchNotifications,
         markRead,
         markAllRead,
