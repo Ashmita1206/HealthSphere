@@ -54,15 +54,7 @@ export function SidebarNavItem({
   const linkContent = (
     <Link
       to={href}
-      onClick={(e) => {
-        if (href === "/notifications") {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent('open-notification-dialog'));
-          onNavigate?.();
-          return;
-        }
-        onNavigate?.();
-      }}
+      onClick={onNavigate}
       className={cn(
         "flex items-center gap-3 rounded-xl text-[13px] font-medium transition-colors duration-150 relative group min-h-[46px]",
         collapsed ? "justify-center px-0 mx-1" : "px-3 mx-2",

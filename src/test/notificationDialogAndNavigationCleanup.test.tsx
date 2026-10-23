@@ -227,7 +227,7 @@ describe('HEALTHSPHERE — Notification Dialog & Sidebar Cleanup Suite', () => {
   });
 
   describe('Part B: Sidebar Navigation Cleanup', () => {
-    it('1. Verifies all 10 explicitly requested entries are REMOVED from the sidebar', () => {
+    it('1. Verifies all requested entries including Notifications are REMOVED from the sidebar', () => {
       render(
         <MemoryRouter initialEntries={['/dashboard']}>
           <Sidebar isOpen={true} onClose={vi.fn()} />
@@ -260,6 +260,9 @@ describe('HEALTHSPHERE — Notification Dialog & Sidebar Cleanup Suite', () => {
 
       // 10. Reminders
       expect(screen.queryByRole('link', { name: /Reminders/i })).not.toBeInTheDocument();
+
+      // Notifications (removed from sidebar navigation)
+      expect(screen.queryByRole('link', { name: /Notifications/i })).not.toBeInTheDocument();
     });
 
     it('2. Verifies all preserved sidebar entries remain intact and functional', () => {
@@ -275,27 +278,20 @@ describe('HEALTHSPHERE — Notification Dialog & Sidebar Cleanup Suite', () => {
       expect(screen.getAllByRole('link', { name: /Medicines/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('link', { name: /Medical OCR/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('link', { name: /Wearables & IoT/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('link', { name: /Notifications/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('link', { name: /Blood & Organ/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('link', { name: /My Profile/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('link', { name: /Settings/i }).length).toBeGreaterThan(0);
     });
 
-    it('3. Notifications in sidebar dispatches open-notification-dialog without navigating away', () => {
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-
+    it('3. Confirms Notifications link is absent from sidebar navigation', () => {
       render(
         <MemoryRouter initialEntries={['/dashboard']}>
           <Sidebar isOpen={true} onClose={vi.fn()} />
         </MemoryRouter>
       );
 
-      const notifLink = screen.getAllByRole('link', { name: /Notifications/i })[0];
-      fireEvent.click(notifLink);
-
-      expect(dispatchSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'open-notification-dialog' })
-      );
+      expect(screen.queryByRole('link', { name: /Notifications/i })).not.toBeInTheDocument();
+      expect(screen.queryByText('Notifications')).not.toBeInTheDocument();
     });
   });
 

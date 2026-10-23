@@ -7,7 +7,6 @@ import {
   Pill,
   FileText,
   Droplets,
-  Bell,
   User,
   Settings,
   Watch,
@@ -56,7 +55,6 @@ const navGroups: NavGroupData[] = [
   {
     title: "SYSTEM & SUPPORT",
     items: [
-      { icon: Bell, label: "Notifications", href: "/notifications" },
       { icon: Droplets, label: "Blood & Organ", href: "/blood-donation" },
     ],
   },
