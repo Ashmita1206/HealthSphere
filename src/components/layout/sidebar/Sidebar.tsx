@@ -1,29 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
-import { Activity } from "lucide-react";
 import {
   LayoutDashboard,
   Calendar,
   Pill,
   FileText,
-  History,
-  MessageSquareText,
-  Bot,
-  Eye,
-  Heart,
   Droplets,
   Bell,
   User,
   Settings,
-  Stethoscope,
-
-
-  Video,
-  Brain,
   Watch,
-  BarChart3,
-
 } from "lucide-react";
 import { SidebarBrand } from "./SidebarBrand";
 import { SidebarCollapseButton } from "./SidebarCollapseButton";
@@ -55,32 +42,22 @@ const navGroups: NavGroupData[] = [
     title: "CARE",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-      { icon: Stethoscope, label: "Doctor Portal", href: "/doctor-portal", badge: "MD" },
-      { icon: Video, label: "Telemedicine", href: "/telemedicine", badge: "LIVE" },
       { icon: Calendar, label: "Appointments", href: "/appointments" },
       { icon: Pill, label: "Medicines", href: "/medicines" },
       { icon: FileText, label: "Medical OCR", href: "/medical-reports", badge: "AI" },
-      { icon: History, label: "Health Timeline", href: "/timeline" },
-      { icon: Stethoscope, label: "Doctor Portal", href: "/doctors" },
     ],
   },
   {
     title: "INTELLIGENCE",
     items: [
-      { icon: MessageSquareText, label: "AI Assistant", href: "/ai-chat", badge: "AI" },
-      { icon: Brain, label: "Predictive AI", href: "/predictive", badge: "AI" },
       { icon: Watch, label: "Wearables & IoT", href: "/wearables", badge: "BLE" },
-      { icon: Eye, label: "AI Vision", href: "/ai-vision" },
-      { icon: Heart, label: "AI Health Score", href: "/ai-health-score" },
     ],
   },
   {
     title: "SYSTEM & SUPPORT",
     items: [
       { icon: Bell, label: "Notifications", href: "/notifications" },
-      { icon: BarChart3, label: "Admin Analytics", href: "/admin/analytics", badge: "OS" },
       { icon: Droplets, label: "Blood & Organ", href: "/blood-donation" },
-      { icon: Bell, label: "Reminders", href: "/reminders", badge: "2" },
     ],
   },
   {
