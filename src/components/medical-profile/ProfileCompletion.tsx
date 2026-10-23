@@ -24,7 +24,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
   profile,
   onNavigateToTab,
 }) => {
-  const completion = profile?.completionPercentage ?? 60;
+  const completion = typeof profile?.completionPercentage === 'number' ? profile.completionPercentage : 0;
 
   // Evaluate missing fields
   const suggestions: Array<{ label: string; tab: string; icon: React.ComponentType<{ className?: string }> }> = [];

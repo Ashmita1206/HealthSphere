@@ -11,7 +11,12 @@ const toProfile = (u) => ({
   address: u.address || "",
   emergency_contact_name: u.emergencyContactName || "",
   emergency_contact_phone: u.emergencyContactPhone || "",
-  health_score: u.healthScore !== undefined && u.healthScore !== null ? u.healthScore : null
+  health_score: u.healthScore !== undefined && u.healthScore !== null ? u.healthScore : null,
+  preferences: u.preferences || {
+    language: "en",
+    units: "metric",
+    notification_preferences: { email: true, sms: true, push: true }
+  }
 });
 
 async function getProfile(req, res, next) {

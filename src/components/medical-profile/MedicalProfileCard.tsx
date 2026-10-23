@@ -100,7 +100,7 @@ export const MedicalProfileCard: React.FC<MedicalProfileCardProps> = ({ profile,
               <span>Age / DOB</span>
             </div>
             <p className="text-base font-extrabold text-slate-900 font-heading mt-0.5">
-              {age ? `${age} yrs` : '28 yrs'}
+              {age ? `${age} yrs` : 'Not recorded'}
             </p>
           </div>
 
@@ -110,7 +110,7 @@ export const MedicalProfileCard: React.FC<MedicalProfileCardProps> = ({ profile,
               <span>Body Mass Index</span>
             </div>
             <p className="text-base font-extrabold text-slate-900 font-heading mt-0.5">
-              {bmi ? `${bmi} BMI` : '22.4 BMI'}
+              {bmi ? `${bmi} BMI` : 'Not recorded'}
             </p>
           </div>
 

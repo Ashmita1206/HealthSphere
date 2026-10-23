@@ -121,6 +121,14 @@ const MedicalProfileSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    primaryPhysician: {
+      type: String,
+      default: '',
+    },
+    preferredHospital: {
+      type: String,
+      default: '',
+    },
     qrData: {
       type: String,
       default: '',

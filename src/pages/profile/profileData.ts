@@ -35,8 +35,10 @@ export interface Profile {
   appointment_completion_rate?: number;
   allergies: string[];
   chronic_diseases: string[];
+  current_medications: string[];
   surgeries: string[];
   family_history: string[];
+  emergency_contacts: Array<{ name: string; phone: string; relationship: string; isPrimary?: boolean }>;
   smoking: string;
   alcohol: string;
   exercise_level: string;
@@ -76,6 +78,7 @@ export const createDefaultProfile = (): Profile => ({
   emergency_contact_name: '',
   emergency_contact_phone: '',
   emergency_contact_relationship: '',
+  emergency_contacts: [],
   insurance_provider: '',
   insurance_policy_number: '',
   organ_donor: false,
@@ -93,6 +96,7 @@ export const createDefaultProfile = (): Profile => ({
   appointment_completion_rate: undefined,
   allergies: [],
   chronic_diseases: [],
+  current_medications: [],
   surgeries: [],
   family_history: [],
   smoking: '',
@@ -116,10 +120,18 @@ export const normalizeProfileData = (value: unknown): Profile => {
     value && typeof value === 'object'
       ? (value as Record<string, unknown>)
       : {};
+
+  const prefData =
+    data.preferences && typeof data.preferences === 'object'
+      ? (data.preferences as Record<string, unknown>)
+      : data;
+  const rawNotif =
+    prefData.notification_preferences ??
+    prefData.notificationPreferences ??
+    data.notification_preferences;
   const notificationPreferences =
-    data.notification_preferences &&
-    typeof data.notification_preferences === 'object'
-      ? (data.notification_preferences as Record<string, unknown>)
+    rawNotif && typeof rawNotif === 'object'
+      ? (rawNotif as Record<string, unknown>)
       : {};
 
   const docs = Array.isArray(data.documents)
@@ -127,23 +139,31 @@ export const normalizeProfileData = (value: unknown): Profile => {
     : [];
 
   return {
-    full_name: asString(data.full_name),
+    full_name: asString(data.full_name ?? data.name),
     phone: asString(data.phone),
-    date_of_birth: asString(data.date_of_birth),
+    date_of_birth: asString(data.date_of_birth ?? data.dateOfBirth),
     gender: asString(data.gender),
-    blood_type: asString(data.blood_type),
+    blood_type: asString(data.blood_type ?? data.bloodType),
     address: asString(data.address),
-    emergency_contact_name: asString(data.emergency_contact_name),
-    emergency_contact_phone: asString(data.emergency_contact_phone),
+    emergency_contact_name: asString(data.emergency_contact_name ?? data.emergencyContactName),
+    emergency_contact_phone: asString(data.emergency_contact_phone ?? data.emergencyContactPhone),
     emergency_contact_relationship: asString(
-      data.emergency_contact_relationship,
+      data.emergency_contact_relationship ?? data.emergencyContactRelationship
     ),
+    emergency_contacts: Array.isArray(data.emergency_contacts ?? data.emergencyContacts)
+      ? ((data.emergency_contacts ?? data.emergencyContacts) as Array<{
+          name: string;
+          phone: string;
+          relationship: string;
+          isPrimary?: boolean;
+        }>)
+      : [],
     insurance_provider: asString(data.insurance_provider),
     insurance_policy_number: asString(data.insurance_policy_number),
     organ_donor: asBoolean(data.organ_donor, false),
-    primary_physician: asString(data.primary_physician),
-    preferred_hospital: asString(data.preferred_hospital),
-    health_score: asNumber(data.health_score),
+    primary_physician: asString(data.primary_physician ?? data.primaryPhysician),
+    preferred_hospital: asString(data.preferred_hospital ?? data.preferredHospital),
+    health_score: asNumber(data.health_score ?? data.healthScore),
     height: asNumber(data.height),
     weight: asNumber(data.weight),
     bmi: asNumber(data.bmi),
@@ -155,19 +175,22 @@ export const normalizeProfileData = (value: unknown): Profile => {
     appointment_completion_rate: asNumber(data.appointment_completion_rate),
     allergies: normalizeStringArray(data.allergies),
     chronic_diseases: normalizeStringArray(
-      data.chronic_diseases ?? data.chronicDiseases,
+      data.chronic_diseases ?? data.chronicDiseases
+    ),
+    current_medications: normalizeStringArray(
+      data.current_medications ?? data.currentMedications ?? data.medications
     ),
     surgeries: normalizeStringArray(data.surgeries),
     family_history: normalizeStringArray(
-      data.family_history ?? data.familyHistory,
+      data.family_history ?? data.familyHistory
     ),
     smoking: asString(data.smoking),
     alcohol: asString(data.alcohol),
     exercise_level: asString(data.exercise_level),
     sleep_hours: asNumber(data.sleep_hours),
     diet_preference: asString(data.diet_preference),
-    language: asString(data.language, defaults.language),
-    units: asString(data.units, defaults.units),
+    language: asString(prefData.language ?? data.language, defaults.language),
+    units: asString(prefData.units ?? data.units, defaults.units),
     notification_preferences: {
       email:
         typeof notificationPreferences.email === 'boolean'
@@ -197,13 +220,16 @@ export const mergeProfileAndMedicalData = (
     weight?: number | null;
     allergies?: string[];
     chronicDiseases?: string[];
+    currentMedications?: string[];
     surgeries?: Array<{ name: string } | string>;
     familyHistory?: Array<{ relation: string; condition: string } | string>;
     emergencyContacts?: Array<{ name: string; phone: string; relationship?: string; isPrimary?: boolean }>;
     insurance?: { provider?: string; policyNumber?: string };
     organDonor?: boolean;
+    primaryPhysician?: string;
+    preferredHospital?: string;
     lifestyle?: { smoking?: string; alcohol?: string; activityLevel?: string; diet?: string };
-    address?: { street?: string; city?: string; state?: string; postalCode?: string; country?: string };
+    address?: { street?: string; city?: string; state?: string; postalCode?: string; country?: string } | string;
   } | null
 ): Profile => {
   const base = normalizeProfileData(userData);
@@ -223,16 +249,19 @@ export const mergeProfileAndMedicalData = (
     medData.emergencyContacts?.find((c) => c.isPrimary) ||
     medData.emergencyContacts?.[0];
 
+  const medAddress = typeof medData.address === 'string' ? medData.address : medData.address?.street;
+
   return {
     ...base,
-    full_name: base.full_name || medData.fullName || '',
-    date_of_birth: base.date_of_birth || medData.dateOfBirth || '',
-    gender: base.gender || medData.gender || '',
-    blood_type: base.blood_type || (medData.bloodGroup && medData.bloodGroup !== 'Unknown' ? medData.bloodGroup : '') || '',
+    full_name: (medData.fullName && medData.fullName !== 'HealthSphere Patient' ? medData.fullName : '') || base.full_name || medData.fullName || '',
+    date_of_birth: medData.dateOfBirth || base.date_of_birth || '',
+    gender: medData.gender || base.gender || '',
+    blood_type: (medData.bloodGroup && medData.bloodGroup !== 'Unknown' ? medData.bloodGroup : '') || base.blood_type || '',
     height: typeof medData.height === 'number' ? medData.height : base.height,
     weight: typeof medData.weight === 'number' ? medData.weight : base.weight,
     allergies: medData.allergies?.length ? medData.allergies : base.allergies,
     chronic_diseases: medData.chronicDiseases?.length ? medData.chronicDiseases : base.chronic_diseases,
+    current_medications: medData.currentMedications?.length ? medData.currentMedications : base.current_medications,
     surgeries,
     family_history: familyHistory,
     smoking: medData.lifestyle?.smoking || base.smoking,
@@ -242,9 +271,17 @@ export const mergeProfileAndMedicalData = (
     insurance_provider: medData.insurance?.provider || base.insurance_provider,
     insurance_policy_number: medData.insurance?.policyNumber || base.insurance_policy_number,
     organ_donor: typeof medData.organDonor === 'boolean' ? medData.organDonor : base.organ_donor,
-    emergency_contact_name: base.emergency_contact_name || primaryContact?.name || '',
-    emergency_contact_phone: base.emergency_contact_phone || primaryContact?.phone || '',
-    emergency_contact_relationship: base.emergency_contact_relationship || primaryContact?.relationship || '',
-    address: base.address || medData.address?.street || '',
+    primary_physician: medData.primaryPhysician || base.primary_physician || '',
+    preferred_hospital: medData.preferredHospital || base.preferred_hospital || '',
+    emergency_contact_name: primaryContact?.name || base.emergency_contact_name || '',
+    emergency_contact_phone: primaryContact?.phone || base.emergency_contact_phone || '',
+    emergency_contact_relationship: primaryContact?.relationship || base.emergency_contact_relationship || '',
+    emergency_contacts: (medData.emergencyContacts?.length ? medData.emergencyContacts : base.emergency_contacts) as Array<{
+      name: string;
+      phone: string;
+      relationship: string;
+      isPrimary?: boolean;
+    }>,
+    address: medAddress || base.address || '',
   };
 };

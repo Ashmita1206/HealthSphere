@@ -151,6 +151,8 @@ router.put('/', async (req, res, next) => {
         'lifestyle',
         'address',
         'notes',
+        'primaryPhysician',
+        'preferredHospital',
       ];
 
       fields.forEach((field) => {

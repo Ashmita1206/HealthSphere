@@ -50,13 +50,15 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [fetchingProfile, setFetchingProfile] = useState(true);
   const [profile, setProfile] = useState<Profile>(createDefaultProfile);
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [formSubTab, setFormSubTab] = useState<'personal' | 'vitals' | 'clinical' | 'emergency' | 'lifestyle'>('personal');
 
-  // Profile Completion Score Calculation
+  // Profile Completion Score Calculation based on authentic fields
   const calculateCompletionScore = (p: Profile): number => {
     let fields = 0;
     let filled = 0;
 
-    const check = (val: any) => {
+    const check = (val: unknown) => {
       fields++;
       if (Array.isArray(val)) {
         if (val.length > 0) filled++;
@@ -125,10 +127,61 @@ export default function ProfilePage() {
     }
   }, [medicalProfile]);
 
-  const handleSave = async () => {
-    if (!user) return;
+  const resolveEmergencyContacts = (
+    singleName: string,
+    singlePhone: string,
+    singleRelationship: string,
+    existingList: Array<{ name: string; phone: string; relationship: string; isPrimary?: boolean }> = []
+  ): Array<{ name: string; phone: string; relationship: string; isPrimary?: boolean }> => {
+    if (existingList.length > 0) {
+      if (singleName) {
+        const hasPrimary = existingList.some((c) => c.isPrimary);
+        return existingList.map((c, idx) => {
+          const isTarget = hasPrimary ? c.isPrimary : idx === 0;
+          if (isTarget) {
+            return {
+              ...c,
+              name: singleName,
+              phone: singlePhone || c.phone,
+              relationship: singleRelationship || c.relationship || 'Emergency Contact',
+              isPrimary: true,
+            };
+          }
+          return c;
+        });
+      }
+      return existingList;
+    }
+    if (singleName) {
+      return [
+        {
+          name: singleName,
+          phone: singlePhone,
+          relationship: singleRelationship || 'Emergency Contact',
+          isPrimary: true,
+        },
+      ];
+    }
+    return [];
+  };
+
+  const handleSave = async (): Promise<boolean> => {
+    if (!user) return false;
+    if (loading) return false;
     setLoading(true);
     try {
+      const existingContacts =
+        medicalProfile?.emergencyContacts?.length
+          ? medicalProfile.emergencyContacts
+          : (profile.emergency_contacts || []);
+
+      const resolvedContacts = resolveEmergencyContacts(
+        profile.emergency_contact_name,
+        profile.emergency_contact_phone,
+        profile.emergency_contact_relationship,
+        existingContacts
+      );
+
       // 1. Personal Identity portion -> PUT /api/user/profile
       const userProfilePayload = {
         full_name: profile.full_name,
@@ -152,6 +205,9 @@ export default function ProfilePage() {
         weight: typeof profile.weight === 'number' ? profile.weight : (medicalProfile?.weight ?? null),
         allergies: profile.allergies || [],
         chronicDiseases: profile.chronic_diseases || [],
+        currentMedications: profile.current_medications?.length
+          ? profile.current_medications
+          : (medicalProfile?.currentMedications || []),
         surgeries: (profile.surgeries || []).map((s) =>
           typeof s === 'string' ? { name: s } : s
         ),
@@ -169,43 +225,107 @@ export default function ProfilePage() {
           policyNumber: profile.insurance_policy_number || '',
         },
         organDonor: Boolean(profile.organ_donor),
+        primaryPhysician: profile.primary_physician || '',
+        preferredHospital: profile.preferred_hospital || '',
         address: {
           street: profile.address || '',
         },
-        emergencyContacts: profile.emergency_contact_name
-          ? [
-              {
-                name: profile.emergency_contact_name,
-                phone: profile.emergency_contact_phone,
-                relationship: profile.emergency_contact_relationship || 'Emergency Contact',
-                isPrimary: true,
-              },
-            ]
-          : (medicalProfile?.emergencyContacts || []),
+        emergencyContacts: resolvedContacts,
       };
 
-      // Concurrently persist both domains
-      const [userRes, medOk] = await Promise.all([
+      // 3. User Preferences portion -> PUT /api/user/preferences
+      const preferencesPayload = {
+        language: profile.language,
+        units: profile.units,
+        notification_preferences: profile.notification_preferences,
+      };
+
+      // Concurrently persist all three domains
+      const [userResult, medResult, prefResult] = await Promise.allSettled([
         api.put('/user/profile', userProfilePayload),
         saveMedicalProfile(clinicalPayload),
+        api.put('/user/preferences', preferencesPayload),
       ]);
 
-      if (userRes) {
-        setProfile((prev) => mergeProfileAndMedicalData(userRes, clinicalPayload));
+      const userSuccess = userResult.status === 'fulfilled' && Boolean(userResult.value);
+      const medSuccess = medResult.status === 'fulfilled' && medResult.value === true;
+      const prefSuccess = prefResult.status === 'fulfilled' && Boolean(prefResult.value);
+
+      if (userSuccess) {
+        setProfile((prev) => mergeProfileAndMedicalData(userResult.value, clinicalPayload));
       }
 
-      await refreshProfile();
+      if (medSuccess) {
+        await refreshProfile();
+      }
+
+      if (userSuccess && medSuccess && prefSuccess) {
+        toast({
+          title: 'Profile & Clinical Records Saved',
+          description: 'Personal details, medical profile, and preferences persisted successfully.',
+        });
+        return true;
+      }
+
+      // Build a list of failed domains for an accurate partial-failure message
+      const failures: string[] = [];
+      if (!userSuccess) failures.push('personal details');
+      if (!medSuccess) failures.push('clinical records');
+      if (!prefSuccess) failures.push('preferences');
 
       toast({
-        title: 'Profile & Clinical Records Saved',
-        description: 'Personal details and lifelong medical profile persisted successfully.',
-      });
-    } catch (err: any) {
-      toast({
-        title: 'Save Failed',
-        description: err?.message || 'Failed saving profile updates. Please retry.',
+        title: failures.length < 3 ? 'Partial Save' : 'Save Failed',
+        description: failures.length < 3
+          ? `Some data was saved, but ${failures.join(' and ')} failed to persist. Please retry.`
+          : 'Failed to persist personal details, clinical records, and preferences. Please retry.',
         variant: 'destructive',
       });
+      return false;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed saving profile updates. Please retry.';
+      toast({
+        title: 'Save Failed',
+        description: message,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePreferences = async (): Promise<boolean> => {
+    if (!user) return false;
+    if (loading) return false;
+    setLoading(true);
+    try {
+      const preferencesPayload = {
+        language: profile.language,
+        units: profile.units,
+        notification_preferences: profile.notification_preferences,
+      };
+      const res = await api.put('/user/preferences', preferencesPayload);
+      if (res) {
+        toast({
+          title: 'Preferences Saved',
+          description: 'Language, measurement units, and notification preferences saved.',
+        });
+        return true;
+      }
+      toast({
+        title: 'Preferences Save Failed',
+        description: 'Server did not acknowledge preference updates. Please retry.',
+        variant: 'destructive',
+      });
+      return false;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed saving preferences.';
+      toast({
+        title: 'Preferences Save Failed',
+        description: message,
+        variant: 'destructive',
+      });
+      return false;
     } finally {
       setLoading(false);
     }
@@ -260,29 +380,38 @@ export default function ProfilePage() {
     toast({ title: 'Document Removed', description: 'File removed from vault.' });
   };
 
+  const handleNavigateSuggestion = (tabKey: string) => {
+    if (tabKey === 'vitals' || tabKey === 'clinical' || tabKey === 'emergency') {
+      setActiveTab('edit-medical');
+      setFormSubTab(tabKey as typeof formSubTab);
+    } else {
+      setActiveTab('edit-medical');
+    }
+  };
+
   if (fetchingProfile) {
     return (
       <div className="space-y-6 pb-12">
-        <div className="h-28 animate-pulse bg-slate-200/60 rounded-3xl" />
+        <div className="h-24 animate-pulse bg-slate-200/60 rounded-3xl" />
+        <div className="h-44 animate-pulse bg-slate-200/60 rounded-3xl" />
         <div className="h-64 animate-pulse bg-slate-200/60 rounded-3xl" />
-        <div className="h-48 animate-pulse bg-slate-200/60 rounded-3xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
+      {/* Page Header */}
       <PageHeader
         title="Patient Profile & Health Records"
         description="Comprehensive clinical demographics, emergency contacts, vital biometrics, and medical document vault."
         breadcrumbs={[{ label: 'Profile' }]}
-        badge="HIPAA 256-Bit Encrypted"
+        badge="Personal Health Record"
         actions={
           <Button
             onClick={handleSave}
             disabled={loading}
-            className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2"
+            className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
           >
             <Save className="h-4 w-4" />
             <span>{loading ? 'Saving...' : 'Save Profile Changes'}</span>
@@ -290,24 +419,25 @@ export default function ProfilePage() {
         }
       />
 
-      {/* Hero Header */}
+      {/* Patient Identity Header Card */}
       <ProfileHero
         profile={profile}
         completionScore={completionScore}
+        healthId={medicalProfile?.healthId}
         onExportJson={handleExportJson}
         onPrintCard={handlePrintCard}
+        onEditProfile={() => {
+          setActiveTab('edit-medical');
+          setFormSubTab('personal');
+        }}
       />
 
-      {/* Profile Completeness Assessment & Actionable Suggestions */}
-      <ProfileCompletion
-        profile={medicalProfile}
-      />
-
-      {/* Navigation Tabs */}
-      <Tabs defaultValue="overview" className="w-full space-y-6">
-        <TabsList className="bg-slate-100 p-1 rounded-2xl flex flex-wrap h-auto gap-1 border border-slate-200/80">
+      {/* Main Profile Navigation Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <TabsList className="bg-slate-100/90 p-1.5 rounded-2xl flex flex-wrap h-auto gap-1 border border-slate-200/80">
           <TabsTrigger
             value="overview"
+            onClick={() => setActiveTab('overview')}
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
             <Activity className="h-3.5 w-3.5" /> Clinical Overview
@@ -315,6 +445,7 @@ export default function ProfilePage() {
 
           <TabsTrigger
             value="idcard"
+            onClick={() => setActiveTab('idcard')}
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
             <ShieldCheck className="h-3.5 w-3.5" /> Digital Health ID & QR
@@ -322,6 +453,7 @@ export default function ProfilePage() {
 
           <TabsTrigger
             value="edit-medical"
+            onClick={() => setActiveTab('edit-medical')}
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
             <Heart className="h-3.5 w-3.5" /> Lifelong Medical Profile
@@ -329,6 +461,7 @@ export default function ProfilePage() {
 
           <TabsTrigger
             value="documents"
+            onClick={() => setActiveTab('documents')}
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
             <FileText className="h-3.5 w-3.5" /> Health Records Vault
@@ -336,6 +469,7 @@ export default function ProfilePage() {
 
           <TabsTrigger
             value="emergency"
+            onClick={() => setActiveTab('emergency')}
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
             <PhoneCall className="h-3.5 w-3.5" /> Emergency Contacts
@@ -343,6 +477,7 @@ export default function ProfilePage() {
 
           <TabsTrigger
             value="settings"
+            onClick={() => setActiveTab('settings')}
             className="rounded-xl text-xs font-bold px-4 py-2.5 data-[state=active]:bg-teal-700 data-[state=active]:text-white transition-all flex items-center gap-1.5"
           >
             <Settings className="h-3.5 w-3.5" /> Preferences & Settings
@@ -351,9 +486,29 @@ export default function ProfilePage() {
 
         {/* Tab 1: Clinical Overview */}
         <TabsContent value="overview" className="space-y-6">
-          <MedicalProfileCard profile={medicalProfile} />
-          <HealthMetricsGrid profile={profile} />
+          <MedicalProfileCard
+            profile={medicalProfile}
+            onEdit={() => {
+              setActiveTab('edit-medical');
+              setFormSubTab('clinical');
+            }}
+          />
+
+          <HealthMetricsGrid
+            profile={profile}
+            onRecordMetric={(metricKey) => {
+              setActiveTab('edit-medical');
+              setFormSubTab(metricKey === 'lifestyle' ? 'lifestyle' : 'vitals');
+            }}
+          />
+
           <AchievementsSection profile={profile} />
+
+          {/* Profile Completeness Assessment & Actionable Suggestions */}
+          <ProfileCompletion
+            profile={medicalProfile}
+            onNavigateToTab={handleNavigateSuggestion}
+          />
         </TabsContent>
 
         {/* Tab 2: Digital Health ID & QR Code & Emergency Access */}
@@ -378,12 +533,67 @@ export default function ProfilePage() {
         <TabsContent value="edit-medical" className="space-y-6">
           <MedicalProfileForm
             initialData={medicalProfile}
+            initialTab={formSubTab}
+            onCancel={() => setActiveTab('overview')}
             onSave={async (data) => {
-              const success = await saveMedicalProfile(data);
-              if (success) {
-                setProfile((prev) => mergeProfileAndMedicalData(prev, data as any));
+              setLoading(true);
+              try {
+                // Synchronize shared fields to User profile so both collections remain in sync
+                const userPayload: Record<string, unknown> = {};
+                if (data.fullName) userPayload.full_name = data.fullName;
+                if (data.dateOfBirth) userPayload.date_of_birth = data.dateOfBirth;
+                if (data.gender) userPayload.gender = data.gender;
+                if (data.bloodGroup) userPayload.blood_type = data.bloodGroup;
+                if (data.address?.street) userPayload.address = data.address.street;
+                const primaryContact =
+                  data.emergencyContacts?.find((c) => c.isPrimary) || data.emergencyContacts?.[0];
+                if (primaryContact?.name) {
+                  userPayload.emergency_contact_name = primaryContact.name;
+                  userPayload.emergency_contact_phone = primaryContact.phone;
+                  userPayload.emergency_contact_relationship =
+                    primaryContact.relationship || 'Emergency Contact';
+                }
+
+                const [userResult, medResult] = await Promise.allSettled([
+                  Object.keys(userPayload).length > 0
+                    ? api.put('/user/profile', userPayload)
+                    : Promise.resolve(null),
+                  saveMedicalProfile(data),
+                ]);
+
+                const medOk = medResult.status === 'fulfilled' && medResult.value === true;
+                const userRes = userResult.status === 'fulfilled' ? userResult.value : null;
+
+                if (!medOk) {
+                  toast({
+                    title: 'Medical Profile Save Failed',
+                    description: 'Could not persist clinical medical records. Please retry.',
+                    variant: 'destructive',
+                  });
+                  return false;
+                }
+
+                // Update authoritative state
+                setProfile((prev) =>
+                  mergeProfileAndMedicalData(userRes || prev, data as unknown as Record<string, unknown>)
+                );
+                await refreshProfile();
+                toast({
+                  title: 'Medical Profile Saved',
+                  description: 'Clinical profile and demographic details persisted successfully.',
+                });
+                return true;
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Save failed';
+                toast({
+                  title: 'Save Failed',
+                  description: message,
+                  variant: 'destructive',
+                });
+                return false;
+              } finally {
+                setLoading(false);
               }
-              return success;
             }}
           />
         </TabsContent>
@@ -397,7 +607,7 @@ export default function ProfilePage() {
           />
         </TabsContent>
 
-        {/* Tab 5: Emergency Contacts & Legacy Information */}
+        {/* Tab 5: Emergency Contacts & Triage Information */}
         <TabsContent value="emergency" className="space-y-6">
           <EmergencyCard profile={medicalProfile} />
           <EmergencyContact
@@ -410,6 +620,8 @@ export default function ProfilePage() {
             primary_physician={profile.primary_physician}
             preferred_hospital={profile.preferred_hospital}
             updateProfile={updateProfile}
+            onSave={handleSave}
+            saving={loading}
           />
         </TabsContent>
 
@@ -422,6 +634,8 @@ export default function ProfilePage() {
             updateProfile={updateProfile}
             onExportJson={handleExportJson}
             onPrintCard={handlePrintCard}
+            onSave={handleSavePreferences}
+            saving={loading}
           />
         </TabsContent>
       </Tabs>
